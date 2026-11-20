@@ -366,7 +366,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
               {
                 icon: UserMinus,
                 tone: 'text-bad',
-                title: t('ติดตามการเปลี่ยนแปลงของรายชื่อ', 'Track changes in your lists'),
+                title: t('ดูว่าใครเริ่มติดตามหรือเลิกติดตามคุณ', 'See who started or stopped following you'),
                 body: t(
                   'เปิดบันทึกประวัติและจำรายชื่อไว้ เมื่อวิเคราะห์ ZIP รอบใหม่ของบัญชีเดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติ คุณเลือกไฟล์ย้อนหลังและเปิดดูไทม์ไลน์รายบัญชีได้ด้วย',
                   'Turn on history and save account lists. When you analyze a new ZIP for the same account, the app compares it with the previous export. You can also pick an older ZIP and open a timeline for each changed account.',

@@ -1,5 +1,12 @@
-import { ArrowLeft, ArrowUp, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
-import { type MouseEvent, type ReactNode, useEffect, useState } from 'react';
+import { ArrowUp, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
+import {
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { type Translator, useLanguage } from '../lib/language';
 import { pageHref } from '../lib/routes';
 import { type ThemePreference, useThemePreference } from '../lib/theme';
@@ -17,8 +24,8 @@ export type PageId =
 
 interface AppShellProps {
   activePage: PageId;
+  contentRef: RefObject<HTMLDivElement | null>;
   onNavigate: (id: PageId) => void;
-  onBack: () => void;
   hasAnalysis: boolean;
   children: ReactNode;
 }
@@ -61,8 +68,8 @@ function ThemeSwitcher({
           onClick={() => setPreference(id)}
           className="nav__theme-button inline-flex items-center justify-center lg:size-8"
         >
-          <Icon className="hidden size-4 lg:block" aria-hidden="true" />
-          <span className="lg:hidden">{label}</span>
+          <Icon className="size-4" aria-hidden="true" />
+          <span className="sr-only">{label}</span>
         </button>
       ))}
     </div>
@@ -101,19 +108,27 @@ function LanguageSwitcher() {
   );
 }
 
-export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children }: AppShellProps) {
+export function AppShell({
+  activePage,
+  contentRef,
+  onNavigate,
+  hasAnalysis,
+  children,
+}: AppShellProps) {
   const { t } = useLanguage();
   const navItems = getNavItems(t);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
   const theme = useThemePreference();
   const showLatestAnalysis = hasAnalysis && activePage !== 'results';
+  const getNavigationTarget = (id: PageId) => (id === 'upload' && hasAnalysis ? 'results' : id);
 
   const link = (id: PageId) => (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     setDrawerOpen(false);
-    onNavigate(id);
+    onNavigate(getNavigationTarget(id));
   };
 
   useEffect(() => {
@@ -129,58 +144,35 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [drawerOpen]);
 
-  useEffect(() => {
-    const onScroll = () => {
-      setShowBackToTop(window.scrollY > 480);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   const scrollToTop = () => {
     const reduced =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    contentRef.current?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
   };
 
   const current = (ids: PageId[]) => (ids.includes(activePage) ? 'page' : undefined);
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="nav">
+    <div className="app-frame flex h-dvh flex-col">
+      <header className="nav mobile-top-bar shrink-0">
         <div className="product-wrap nav__bar">
           <a
             className="skip-link"
             href="#top"
             onClick={(event) => {
               event.preventDefault();
-              document.getElementById('top')?.focus();
-              document.getElementById('top')?.scrollIntoView();
+              mainRef.current?.focus({ preventScroll: true });
+              contentRef.current?.scrollTo({ top: 0, behavior: 'instant' });
             }}
           >
             {t('ข้ามไปที่เนื้อหาหลัก', 'Skip to main content')}
           </a>
 
           <div className="flex min-w-0 items-center gap-1">
-            {activePage !== 'landing' && (
-              <button
-                type="button"
-                className="nav__back"
-                onClick={onBack}
-                aria-label={t('ย้อนกลับ', 'Back')}
-              >
-                <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="hidden min-[380px]:inline">{t('ย้อนกลับ', 'Back')}</span>
-              </button>
-            )}
-
-            {activePage === 'landing' && (
-              <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
-                <span>IG Follow Analyzer</span>
-              </a>
-            )}
+            <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
+              <span>IG Follow Analyzer</span>
+            </a>
           </div>
 
           <nav id="main-nav" className="nav__links" aria-label={t('เมนูหลัก', 'Main navigation')}>
@@ -188,7 +180,7 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
               <a
                 key={item.id}
                 className="nav__link"
-                href={pageHref(item.id)}
+                href={pageHref(getNavigationTarget(item.id))}
                 aria-current={current(item.activeFor)}
                 onClick={link(item.id)}
               >
@@ -212,7 +204,7 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
 
           <div className="lg:hidden">
             <button
-              className="nav__toggle"
+              className="nav__toggle mobile-top-bar__action"
               type="button"
               aria-expanded={drawerOpen}
               aria-label={
@@ -241,7 +233,7 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
                 <a
                   key={item.id}
                   className="nav__drawer-link"
-                  href={pageHref(item.id)}
+                  href={pageHref(getNavigationTarget(item.id))}
                   aria-current={current(item.activeFor)}
                   onClick={link(item.id)}
                 >
@@ -272,43 +264,55 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
         )}
       </header>
 
-      <main id="top" tabIndex={-1} className="flex-1">
-        {children}
-      </main>
-
-      <footer className="app-subfooter">
-        <div className="product-wrap app-subfooter__inner">
-          <div>
-            <p className="app-subfooter__copy">© 2026 IG Follow Analyzer</p>
-            <p>
-              {t(
-                'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
-                'An independent tool with no affiliation with Instagram or Meta.',
-              )}
-            </p>
-          </div>
-          <nav className="app-subfooter__links" aria-label={t('ข้อมูลเว็บไซต์', 'Site information')}>
-            <a href={pageHref('terms')} onClick={link('terms')}>
-              {t('เงื่อนไขและความเป็นส่วนตัว', 'Terms and privacy')}
-            </a>
-            <a href={pageHref('about')} onClick={link('about')}>
-              {t('เกี่ยวกับเรา', 'About')}
-            </a>
-          </nav>
-        </div>
-      </footer>
-
-      {showBackToTop && !drawerOpen && (
-        <button
-          type="button"
-          onClick={scrollToTop}
-          aria-label={t('กลับขึ้นด้านบน', 'Back to top')}
-          title={t('กลับขึ้นด้านบน', 'Back to top')}
-          className="fixed right-4 bottom-5 z-40 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule-2 bg-paper-2/95 text-ink shadow-md backdrop-blur-xs transition-colors hover:border-accent hover:text-accent sm:right-6 sm:bottom-6"
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={contentRef}
+          role="region"
+          aria-label={t('พื้นที่เนื้อหา', 'Page content')}
+          tabIndex={0}
+          className="app-content relative flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+          onScroll={(event) => setShowBackToTop(event.currentTarget.scrollTop > 480)}
         >
-          <ArrowUp className="h-5 w-5" aria-hidden="true" />
-        </button>
-      )}
+          <main id="top" ref={mainRef} tabIndex={-1} className="relative flex-1">
+            {children}
+          </main>
+          <footer role="contentinfo" className="app-subfooter shrink-0">
+            <div className="product-wrap app-subfooter__inner">
+              <div>
+                <p className="app-subfooter__copy">© 2026 IG Follow Analyzer</p>
+                <p>
+                  {t(
+                    'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
+                    'An independent tool with no affiliation with Instagram or Meta.',
+                  )}
+                </p>
+              </div>
+              <nav
+                className="app-subfooter__links"
+                aria-label={t('ข้อมูลเว็บไซต์', 'Site information')}
+              >
+                <a href={pageHref('terms')} onClick={link('terms')}>
+                  {t('เงื่อนไขและความเป็นส่วนตัว', 'Terms and privacy')}
+                </a>
+                <a href={pageHref('about')} onClick={link('about')}>
+                  {t('เกี่ยวกับเรา', 'About')}
+                </a>
+              </nav>
+            </div>
+          </footer>
+        </div>
+        {showBackToTop && !drawerOpen && (
+          <button
+            type="button"
+            onClick={scrollToTop}
+            aria-label={t('กลับขึ้นด้านบน', 'Back to top')}
+            title={t('กลับขึ้นด้านบน', 'Back to top')}
+            className="absolute right-5 bottom-4 z-30 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule-2 bg-paper-2/95 text-ink shadow-md backdrop-blur-xs transition-colors hover:border-accent hover:text-accent sm:right-7 sm:bottom-6"
+          >
+            <ArrowUp className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

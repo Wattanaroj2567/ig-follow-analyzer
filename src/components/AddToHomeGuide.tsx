@@ -82,7 +82,7 @@ export function AddToHomeGuide() {
             aria-label={t('ตัวอย่างไอคอนบนหน้าโฮมมือถือ', 'Home Screen app icon preview')}
           >
             <div className="flex flex-col items-center gap-1.5">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-[12px] border border-[#2D323E] bg-[#14161D] shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-[#2D323E] bg-[#14161D] shadow-sm">
                 <svg viewBox="0 0 40 40" className="h-9 w-9" fill="none" aria-hidden="true">
                   <path
                     d="M11 15.5H27.5M23.5 11.5L28 15.5L23.5 19.5"

@@ -1,16 +1,9 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  FileArchive,
-  FileText,
-} from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, FileArchive } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { NormalButton } from '../components/NormalButton';
+import { BackButton } from '../components/BackButton';
 import { formatSnapshotDate } from '../lib/dates';
 import { useLanguage } from '../lib/language';
-import { demoHref } from '../lib/routes';
 import type { AnalysisResult } from '../types/analyzer';
 
 const RECENT_COUNT = 2;
@@ -19,14 +12,9 @@ const ARCHIVE_PAGE_SIZE = 4;
 interface DemoHistoryScreenProps {
   samples: AnalysisResult[];
   onOpenResults: (record?: string) => void;
-  onOpenComparisonPdf: (record: string) => void;
 }
 
-export function DemoHistoryScreen({
-  samples,
-  onOpenResults,
-  onOpenComparisonPdf,
-}: DemoHistoryScreenProps) {
+export function DemoHistoryScreen({ samples, onOpenResults }: DemoHistoryScreenProps) {
   const { t, locale } = useLanguage();
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(0);
@@ -42,31 +30,18 @@ export function DemoHistoryScreen({
 
   return (
     <div className="product-wrap py-9 lg:py-14">
-      <div className="mx-auto max-w-3xl">
-        <header className="border-b border-rule pb-6">
-          <a
-            href={demoHref('results')}
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-              event.preventDefault();
-              onOpenResults();
-            }}
-            className="mb-3 inline-flex min-h-11 items-center gap-2 rounded text-sm font-medium text-ink-2 no-underline hover:text-ink"
-          >
-            <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-            {t('กลับไปแดชบอร์ดตัวอย่าง', 'Back to sample dashboard')}
-          </a>
-          <h1 className="text-3xl text-ink sm:text-4xl">
-            {t('ประวัติการวิเคราะห์ตัวอย่าง', 'Sample analysis history')}
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted sm:text-base">
-            {t(
-              'ลองเปิดผลจากไฟล์ ZIP สมมติแต่ละรอบ ข้อมูลตัวอย่างแยกจากประวัติจริงของคุณ',
-              'Open the results for each sample ZIP. Sample data is separate from your local history.',
-            )}
-          </p>
-        </header>
+      <BackButton onClick={() => onOpenResults()} target="results" />
+      <header className="border-b border-rule pb-6">
+        <h1 className="page-heading">{t('ประวัติการวิเคราะห์ตัวอย่าง', 'Sample analysis history')}</h1>
+        <p className="text-sm leading-relaxed text-muted sm:text-base">
+          {t(
+            'ลองเปิดผลจากไฟล์ ZIP สมมติแต่ละรอบ ข้อมูลตัวอย่างแยกจากประวัติจริงของคุณ',
+            'Open the results for each sample ZIP. Sample data is separate from your local history.',
+          )}
+        </p>
+      </header>
 
+      <div className="mx-auto max-w-3xl">
         <section className="mt-6" aria-labelledby="sample-history-list">
           <h2
             id="sample-history-list"
@@ -96,15 +71,6 @@ export function DemoHistoryScreen({
                     </p>
                   </div>
                   <div className="ml-auto flex flex-wrap justify-end gap-2">
-                    {sample !== samples[0] && (
-                      <NormalButton
-                        variant="secondary"
-                        onClick={() => onOpenComparisonPdf(sample.sourceFileName)}
-                      >
-                        <FileText className="size-4 shrink-0" aria-hidden="true" />
-                        {t('สร้าง PDF เทียบกับไฟล์ล่าสุด', 'Compare with latest in PDF')}
-                      </NormalButton>
-                    )}
                     <NormalButton
                       variant="secondary"
                       onClick={() => onOpenResults(sample.sourceFileName)}

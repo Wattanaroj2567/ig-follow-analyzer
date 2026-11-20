@@ -1,6 +1,14 @@
-import { AlertCircle, CheckCircle2, Loader2, MessageSquarePlus, Send } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  MessageSquarePlus,
+  Send,
+} from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useLanguage } from '../lib/language';
+import { privacyHref } from '../lib/routes';
 import { NormalButton } from './NormalButton';
 
 const GOOGLE_FORM_ACTION =
@@ -45,6 +53,7 @@ function detectDeviceSummary(): string {
 
 export function FeedbackForm() {
   const { t } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>('แจ้งปัญหา');
   const [details, setDetails] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -90,28 +99,51 @@ export function FeedbackForm() {
     <section
       id="feedback"
       aria-labelledby="feedback-h"
-      className="mt-8 scroll-mt-24 rounded-[10px] border border-rule bg-paper-2 p-6 sm:p-8"
+      className="mt-8 scroll-mt-24 rounded-[10px] border border-rule bg-paper-2"
     >
-      <div className="flex items-start gap-3">
-        <MessageSquarePlus
-          className="mt-0.5 hidden h-6 w-6 shrink-0 text-cool sm:inline-block"
-          strokeWidth={1.9}
-          aria-hidden="true"
-        />
-        <div>
-          <h2 id="feedback-h" className="text-xl text-ink">
-            {t('แจ้งปัญหาหรือเสนอแนะฟีเจอร์', 'Send feedback or report an issue')}
-          </h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
-            {t(
-              'หากพบปัญหาการใช้งาน อัปโหลดไฟล์ไม่ได้ หรืออยากเสนอฟีเจอร์เพิ่มเติม ส่งข้อความมาได้เลยครับ',
-              'Ran into a bug, an export issue, or have a feature idea? Send a quick note below.',
-            )}
-          </p>
+      <div className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="flex items-start gap-3">
+          <MessageSquarePlus
+            className="mt-0.5 size-6 shrink-0 text-cool"
+            strokeWidth={1.9}
+            aria-hidden="true"
+          />
+          <div>
+            <h2 id="feedback-h" className="text-xl text-ink">
+              {t('แจ้งปัญหาหรือเสนอแนะฟีเจอร์', 'Send feedback or report an issue')}
+            </h2>
+            <p className="mt-1 max-w-[48ch] text-sm leading-relaxed text-muted">
+              {t(
+                'หากพบปัญหาการใช้งาน อัปโหลดไฟล์ไม่ได้ หรืออยากเสนอฟีเจอร์เพิ่มเติม ส่งข้อความมาได้เลยครับ',
+                'Ran into a bug, an export issue, or have a feature idea? Send a quick note below.',
+              )}
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          className="btn btn--secondary shrink-0"
+          aria-expanded={isOpen}
+          aria-controls="feedback-form"
+          onClick={() => setIsOpen((open) => !open)}
+        >
+          {isOpen
+            ? t('ซ่อนแบบฟอร์มแจ้งปัญหา', 'Hide feedback form')
+            : t('เปิดแบบฟอร์มแจ้งปัญหา', 'Open feedback form')}
+          <ChevronDown
+            className={`size-4 shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
-      <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-5">
+      <form
+        id="feedback-form"
+        aria-labelledby="feedback-h"
+        hidden={!isOpen}
+        onSubmit={(e) => void handleSubmit(e)}
+        className="space-y-5 border-t border-rule p-6 sm:p-8"
+      >
         <fieldset>
           <legend className="text-sm font-medium text-ink">
             {t('1. เลือกประเภทเรื่อง', '1. Topic')}
@@ -128,7 +160,7 @@ export function FeedbackForm() {
                     setCategory(item.value);
                     if (status === 'success' || status === 'error') setStatus('idle');
                   }}
-                  className={`min-h-[40px] cursor-pointer rounded-md border px-3.5 py-2 text-sm font-medium transition-colors ${
+                  className={`min-h-10 cursor-pointer rounded-md border px-3.5 py-2 text-sm font-medium transition-colors ${
                     active
                       ? 'border-ig-blue bg-ig-blue text-ig-blue-ink'
                       : 'border-rule-2 bg-paper-3 text-ink-2 hover:border-ink hover:text-ink'
@@ -175,7 +207,7 @@ export function FeedbackForm() {
           </div>
         </div>
 
-        <div>
+        <div className="space-y-2">
           <NormalButton
             type="submit"
             variant="primary"
@@ -193,6 +225,18 @@ export function FeedbackForm() {
               </>
             )}
           </NormalButton>
+          <p className="text-xs text-muted">
+            {t(
+              'เราส่งข้อความและข้อมูลเบราว์เซอร์ไปยัง Google Forms เพื่อช่วยตรวจปัญหา',
+              'We send your message and browser details to Google Forms to help investigate issues.',
+            )}{' '}
+            <a
+              href={privacyHref('feedback-data')}
+              className="font-medium text-cool underline underline-offset-4 hover:text-ink"
+            >
+              {t('อ่านวิธีที่เราใช้ข้อมูลข้อเสนอแนะ', 'See how we use your feedback data')}
+            </a>
+          </p>
         </div>
 
         {status === 'success' && (

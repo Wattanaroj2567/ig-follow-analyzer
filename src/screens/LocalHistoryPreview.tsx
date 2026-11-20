@@ -125,10 +125,7 @@ export function LocalHistoryPreview({ onOpenDemo, onOpenHistory }: LocalHistoryP
               onOpenDemo();
             }}
           >
-            {t('ลองดูผลเทียบ 2 รอบ', 'Try comparing two sample ZIPs')}
-          </a>
-          <a className="btn btn--secondary" href={demoHref('history')}>
-            {t('ดูประวัติตัวอย่าง', 'View sample history')}
+            {t('ลองดูผลเทียบ 2 ไฟล์', 'Try comparing two sample ZIPs')}
           </a>
           <a className="btn btn--primary" href={pageHref('history')} onClick={onOpenHistory}>
             {t('ตั้งค่าประวัติบนเครื่อง', 'Set up local history')}

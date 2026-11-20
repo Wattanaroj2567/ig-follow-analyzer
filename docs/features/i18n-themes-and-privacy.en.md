@@ -15,9 +15,11 @@ Covers the cross-cutting bilingual system, appearance themes, Add to Home Screen
 
 ## Theme System (System / Light / Dark)
 
+- The navigation stays at the top while page content scrolls. The footer appears at the end of the page, and **Back to top** returns the content to its start.
 - The theme switcher lists **System (default)**, **Light**, and **Dark** from left to right.
 - Persists preference in `localStorage` (`ig-follow-analyzer-theme`) and automatically updates `data-theme` and `<meta name="theme-color">` when OS appearance changes under `System`.
 - Built on Tailwind CSS v4 tokens in `src/index.css` with `Plus Jakarta Sans` + `IBM Plex Sans Thai` typography and `prefers-reduced-motion` support.
+- On mobile, the navigation bar and fullscreen PDF preview toolbar share the same height, theme surface, and control size.
 
 ## Add to Home Screen & Desktop Pinning
 
@@ -27,10 +29,11 @@ Covers the cross-cutting bilingual system, appearance themes, Add to Home Screen
 ## Privacy & Explicit Non-Goals
 
 - **No User Accounts:** No sign-up, login, Instagram OAuth, password/cookie/token collection, or automated follow/unfollow actions.
-- **Terms, Privacy, and FAQ:** Covers the tool’s scope, local file processing, the two levels of history consent, and its independence from Instagram and Meta. The FAQ links to the export guide and the History page for managing saved data.
+- **Cookies and sessions:** The site sets no cookies, creates no login sessions, and does not track users. Language and theme preferences use `localStorage`; history uses `IndexedDB` only after explicit opt-in.
+- **Terms, Privacy, and FAQ:** Covers the tool’s scope, local file processing, the two levels of history consent, and its independence from Instagram and Meta. Each FAQ answer opens and closes independently. Some answers link to the export guide and the History page for managing saved data.
 - **About page:** Explains why IG Follow Analyzer was built, why it analyzes Instagram exports on the user’s device, and why users choose whether to enable history and what to keep.
-- **Feedback form on the About page:** Details are limited to 500 characters and scroll within the field when the message exceeds its height. When submitted, `FeedbackForm.tsx` sends the category, message, operating system, browser, and viewport size to Google Forms. It does not attach the ZIP or account lists from the analysis.
-- **User reviews:** The About page’s built-in review form follows the site’s System, Dark, and Light settings. Switching themes preserves the draft. Google Forms receives only the review fields.
+- **Bug reports and feature suggestions:** On the About page, select **Open feedback form** to start writing. Hiding and reopening the form keeps the draft and selected topic. The details field accepts up to 500 characters and scrolls when needed. The link below the submit button opens **Bug reports and feature suggestions** in the privacy notice. On submission, Google Forms receives the topic, message, operating system name, browser name, and viewport size. ZIP files and account lists from the analysis stay on the user's device.
+- **User reviews:** The About page’s review form follows the site theme and preserves the draft when switching themes. The link below the submit button opens **Ratings and review comments** in the privacy notice. On submission, Google Apps Script receives the review fields and a random ID that helps prevent duplicate ratings. Answers are saved in Google Forms. A restricted Google Sheet is used to manage reviews and record the same random ID stored in the browser. ZIP files and account lists from the analysis stay on the user's device.
 
 ## Collecting reviews through Google Forms
 

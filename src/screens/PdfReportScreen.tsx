@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -16,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
-import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
+import { BackButton } from '../components/BackButton';
 import { NormalButton } from '../components/NormalButton';
 import { formatDate, formatSnapshotDate } from '../lib/dates';
 import {
@@ -33,6 +32,7 @@ import {
   triggerBrowserDownload,
 } from '../lib/pdfGenerator';
 import { getLanguageFormat, type Language, useLanguage } from '../lib/language';
+import { buildSafeProfileHref } from '../lib/igParser';
 import type {
   AccountEntry,
   AnalysisResult,
@@ -48,8 +48,6 @@ const MAX_PREVIEW_PAGES = 60;
 interface PdfReportScreenProps {
   result: AnalysisResult;
   diff: HistoryDiff | null;
-  comparison: ComparisonFilesState | null;
-  onSelectComparison: (id: string | null) => void;
   onPdfSaved: (savedTo: 'device' | 'google_drive', fileName: string) => void;
   onNavigate: (id: PageId) => void;
 }
@@ -71,14 +69,7 @@ type PreviewPageDescriptor =
       rows: AccountEntry[];
     };
 
-export function PdfReportScreen({
-  result,
-  diff,
-  comparison,
-  onSelectComparison,
-  onPdfSaved,
-  onNavigate,
-}: PdfReportScreenProps) {
+export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfReportScreenProps) {
   const { language, t } = useLanguage();
   const [reportLanguage, setReportLanguage] = useState<Language>(language);
   useEffect(() => {
@@ -140,7 +131,7 @@ export function PdfReportScreen({
 
   const hasFrontPage = options.includeSummary || (options.includeDiffSection && Boolean(diff));
 
-  // Build every A4 page of the document so users can scroll through all pages like Google Drive
+  // Build every selected A4 page for the scrollable report preview
   const { pages: previewPages, truncatedPages } = useMemo(() => {
     const list: PreviewPageDescriptor[] = [];
     let pageNumber = 0;
@@ -158,6 +149,30 @@ export function PdfReportScreen({
       fill: string;
       entries: AccountEntry[];
     }[] = [
+      ...(diff && options.includeDiffSection
+        ? [
+            {
+              enabled: true,
+              title: report.newFollowers,
+              dateHeader: report.dateTheyFollowed,
+              accent: PDF_PREVIEW_PALETTE.ok,
+              fill: PDF_PREVIEW_PALETTE.surface,
+              entries: result.followers.filter((entry) => diff.newFollowers.includes(entry.handle)),
+            },
+            {
+              enabled: true,
+              title: report.missingFollowers,
+              dateHeader: report.dateTheyFollowed,
+              accent: PDF_PREVIEW_PALETTE.accent,
+              fill: PDF_PREVIEW_PALETTE.accentSoft,
+              entries: diff.recentUnfollowers.map((handle) => ({
+                handle,
+                href: buildSafeProfileHref(handle),
+                timestamp: diff.unfollowerTimestamps.get(handle),
+              })),
+            },
+          ]
+        : []),
       {
         enabled: options.includeNotFollowingBack,
         title: report.notFollowingBackList,
@@ -228,6 +243,7 @@ export function PdfReportScreen({
     };
   }, [
     hasFrontPage,
+    options.includeDiffSection,
     options.includeNotFollowingBack,
     options.includeNotFollowedBack,
     options.includeAllFollowers,
@@ -235,6 +251,7 @@ export function PdfReportScreen({
     result.notFollowingBack,
     result.notFollowedBack,
     result.followers,
+    diff,
   ]);
 
   const totalPreviewPages = previewPages.length;
@@ -409,6 +426,8 @@ export function PdfReportScreen({
   };
 
   const toggle = (key: keyof PdfReportOptions) => {
+    setInlinePageIndex(0);
+    setLightboxPage(1);
     setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -417,7 +436,8 @@ export function PdfReportScreen({
       return (
         <div
           lang={reportLanguage}
-          className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-rule bg-paper-2 text-ink shadow-sm"
+          className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
+          style={{ width: A4_WIDTH, height: A4_HEIGHT }}
         >
           <div>
             <div className="h-1.5 w-full bg-accent" />
@@ -467,7 +487,7 @@ export function PdfReportScreen({
 
                   <div className="mt-4 grid grid-cols-12 items-center gap-4 rounded border border-rule bg-paper-3 px-4 py-3.5">
                     <div className="col-span-4 flex justify-center">
-                      <svg viewBox="0 0 180 180" className="h-[132px] w-[132px]" aria-hidden="true">
+                      <svg viewBox="0 0 180 180" className="h-33 w-33" aria-hidden="true">
                         <circle
                           cx="90"
                           cy="90"
@@ -582,7 +602,8 @@ export function PdfReportScreen({
     return (
       <div
         lang={reportLanguage}
-        className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-rule bg-paper-2 text-ink shadow-sm"
+        className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
+        style={{ width: A4_WIDTH, height: A4_HEIGHT }}
       >
         <div>
           <div className="h-1.5 w-full" style={{ backgroundColor: page.accent }} />
@@ -602,7 +623,7 @@ export function PdfReportScreen({
               <p className="mt-4 text-[11px] text-muted">{report.empty}</p>
             ) : (
               <div className="mt-3 overflow-hidden border-y border-rule">
-                <table className="w-full table-fixed border-collapse text-left text-[10px] leading-tight [overflow-wrap:anywhere]">
+                <table className="w-full table-fixed border-collapse text-left text-[10px] leading-tight wrap-anywhere">
                   <colgroup>
                     <col className="w-[8%]" />
                     <col />
@@ -662,15 +683,16 @@ export function PdfReportScreen({
   };
 
   return (
-    <div className="product-wrap py-9 lg:py-12">
+    <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="results" />
       <header className="flex flex-col justify-between gap-4 border-b border-rule pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl text-ink sm:text-4xl">
+          <h1 className="page-heading">
             {result.isDemoData
               ? t('สร้างรายงาน PDF ตัวอย่าง', 'Create a sample PDF report')
               : t('สร้างรายงาน PDF (ไทย / อังกฤษ)', 'Create a PDF report (Thai / English)')}
           </h1>
-          <p className="mt-1.5 text-base text-ink-2">
+          <p className="text-base text-ink-2">
             {result.isDemoData
               ? t(
                   'เลือกหัวข้อ ภาษาของเอกสาร และดูตัวอย่างรายงานก่อนดาวน์โหลด',
@@ -682,21 +704,7 @@ export function PdfReportScreen({
                 )}
           </p>
         </div>
-
-        <NormalButton variant="secondary" onClick={() => onNavigate('results')}>
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {t('กลับไปหน้าผลวิเคราะห์', 'Back to analysis')}
-        </NormalButton>
       </header>
-
-      {diff && comparison && (
-        <section className="mt-6" aria-labelledby="pdf-comparison-heading">
-          <h2 id="pdf-comparison-heading" className="text-base font-semibold text-ink">
-            {t('ไฟล์ที่ใช้เทียบในรายงาน', 'Exports compared in this report')}
-          </h2>
-          <ComparisonFiles current={result} comparison={comparison} onSelect={onSelectComparison} />
-        </section>
-      )}
 
       <section className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
         {/* Left Controls Panel */}
@@ -737,7 +745,7 @@ export function PdfReportScreen({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => applyPreset(preset.id)}
-                    className={`flex min-h-[54px] cursor-pointer flex-col items-center justify-center rounded-md border px-2 py-2 text-center transition-colors ${
+                    className={`flex min-h-13.5 cursor-pointer flex-col items-center justify-center rounded-md border px-2 py-2 text-center transition-colors ${
                       selected
                         ? 'border-accent bg-accent-soft text-accent'
                         : 'border-rule bg-paper-3 text-ink hover:border-rule-2'
@@ -801,7 +809,7 @@ export function PdfReportScreen({
               ).map((opt) => (
                 <label
                   key={opt.key}
-                  className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 rounded-md border border-rule bg-paper-3 px-3.5 py-2 text-sm text-ink transition-colors hover:border-accent"
+                  className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-rule bg-paper-3 px-3.5 py-2 text-sm text-ink transition-colors hover:border-accent"
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <input
@@ -857,7 +865,7 @@ export function PdfReportScreen({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setReportLanguage(langOpt.id)}
-                    className={`min-h-[44px] cursor-pointer rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`min-h-11 cursor-pointer rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                       selected
                         ? 'border-accent bg-accent-soft text-accent'
                         : 'border-rule bg-paper-3 text-ink hover:border-rule-2'
@@ -980,7 +988,7 @@ export function PdfReportScreen({
                       'ขยายดูตัวอย่างเอกสาร A4 ครบทุกหน้าแบบเต็มจอ',
                       'Open the full A4 report preview',
                     )}
-                    className="inline-flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-md border border-rule-2 bg-paper-2 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
+                    className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-md border border-rule-2 bg-paper-2 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
                   >
                     <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>{t('ขยายดูครบทุกหน้า', 'Preview all pages')}</span>
@@ -989,9 +997,13 @@ export function PdfReportScreen({
               )}
             </div>
 
-            <div ref={previewContainerRef} className="mx-auto w-full max-w-[560px]">
+            <div
+              ref={previewContainerRef}
+              className="mx-auto w-full"
+              style={{ maxWidth: A4_WIDTH }}
+            >
               {!hasAnySection || !currentInlinePage ? (
-                <div className="flex aspect-[210/297] w-full items-center justify-center rounded-[8px] border border-dashed border-rule-2 bg-paper-2 p-8 text-center text-sm text-muted">
+                <div className="flex aspect-210/297 w-full items-center justify-center rounded-lg border border-dashed border-rule-2 bg-paper-2 p-8 text-center text-sm text-muted">
                   {t(
                     'เลือกหัวข้อด้านซ้ายเพื่อดูตัวอย่างหน้าเอกสาร PDF ขนาด A4',
                     'Choose a section to preview the A4 report.',
@@ -1013,7 +1025,7 @@ export function PdfReportScreen({
                         openLightboxAtPage(safeInlineIndex + 1);
                       }
                     }}
-                    className="group relative mx-auto cursor-zoom-in overflow-hidden rounded-[8px]"
+                    className="group relative mx-auto cursor-zoom-in overflow-hidden rounded-lg"
                     style={{
                       width: Math.round(A4_WIDTH * inlineScale),
                       height: Math.round(A4_HEIGHT * inlineScale),
@@ -1035,7 +1047,7 @@ export function PdfReportScreen({
                     <strong className="text-ink">
                       {t('ขยายดูครบทุกหน้า', 'Preview all pages')}
                     </strong>{' '}
-                    {t(' เพื่อเลื่อนดูต่อเนื่องทุกหน้าแบบ Google Drive', ' to scroll through the report.')}
+                    {t(' เพื่อเลื่อนดูหน้าต่อเนื่องในรายงาน', ' to scroll through the report.')}
                   </p>
                 </div>
               )}
@@ -1044,7 +1056,7 @@ export function PdfReportScreen({
         </div>
       </section>
 
-      {/* Fullscreen Multi-Page Scrollable A4 Preview Lightbox (Google Drive Style) */}
+      {/* Fullscreen Multi-Page Scrollable A4 Preview Lightbox */}
       {isZoomOpen && hasAnySection && (
         <div
           role="dialog"
@@ -1053,7 +1065,7 @@ export function PdfReportScreen({
           className="pdf-preview-dialog fixed inset-0 z-50 flex flex-col bg-paper/95 backdrop-blur-xs"
         >
           {/* Minimal Top Bar: Filename + Close */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <header className="pdf-preview-toolbar mobile-top-bar flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-2 text-xs text-ink sm:text-sm">
               <FileText className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
               <span className="truncate font-medium">{previewFileName}</span>
@@ -1062,12 +1074,12 @@ export function PdfReportScreen({
             <button
               type="button"
               onClick={() => setIsZoomOpen(false)}
-              className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-rule bg-paper-2 px-3.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
+              className="mobile-top-bar__action inline-flex min-h-9.5 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-rule bg-paper-2 px-3.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
             >
-              <X className="h-4 w-4" aria-hidden="true" />
-              <span>{t('ปิด', 'Close')}</span>
+              <X className="size-5 shrink-0 lg:size-4" aria-hidden="true" />
+              <span className="sr-only lg:not-sr-only">{t('ปิด', 'Close')}</span>
             </button>
-          </div>
+          </header>
 
           {/* Continuous Scrollable Stack of All A4 Pages */}
           <div
@@ -1088,7 +1100,7 @@ export function PdfReportScreen({
                   ref={(el) => {
                     lightboxPageRefs.current[idx] = el;
                   }}
-                  className="scroll-mt-4 overflow-hidden rounded-[8px]"
+                  className="scroll-mt-4 overflow-hidden rounded-lg"
                   style={{
                     width: A4_WIDTH * lightboxScale,
                     height: A4_HEIGHT * lightboxScale,
@@ -1127,7 +1139,7 @@ export function PdfReportScreen({
             </div>
           </div>
 
-          {/* Floating Bottom-Center Pill (Google Drive Style: Prev / Page X of N / Next | Zoom) */}
+          {/* Floating Bottom-Center Preview Controls */}
           <div className="pointer-events-none fixed inset-x-0 bottom-5 z-10 flex justify-center px-4">
             <div className="pointer-events-auto inline-flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-rule-2 bg-paper-2/95 px-2.5 py-1.5 shadow-2xl backdrop-blur-md">
               <div className="inline-flex items-center gap-0.5">
@@ -1140,7 +1152,7 @@ export function PdfReportScreen({
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </button>
-                <span className="measured min-w-[78px] px-1.5 text-center text-xs font-semibold text-ink">
+                <span className="measured min-w-19.5 px-1.5 text-center text-xs font-semibold text-ink">
                   {t('หน้า ', 'Page ')}
                   {lightboxPage} / {totalPreviewPages}
                 </span>
@@ -1171,7 +1183,7 @@ export function PdfReportScreen({
                   type="button"
                   onClick={() => setZoomPercent(100)}
                   aria-label={t('ปรับให้พอดีกับความกว้าง', 'Fit to width')}
-                  className="measured min-w-[68px] cursor-pointer rounded-full px-1.5 py-1 text-center text-xs font-semibold text-ink transition-colors hover:bg-paper-3"
+                  className="measured min-w-17 cursor-pointer rounded-full px-1.5 py-1 text-center text-xs font-semibold text-ink transition-colors hover:bg-paper-3"
                 >
                   {zoomPercent === 100 ? t('พอดีจอ', 'Fit width') : `${zoomPercent}%`}
                 </button>

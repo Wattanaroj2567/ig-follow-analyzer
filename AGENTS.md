@@ -33,6 +33,7 @@ This file defines the project-specific rules and workflow for `ig-follow-analyze
 1. **Plan & edit:** Keep changes scoped to the request. Preserve base-path compatibility for static assets and `public/fonts/` so production builds (Cloudflare Pages / static hosting) work without broken links.
 2. **Verify before finishing code changes:** Run and pass:
    - `npm run lint`
+   - `npm run lint:tailwind`
    - `npm run format:check`
    - `npm run typecheck`
    - `npm run deadcode`

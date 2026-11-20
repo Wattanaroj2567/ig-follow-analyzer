@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
+import { BackButton } from '../components/BackButton';
 import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
 import { FollowerTimeline } from '../components/FollowerTimeline';
 import { NormalButton } from '../components/NormalButton';
@@ -114,23 +115,17 @@ export function ResultsScreen({
     {
       key: 'newFollowers' as const,
       label: t('ติดตามใหม่', 'New followers'),
-      explanation: t(
-        'มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP ใหม่',
-        'Listed as one of your followers only in the newer ZIP.',
-      ),
       icon: UserPlus,
-      tone: 'bg-ok-soft text-ok',
+      tone: 'text-ok',
+      iconSurface: 'bg-ok-soft',
       entries: newFollowerEntries,
     },
     {
       key: 'recentUnfollowers' as const,
-      label: t('หายจากรายชื่อ', 'Missing from the list'),
-      explanation: t(
-        'มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP เก่า',
-        'Listed as one of your followers only in the older ZIP.',
-      ),
+      label: t('หายจากรายชื่อผู้ติดตาม', 'Missing from the follower list'),
       icon: UserMinus,
-      tone: 'bg-bad-soft text-bad',
+      tone: 'text-bad',
+      iconSurface: 'bg-bad-soft',
       entries: recentUnfollowerEntries,
     },
   ];
@@ -229,51 +224,47 @@ export function ResultsScreen({
   const hasHtmlLimitation = result.detectedFiles.format !== 'json';
 
   return (
-    <div className="product-wrap py-9 lg:py-12">
-      <header className="rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-6">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-ok/35 bg-ok-soft px-2.5 py-1 text-xs font-medium text-ok">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {t('วิเคราะห์เสร็จสมบูรณ์', 'Analysis complete')}
-              </span>
-              {result.isDemoData && (
-                <span className="rounded-md border border-accent/35 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                  {t('โหมดข้อมูลตัวอย่าง (ไม่บันทึกลงประวัติ)', 'Sample data (excluded from history)')}
-                </span>
-              )}
-            </div>
-            <h1 className="mt-3 text-2xl text-ink sm:text-3xl">
-              {result.isDemoData
-                ? t('ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', 'Sample follower analysis')
-                : t('ผลการวิเคราะห์ผู้ติดตาม', 'Follower analysis')}
-            </h1>
-            {result.isDemoData && diff && (
-              <p className="mt-1.5 text-sm text-muted">
-                {t(
-                  `เทียบไฟล์ ${previousDate} กับ ${currentDate}`,
-                  `Comparing the ${previousDate} and ${currentDate} exports`,
-                )}
-              </p>
+    <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
+      <header>
+        <h1 className="page-heading">
+          {result.isDemoData
+            ? t('ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', 'Sample follower analysis')
+            : t('ผลการวิเคราะห์ผู้ติดตาม', 'Follower analysis')}
+        </h1>
+        {result.isDemoData && diff && (
+          <p className="text-sm text-muted">
+            {t(
+              `เทียบไฟล์ ${previousDate} กับ ${currentDate}`,
+              `Comparing the ${previousDate} and ${currentDate} exports`,
             )}
-            {!result.isDemoData && (
-              <p className="mt-1.5 max-w-[62ch] text-sm text-ink-2">
-                {t(
-                  'ดูผลด้านล่างได้เลย หากอยากเก็บรายงานรอบนี้ไว้อ่านหรือพิมพ์ภายหลัง เลือกสร้าง PDF แล้วดาวน์โหลดลงเครื่องได้',
-                  'View your results below. To keep a copy to read or print later, create a PDF report and download it to your device.',
-                )}
-              </p>
+          </p>
+        )}
+        {!result.isDemoData && (
+          <p className="max-w-[62ch] text-sm text-ink-2">
+            {t(
+              'ดูผลด้านล่างได้เลย หากอยากเก็บรายงานรอบนี้ไว้อ่านหรือพิมพ์ภายหลัง เลือกสร้าง PDF แล้วดาวน์โหลดลงเครื่องได้',
+              'View your results below. To keep a copy to read or print later, create a PDF report and download it to your device.',
+            )}
+          </p>
+        )}
+      </header>
+
+      <div className="mt-4 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-6">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-ok/35 bg-ok-soft px-2.5 py-1 text-xs font-medium text-ok">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {t('วิเคราะห์เสร็จสมบูรณ์', 'Analysis complete')}
+            </span>
+            {result.isDemoData && (
+              <span className="rounded-md border border-accent/35 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                {t('โหมดข้อมูลตัวอย่าง (ไม่บันทึกลงประวัติ)', 'Sample data (excluded from history)')}
+              </span>
             )}
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
-            {result.isDemoData && (
-              <NormalButton variant="secondary" onClick={() => onNavigate('history')}>
-                <History className="h-4 w-4" aria-hidden="true" />
-                {t('ดูประวัติตัวอย่าง', 'View sample history')}
-              </NormalButton>
-            )}
             <NormalButton
               variant="secondary"
               onClick={() => onNavigate('upload')}
@@ -337,7 +328,7 @@ export function ResultsScreen({
             </div>
           </div>
         </dl>
-      </header>
+      </div>
 
       {!diff && !result.isDemoData && (
         <section className="mt-4 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center">
@@ -413,7 +404,7 @@ export function ResultsScreen({
           className="mt-5 rounded-[10px] border border-rule bg-paper-2 p-4 sm:p-6"
         >
           <h2 id="comparison-heading" className="text-xl font-semibold text-ink">
-            {t('ผู้ติดตามเปลี่ยนไปยังไง', 'What changed in your followers?')}
+            {t('รายชื่อผู้ติดตามเปลี่ยนไปยังไง?', 'How did your follower list change?')}
           </h2>
           {comparison && (
             <ComparisonFiles
@@ -430,47 +421,67 @@ export function ResultsScreen({
             className="mt-4 flex items-center gap-2 text-sm leading-relaxed text-muted"
           >
             <Info className="size-4 shrink-0" aria-hidden="true" />
-            {t(
-              'เว็บเทียบรายชื่อคนที่ติดตามคุณจาก ZIP สองไฟล์',
-              'The app compares your follower lists from two ZIP files.',
-            )}
+            {comparison?.isLatest
+              ? t(
+                  'เว็บเทียบรายชื่อผู้ติดตามใน ZIP ล่าสุดกับไฟล์ฝั่ง “เทียบกับ” ด้านบน',
+                  'The app compares the follower list in your latest ZIP with the ZIP shown under Compared with above.',
+                )
+              : t(
+                  'เว็บเทียบรายชื่อผู้ติดตามใน ZIP ที่เปิดอยู่กับ ZIP รอบก่อนหน้า',
+                  'The app compares the follower list in the ZIP you opened with the previous ZIP.',
+                )}
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 sm:gap-3">
-            {comparisonTabs.map(({ key, label, explanation, icon: Icon, tone, entries }) => (
-              <div key={key} className="min-w-0">
-                <button
-                  type="button"
-                  aria-pressed={activeTab === key}
-                  aria-describedby={`${key}-explanation`}
-                  onClick={() => jumpToCategory(key)}
-                  className={`flex min-h-20 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border p-3 text-left transition-colors hover:border-current sm:p-4 ${tone} ${activeTab === key ? 'border-current' : 'border-transparent'}`}
-                >
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    <Icon className="size-4 shrink-0" aria-hidden="true" />
-                    {label}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="measured text-2xl font-semibold">
+            {comparisonTabs.map(({ key, label, icon: Icon, tone, iconSurface, entries }) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={activeTab === key}
+                aria-labelledby={`${key}-label ${key}-count`}
+                onClick={() => jumpToCategory(key)}
+                className={`comparison-card flex min-w-0 cursor-pointer flex-col justify-between gap-3 rounded-lg border p-4 text-left transition-colors sm:p-5 ${tone}`}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="grid min-w-0 gap-1.5">
+                    <span id={`${key}-label`} className="text-sm font-semibold text-ink-2">
+                      {label}
+                    </span>
+                    <span
+                      id={`${key}-count`}
+                      className="measured text-3xl leading-none font-bold text-ink tabular-nums"
+                    >
                       {entries.length.toLocaleString(locale)}
                     </span>
-                    <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
                   </span>
-                </button>
-                <div className="mt-2 space-y-1 px-1 text-sm leading-relaxed text-muted">
-                  <p id={`${key}-explanation`}>{explanation}</p>
-                  {key === 'recentUnfollowers' && (
-                    <p>
-                      {t(
-                        'ถ้าชื่อหายไป เรารู้ได้ว่าหายระหว่างสองรอบ ส่วนวันที่แน่นอนและสาเหตุยังระบุไม่ได้',
-                        'When a name disappears, the ZIPs show the interval in which it happened. The exact date and reason are unknown.',
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
+                  <span
+                    className={`inline-grid size-11 shrink-0 place-items-center rounded-xl border border-current/20 ${iconSurface}`}
+                  >
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
+                </span>
+                <ArrowRight className="mb-0.5 size-4 shrink-0 self-end" aria-hidden="true" />
+              </button>
             ))}
           </div>
-          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          <div className="mt-3 flex items-start gap-2 text-sm leading-relaxed text-muted">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="font-semibold text-ink-2">{t('ตัวอย่างสมมติ', 'Example')}</p>
+              <ul className="list-disc ps-4">
+                <li>{t('ZIP วันที่ 1 พ.ย. มีชื่อบัญชี A', 'Account A appears in the Nov. 1 ZIP.')}</li>
+                <li>
+                  {t('ZIP วันที่ 8 พ.ย. ไม่พบชื่อบัญชี A', 'Account A is missing from the Nov. 8 ZIP.')}
+                </li>
+              </ul>
+              <p>
+                {t(
+                  'พอเทียบสองไฟล์ เว็บจะแสดงบัญชี A ในหมวด “หายจากรายชื่อผู้ติดตาม”',
+                  'When you compare the two ZIPs, Account A appears under “Missing from the follower list.”',
+                )}
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-rule pt-3 text-xs text-muted">
             <span>
               {t('ผู้ติดตามสุทธิ', 'Net followers')}{' '}
               <strong className="text-ink">
@@ -619,7 +630,7 @@ export function ResultsScreen({
                 <button
                   type="button"
                   onClick={() => setActiveTab(null)}
-                  className="inline-flex min-h-[36px] cursor-pointer items-center rounded-md border border-rule bg-paper-3 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-rule-2 hover:text-ink"
+                  className="inline-flex min-h-9 cursor-pointer items-center rounded-md border border-rule bg-paper-3 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-rule-2 hover:text-ink"
                 >
                   {t('ซ่อนรายชื่อ', 'Hide list')}
                 </button>
@@ -640,7 +651,7 @@ export function ResultsScreen({
                     }}
                     placeholder={t('ค้นหาชื่อบัญชี (@username)…', 'Search by username…')}
                     aria-label={t('ค้นหาชื่อบัญชี', 'Search by username')}
-                    className="min-h-[44px] w-full rounded-md border border-rule-2 bg-paper-3 pr-4 pl-10 text-sm text-ink placeholder:text-muted focus:border-accent"
+                    className="min-h-11 w-full rounded-md border border-rule-2 bg-paper-3 pr-4 pl-10 text-sm text-ink placeholder:text-muted focus:border-accent"
                   />
                 </div>
 
@@ -656,7 +667,7 @@ export function ResultsScreen({
                       setSortBy(e.target.value as 'newest' | 'az' | 'za');
                       setPageIndex(0);
                     }}
-                    className="min-h-[44px] w-full cursor-pointer appearance-none rounded-md border border-rule-2 bg-paper-3 pr-10 pl-10 text-sm text-ink hover:border-muted focus:border-accent sm:min-w-48 forced-colors:appearance-auto"
+                    className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-rule-2 bg-paper-3 pr-10 pl-10 text-sm text-ink hover:border-muted focus:border-accent sm:min-w-48 forced-colors:appearance-auto"
                   >
                     <option value="newest">{t('วันที่ล่าสุดก่อน', 'Newest first')}</option>
                     <option value="az">{t('ชื่อบัญชี A–Z', 'Username A–Z')}</option>
@@ -812,7 +823,7 @@ export function ResultsScreen({
                                       href={acc.href}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded border border-rule-2 bg-paper-3 px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-accent hover:text-accent"
+                                      className="inline-flex min-h-9 items-center gap-1.5 rounded border border-rule-2 bg-paper-3 px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-accent hover:text-accent"
                                     >
                                       {t('เปิดบน Instagram', 'Open on Instagram')}
                                       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -869,7 +880,7 @@ export function ResultsScreen({
                                 href={acc.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded border border-rule-2 bg-paper-2 px-3 text-xs font-medium text-accent"
+                                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded border border-rule-2 bg-paper-2 px-3 text-xs font-medium text-accent"
                               >
                                 {t('เปิด IG', 'Open Instagram')}
                                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import { NormalButton } from '../components/NormalButton';
 import { UploadFileGuide } from '../components/UploadFileGuide';
@@ -128,13 +129,14 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
 
   return (
     <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
       <header className="border-b border-rule pb-7">
-        <h1 className="text-3xl text-ink sm:text-4xl">
+        <h1 className="page-heading">
           {isBusy
             ? t('กำลังวิเคราะห์ไฟล์ของคุณ…', 'Analyzing your file…')
             : t('อัปโหลดไฟล์ ZIP จาก Instagram', 'Analyze your Instagram ZIP')}
         </h1>
-        <p className="mt-2 max-w-[60ch] text-base text-ink-2">
+        <p className="max-w-[60ch] text-base text-ink-2">
           {t('เลือกไฟล์', 'Choose the')}{' '}
           <code className="measured rounded bg-paper-3 px-1.5 py-0.5 text-sm text-cool">.zip</code>
           {t(' ที่ได้จากศูนย์บัญชี Instagram โดยตรง', ' from Instagram Accounts Center.')}
@@ -143,13 +145,13 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
         {/* Lightweight 3-step orientation bar */}
         <ol
           aria-label={t('ลำดับการใช้งาน 3 ขั้นตอน', 'Three steps to analyze your export')}
-          className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3"
+          className="mt-5 grid gap-2"
         >
-          <li>
+          <li className="overflow-hidden rounded-[10px] border border-rule bg-paper-2">
             <button
               type="button"
               onClick={() => onNavigate('how-it-works')}
-              className="flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-rule bg-paper-2 px-3.5 py-2.5 text-left transition-colors hover:border-accent"
+              className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-paper-3"
             >
               <span className="flex items-center gap-2 text-xs font-medium text-ink-2 sm:text-sm">
                 <span className="measured inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-xs font-semibold text-muted">
@@ -166,26 +168,30 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
 
           <li
             aria-current="step"
-            className="flex min-h-[48px] items-center justify-between gap-2 rounded-lg border border-accent bg-accent-soft px-3.5 py-2.5"
+            className="overflow-hidden rounded-[10px] border border-accent bg-paper-3"
           >
-            <span className="flex items-center gap-2 text-xs font-semibold text-ink sm:text-sm">
-              <span className="measured inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-ink">
-                2
+            <div className="flex min-h-14 items-center justify-between gap-2 px-3.5 py-2.5">
+              <span className="flex items-center gap-2 text-xs font-semibold text-ink sm:text-sm">
+                <span className="measured inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-ink">
+                  2
+                </span>
+                <span>{t('อัปโหลดไฟล์ .zip', 'Select your ZIP')}</span>
               </span>
-              <span>{t('อัปโหลดไฟล์ .zip', 'Select your ZIP')}</span>
-            </span>
-            <span className="shrink-0 rounded bg-paper-2 px-2 py-0.5 text-[11px] font-medium text-accent">
-              {t('อยู่ขั้นนี้', 'Current step')}
-            </span>
+              <span className="shrink-0 px-2 py-0.5 text-[11px] font-medium text-accent">
+                {t('อยู่ขั้นนี้', 'Current step')}
+              </span>
+            </div>
           </li>
 
-          <li className="flex min-h-[48px] items-center justify-between gap-2 rounded-lg border border-rule bg-paper-3 px-3.5 py-2.5 text-muted">
-            <span className="flex items-center gap-2 text-xs font-medium sm:text-sm">
-              <span className="measured inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-rule bg-paper-2 text-xs font-semibold text-muted">
-                3
+          <li className="overflow-hidden rounded-[10px] border border-rule bg-paper-2">
+            <div className="flex min-h-14 items-center justify-between gap-2 px-3.5 py-2.5 text-muted">
+              <span className="flex items-center gap-2 text-xs font-medium sm:text-sm">
+                <span className="measured inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-rule bg-paper-2 text-xs font-semibold text-muted">
+                  3
+                </span>
+                <span>{t('ดูรายชื่อ & โหลด PDF', 'View results & save PDF')}</span>
               </span>
-              <span>{t('ดูรายชื่อ & โหลด PDF', 'View results & save PDF')}</span>
-            </span>
+            </div>
           </li>
         </ol>
       </header>
@@ -290,7 +296,7 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                 <button
                   type="button"
                   onClick={() => onNavigate('terms')}
-                  className="min-h-[44px] cursor-pointer px-1 font-medium underline"
+                  className="min-h-11 cursor-pointer px-1 font-medium underline"
                 >
                   {t('อ่านเงื่อนไข (1 นาที)', 'Read terms (1 minute)')}
                 </button>

@@ -74,14 +74,14 @@ export function LandingReviews() {
                     {reviewInitial(displayName)}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold break-words text-ink">{displayName}</p>
+                    <p className="text-sm font-semibold wrap-break-word text-ink">{displayName}</p>
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted">
                       <Star className="size-3 fill-current text-accent" aria-hidden="true" />{' '}
                       {stars} / 5
                     </p>
                   </div>
                 </div>
-                <p className="text-sm leading-relaxed break-words whitespace-pre-line text-ink-2">
+                <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-line text-ink-2">
                   {comment}
                 </p>
               </li>

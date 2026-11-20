@@ -18,7 +18,7 @@ Presents the complete follower relationship breakdown on one screen with summary
 - **Account Table:**
   - Instant search by `@username`
   - Filter across all 5 relationship categories. When a comparison is available, open **New followers** or **Missing from the list** and expand any account to see its export timeline.
-  - Each comparison card explains which ZIP contains the account in its follower list. Under **Missing from the list**, a note explains that the ZIPs show the interval, with the exact date and reason unknown.
+  - The **New followers** and **Missing from the follower list** cards show the count and explain which ZIP contains those names. An example below the cards shows how the app classifies a name found only in the ZIP used for comparison.
   - The comparison lists both ZIP filenames. On the **Compared with** side, use **Change previous export** to choose an earlier ZIP with saved lists for the same account or reset to the automatically selected export.
   - Sort by newest follow date or alphabetically (`A–Z` / `Z–A`) with 25-row pagination
   - Sanitized external links to open each profile directly on Instagram

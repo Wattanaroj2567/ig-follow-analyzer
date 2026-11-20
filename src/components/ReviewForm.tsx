@@ -2,6 +2,7 @@ import { Send, Star } from 'lucide-react';
 import { type FormEvent, useRef, useState } from 'react';
 import { useLanguage } from '../lib/language';
 import { getReviewBrowserId, getReviewEditUrl } from '../lib/review';
+import { privacyHref } from '../lib/routes';
 import { NormalButton } from './NormalButton';
 
 const RATING_OPTIONS = [1, 2, 3, 4, 5];
@@ -198,33 +199,52 @@ export function ReviewForm({ endpoint }: { endpoint?: string }) {
           />
         </div>
 
-        <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-ink-2">
-          <input
-            type="checkbox"
-            checked={mayPublish}
-            onChange={(event) => setMayPublish(event.target.checked)}
-            className="mt-0.5 size-4 shrink-0 accent-accent"
-          />
-          <span>
+        <div>
+          <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm text-ink-2">
+            <input
+              type="checkbox"
+              checked={mayPublish}
+              aria-describedby="review-publication-hint"
+              onChange={(event) => setMayPublish(event.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-accent"
+            />
+            <span>
+              {t(
+                'อนุญาตให้นำข้อความและชื่อที่กรอกไว้ไปแสดงบนเว็บเมื่อผ่านการคัดกรองอัตโนมัติ',
+                'You may publish my comment and display name if they pass automated screening.',
+              )}
+            </span>
+          </label>
+          <p
+            id="review-publication-hint"
+            className="mt-1 pl-6.5 text-xs leading-relaxed text-muted"
+          >
             {t(
-              'อนุญาตให้นำข้อความและชื่อที่กรอกไว้ไปแสดงบนเว็บเมื่อผ่านการคัดกรองอัตโนมัติ',
-              'You may publish my comment and display name if they pass automated screening.',
+              'หากเว้นช่องนี้ไว้ เราจะเก็บชื่อและข้อความโดยไม่แสดงบนหน้าแรก ส่วนคะแนนอาจนับรวมในคะแนนเฉลี่ย',
+              'If you leave this box unchecked, we store your display name and comment without showing them on the homepage. Your rating may still count toward the average.',
             )}
-          </span>
-        </label>
+          </p>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="space-y-2">
           <NormalButton type="submit" disabled={!endpoint || !canSubmit || status === 'sending'}>
             <Send className="size-4" aria-hidden="true" />
             {status === 'sending' ? t('กำลังส่ง…', 'Sending…') : t('ส่งรีวิว', 'Send review')}
           </NormalButton>
           <p className="text-xs text-muted">
-            {endpoint
-              ? t(
-                  'คำตอบจะถูกบันทึกใน Google Forms เว็บไซต์ใช้รหัสสุ่มประจำเบราว์เซอร์เพื่อกันคะแนนซ้ำ',
-                  'Your answers are saved in Google Forms. The site uses a random browser ID to prevent duplicate ratings.',
-                )
-              : t('ยังไม่เปิดรับรีวิวในขณะนี้', 'Review submissions are currently unavailable.')}
+            {endpoint ? (
+              <>
+                {t('เราเก็บรีวิวใน Google Forms', 'We save reviews in Google Forms.')}{' '}
+                <a
+                  href={privacyHref('review-data')}
+                  className="font-medium text-cool underline underline-offset-4 hover:text-ink"
+                >
+                  {t('อ่านวิธีที่เราใช้ข้อมูลรีวิว', 'See how we use your review data')}
+                </a>
+              </>
+            ) : (
+              t('ยังไม่เปิดรับรีวิวในขณะนี้', 'Review submissions are currently unavailable.')
+            )}
           </p>
         </div>
       </fieldset>

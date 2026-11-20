@@ -142,7 +142,7 @@ const getLandingFaqs = (t: Translator) => [
 
 export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: LandingScreenProps) {
   const { t } = useLanguage();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaqs, setOpenFaqs] = useState(() => new Set([0]));
   const useCasesReveal = useRevealOnScroll<HTMLUListElement>();
   const statsReveal = useRevealOnScroll<HTMLDivElement>();
   const closingReveal = useRevealOnScroll<HTMLDivElement>();
@@ -160,7 +160,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
         <div className="product-wrap">
           <div className="landing-hero__grid">
             <div className="landing-hero__copy">
-              <h1 id="hero-h">
+              <h1 id="hero-h" className="page-heading">
                 {t('วิเคราะห์ผู้ติดตาม ', 'Analyze ')}
                 <span className="inline-flex items-center gap-2.5 align-baseline">
                   <span>Instagram</span>
@@ -303,7 +303,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                   <a
                     href={pageHref('export-comparison')}
                     onClick={go('export-comparison')}
-                    className="mt-2 inline-flex min-h-[24px] items-center gap-1 font-semibold text-cool underline underline-offset-4"
+                    className="mt-2 inline-flex min-h-6 items-center gap-1 font-semibold text-cool underline underline-offset-4"
                   >
                     {t('ทำไมต้องใช้ไฟล์ ZIP?', 'Why use a ZIP?')}
                     <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
@@ -357,7 +357,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
               {
                 icon: ListChecks,
                 tone: 'text-accent',
-                title: t('ใครไม่ติดตามคุณกลับ?', 'Who doesn’t follow you back?'),
+                title: t('ดูว่าใครไม่ติดตามคุณกลับ', 'See who doesn’t follow you back'),
                 body: t(
                   'แยกได้ว่าใครไม่ติดตามคุณกลับ ใครที่คุณยังไม่ติดตามกลับ และใครติดตามกันทั้งสองฝ่าย ค้นหาชื่อแล้วเปิดโปรไฟล์จากตารางได้เลย',
                   'See who doesn’t follow you back, whom you don’t follow back, and which follows are mutual. Search by username and open profiles from the table.',
@@ -366,10 +366,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
               {
                 icon: UserMinus,
                 tone: 'text-bad',
-                title: t(
-                  'ใครเริ่มติดตามคุณ หรือหายจากรายชื่อ?',
-                  'Who started following you or disappeared from the list?',
-                ),
+                title: t('ติดตามการเปลี่ยนแปลงของรายชื่อ', 'Track changes in your lists'),
                 body: t(
                   'เปิดบันทึกประวัติและจำรายชื่อไว้ เมื่อวิเคราะห์ ZIP รอบใหม่ของบัญชีเดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติ คุณเลือกไฟล์ย้อนหลังและเปิดดูไทม์ไลน์รายบัญชีได้ด้วย',
                   'Turn on history and save account lists. When you analyze a new ZIP for the same account, the app compares it with the previous export. You can also pick an older ZIP and open a timeline for each changed account.',
@@ -378,19 +375,16 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
               {
                 icon: ShieldCheck,
                 tone: 'text-cool',
-                title: t(
-                  'ต้องเชื่อมบัญชีเพื่อวิเคราะห์ไหม?',
-                  'Do you have to connect your Instagram account?',
-                ),
+                title: t('วิเคราะห์ ZIP บนเครื่องคุณ', 'Analyze the ZIP on your device'),
                 body: t(
-                  'ใช้ ZIP ที่คุณขอจากศูนย์บัญชี Instagram ได้เลย เบราว์เซอร์อ่านไฟล์และวิเคราะห์รายชื่อบนเครื่องคุณ โดยไม่ต้องเชื่อมบัญชีหรือกรอกรหัสผ่าน',
-                  'Use the ZIP you request from Instagram Accounts Center. Your browser reads it and analyzes the account lists on your device, without a connected account or password.',
+                  'ZIP คือไฟล์รวมข้อมูลที่คุณขอจากศูนย์บัญชี Instagram เบราว์เซอร์อ่านไฟล์และคำนวณผลลัพธ์บนเครื่องคุณ ไม่ต้องเชื่อมบัญชีหรือกรอกรหัสผ่าน',
+                  'A ZIP is a packaged file of data you request from Instagram Accounts Center. Your browser reads it and calculates the results on your device, without connecting an account or entering a password.',
                 ),
               },
               {
                 icon: FileText,
                 tone: 'text-ok',
-                title: t('อยากเก็บผลไว้ดูทีหลังหรือส่งต่อ?', 'Want to save or share your results?'),
+                title: t('ส่งออกผลลัพธ์เป็น PDF', 'Export your results as a PDF'),
                 body: t(
                   'เลือกรวมหัวข้อสรุปพร้อมกราฟและหมวดรายชื่อที่ต้องการ แล้วดาวน์โหลด PDF ขนาด A4 ลงเครื่องได้ทั้งภาษาไทยและอังกฤษ โดยใช้สีและฟอนต์เดียวกับเว็บ',
                   'Choose whether to include the summary chart and which account lists to show. Download an A4 PDF in Thai or English with the website’s colors and fonts.',
@@ -493,39 +487,56 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
             </div>
           </div>
 
-          <div className="panels mt-8">
-            <div className="bg-paper-3 px-5 py-3">
-              <h3 className="text-base font-semibold text-ink">
-                {t('คำถามที่พบบ่อย', 'Frequently asked questions')}
-              </h3>
-            </div>
-            <div className="divide-y divide-rule bg-paper-2 px-5">
+          <section
+            aria-labelledby="landing-faq-heading"
+            className="mt-8 overflow-hidden rounded-[10px] border border-rule bg-paper-2"
+          >
+            <h3
+              id="landing-faq-heading"
+              className="border-b border-rule bg-paper-3 px-5 py-3 text-base font-semibold text-ink"
+            >
+              {t('คำถามที่พบบ่อย', 'Frequently asked questions')}
+            </h3>
+            <div className="divide-y divide-rule px-5">
               {getLandingFaqs(t).map((item, idx) => {
-                const expanded = openFaq === idx;
+                const expanded = openFaqs.has(idx);
+                const answerId = `landing-faq-answer-${idx}`;
                 return (
                   <div key={item.q} className="py-1">
                     <button
                       type="button"
                       aria-expanded={expanded}
-                      onClick={() => setOpenFaq(expanded ? null : idx)}
-                      className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 py-2 text-left text-sm font-medium text-ink"
+                      aria-controls={answerId}
+                      onClick={() =>
+                        setOpenFaqs((current) => {
+                          const next = new Set(current);
+                          if (next.has(idx)) next.delete(idx);
+                          else next.add(idx);
+                          return next;
+                        })
+                      }
+                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 py-2 text-left text-sm font-medium text-ink active:transform-none"
                     >
                       <span>{item.q}</span>
                       <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-muted transition-transform ${
+                        className={`h-4 w-4 shrink-0 text-muted ${
                           expanded ? 'rotate-180 text-accent' : ''
                         }`}
                         aria-hidden="true"
                       />
                     </button>
-                    {expanded && (
-                      <p className="pb-3 text-sm leading-relaxed text-muted">{item.a}</p>
-                    )}
+                    <p
+                      id={answerId}
+                      hidden={!expanded}
+                      className="pb-3 text-sm leading-relaxed text-muted"
+                    >
+                      {item.a}
+                    </p>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
         </div>
       </section>
 
@@ -533,34 +544,17 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
       <section className="landing-section landing-section--deep" aria-labelledby="closing-h">
         <div
           ref={closingReveal.ref}
-          className={`product-wrap flex flex-col items-start justify-between gap-6 rounded-[var(--radius-card)] border border-rule bg-paper-2 p-7 scroll-reveal sm:p-10 lg:flex-row lg:items-center ${
+          className={`product-wrap flex flex-col items-start justify-between gap-4 rounded-(--radius-card) border border-rule bg-paper-2 p-5 scroll-reveal sm:p-6 lg:flex-row lg:items-center ${
             closingReveal.visible ? 'scroll-reveal--in' : ''
           }`}
         >
-          <div>
-            <h2 id="closing-h" className="text-2xl font-semibold text-ink sm:text-3xl">
-              {t('พร้อมตรวจสอบรายชื่อผู้ติดตามจากไฟล์ของคุณแล้วหรือยัง', 'Ready to check your follower list?')}
-            </h2>
-            <p className="mt-2 max-w-[54ch] text-sm leading-relaxed text-muted sm:text-base">
-              {t(
-                'หากมีไฟล์ .zip จาก Instagram แล้วสามารถอัปโหลดได้ทันที หรือดูคู่มือภาพทีละขั้นตอนจากหน้าจอจริง',
-                'Select your Instagram ZIP if you have it, or follow the illustrated guide to request one.',
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <a className="btn btn--primary" href={pageHref('upload')} onClick={go('upload')}>
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              <span>{t('เริ่มวิเคราะห์เลย', 'Start analysis')}</span>
-            </a>
-            <a
-              className="btn btn--secondary"
-              href={pageHref('how-it-works')}
-              onClick={go('how-it-works')}
-            >
-              {t('ดูวิธีขอไฟล์พร้อมภาพ', 'View the illustrated guide')}
-            </a>
-          </div>
+          <h2 id="closing-h" className="text-2xl font-semibold text-ink sm:text-3xl">
+            {t('มีไฟล์ ZIP แล้วใช่ไหม?', 'Have your ZIP file?')}
+          </h2>
+          <a className="btn btn--primary" href={pageHref('upload')} onClick={go('upload')}>
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            <span>{t('เริ่มวิเคราะห์เลย', 'Start analysis')}</span>
+          </a>
         </div>
       </section>
 

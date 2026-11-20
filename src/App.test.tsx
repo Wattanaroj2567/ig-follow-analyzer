@@ -21,6 +21,55 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     vi.unstubAllEnvs();
   });
 
+  it.each(['/#/', '/#/terms'])('toggles each FAQ answer independently on %s', async (route) => {
+    window.history.replaceState(null, '', route);
+    render(<App />);
+
+    const faqRegion = await screen.findByRole('region', { name: 'คำถามที่พบบ่อย' });
+    const faq = within(faqRegion);
+    expect(faqRegion.querySelector('.divide-y.divide-rule')).not.toBeNull();
+    const [first, second] = faq.getAllByRole('button');
+    expect(first).toHaveAttribute('aria-expanded', 'true');
+    expect(second).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(second);
+    expect(second).toHaveAttribute('aria-expanded', 'true');
+    expect(first).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(second);
+    expect(second).toHaveAttribute('aria-expanded', 'false');
+    expect(first).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps the feedback draft when hiding and reopening the form', async () => {
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    const feedback = within(await screen.findByRole('region', { name: 'แจ้งปัญหาหรือเสนอแนะฟีเจอร์' }));
+    const toggle = feedback.getByRole('button', { name: 'เปิดแบบฟอร์มแจ้งปัญหา' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(feedback.queryByRole('form')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    const form = within(feedback.getByRole('form'));
+    expect(form.getByRole('link', { name: 'อ่านวิธีที่เราใช้ข้อมูลข้อเสนอแนะ' })).toHaveAttribute(
+      'href',
+      '#/terms?section=feedback-data',
+    );
+    const details = form.getByRole('textbox', { name: '2. รายละเอียด' });
+    const suggestion = form.getByRole('button', { name: 'เสนอฟีเจอร์' });
+    fireEvent.click(suggestion);
+    fireEvent.change(details, { target: { value: 'เพิ่มตัวกรอง' } });
+    fireEvent.click(feedback.getByRole('button', { name: 'ซ่อนแบบฟอร์มแจ้งปัญหา' }));
+    expect(details).not.toBeVisible();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(details).toBeVisible();
+    expect(details).toHaveValue('เพิ่มตัวกรอง');
+    expect(suggestion).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('keeps a review draft when changing theme or hiding the form', async () => {
     vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
     window.history.replaceState(null, '', '/#/about');
@@ -30,6 +79,11 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(screen.queryByRole('form', { name: 'รีวิวการใช้งาน' })).not.toBeInTheDocument();
     fireEvent.click(openReview);
     const form = screen.getByRole('form', { name: 'รีวิวการใช้งาน' });
+    const publication = within(form).getByRole('checkbox');
+    expect(publication).not.toBeChecked();
+    expect(publication).toHaveAccessibleDescription(
+      'หากเว้นช่องนี้ไว้ เราจะเก็บชื่อและข้อความโดยไม่แสดงบนหน้าแรก ส่วนคะแนนอาจนับรวมในคะแนนเฉลี่ย',
+    );
     const comment = within(form).getByRole('textbox', { name: 'เล่าประสบการณ์สั้น ๆ' });
     fireEvent.change(comment, { target: { value: 'เทียบไฟล์ได้ง่าย' } });
     fireEvent.click(screen.getByRole('button', { name: 'สว่าง' }));
@@ -99,6 +153,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     const review = within(await screen.findByRole('region', { name: 'รีวิวการใช้งาน' }));
     fireEvent.click(review.getByRole('button', { name: 'เขียนรีวิว' }));
+    expect(review.getByRole('link', { name: 'อ่านวิธีที่เราใช้ข้อมูลรีวิว' })).toHaveAttribute(
+      'href',
+      '#/terms?section=review-data',
+    );
     const submit = review.getByRole('button', { name: 'ส่งรีวิว' });
     expect(submit).toBeDisabled();
     fireEvent.click(review.getByRole('radio', { name: '4 ดาว' }));
@@ -229,49 +287,99 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const { container } = render(<App />);
     await screen.findByRole('button', { name: 'มือถือ (แอป IG)' });
     const illustrations = () => Array.from(container.querySelectorAll('#export-steps figure'));
+    const formatButton = () => container.querySelector('#m-11 .guide-highlight-btn');
+    const startButton = () => container.querySelector('#m-12 .guide-highlight-btn');
+    const downloadPrompt = () => container.querySelectorAll('#m-16 figure')[1];
+    const downloadComplete = () => container.querySelector('#m-17 figure');
     illustrations()
-      .slice(4, 14)
+      .slice(4, 15)
       .forEach((figure) => expect(figure).not.toHaveTextContent('accountscenter.instagram.com'));
     expect(illustrations()[9]).toHaveTextContent('6 เดือนที่ผ่านมา');
     expect(illustrations()[9]).toHaveTextContent('ตั้งแต่ต้น');
     expect(illustrations()[9]).toHaveTextContent('กำหนดเอง');
-    expect(illustrations()[11]).toHaveTextContent('ส่งคำขอแล้ว');
-    expect(illustrations()[11]).toHaveTextContent('กิจกรรมปัจจุบัน');
-    expect(illustrations()[12]).toHaveTextContent('ไฟล์ที่พร้อมให้ดาวน์โหลด');
-    expect(illustrations()[13]).toHaveTextContent('เปิด (Open)');
-    expect(illustrations()[14]).toHaveTextContent('ดาวน์โหลดเสร็จสมบูรณ์');
-    expect(illustrations()[14]).toHaveTextContent('เปิดใน…');
-    expect(illustrations()[15]).toHaveTextContent('บันทึกไปยัง แอปไฟล์');
-    expect(illustrations()[16]).toHaveTextContent('รายการดาวน์โหลด');
-    expect(illustrations()[16]).toHaveTextContent('บันทึกเป็น');
+    expect(formatButton()).toHaveTextContent('บันทึก');
+    expect(startButton()).toHaveTextContent('เริ่มส่งออก');
+    expect(illustrations()[11]).toHaveTextContent(/ยืนยันการส่งออกของคุณ.*ตั้งแต่ต้น.*JSON/);
+    expect(illustrations()[12]).toHaveTextContent('ส่งคำขอแล้ว');
+    expect(illustrations()[12]).toHaveTextContent('กิจกรรมปัจจุบัน');
+    expect(illustrations()[13]).toHaveTextContent('ไฟล์ที่พร้อมให้ดาวน์โหลด');
+    expect(illustrations()[14]).toHaveTextContent('ดาวน์โหลดไฟล์ของคุณ');
+    expect(illustrations()[14].querySelector('.guide-highlight-btn')).toHaveTextContent('ดาวน์โหลด');
+    expect(illustrations()[15]).toHaveTextContent('โปรดป้อนรหัสผ่านของคุณอีกครั้ง');
+    expect(illustrations()[15]).toHaveTextContent('ดำเนินการต่อ');
+    expect(illustrations()[15].querySelector('input, form')).toBeNull();
+    expect(downloadPrompt()).toHaveTextContent('บันทึก…');
+    expect(downloadPrompt()).not.toHaveTextContent('ดาวน์โหลดเสร็จสมบูรณ์');
+    expect(container.querySelector('#m-16')).toHaveTextContent(/Android.*ข้ามขั้นที่ 17–18.*ขั้นที่ 19/);
+    expect(screen.getByRole('button', { name: 'Android · ไปขั้นที่ 19 เพื่อหาไฟล์ ZIP' })).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: /^สำหรับ iPhone เท่านั้น/ })).toHaveLength(2);
+    expect(downloadComplete()).toHaveTextContent('ดาวน์โหลดเสร็จสมบูรณ์');
+    expect(downloadComplete()).toHaveTextContent('เปิดใน…');
+    expect(illustrations().at(-2)).toHaveTextContent('บันทึกไปยัง แอปไฟล์');
+    expect(illustrations().at(-1)).toHaveTextContent('รายการดาวน์โหลด');
+    expect(illustrations().at(-1)).toHaveTextContent('บันทึกเป็น');
+    expect(container.querySelector('#m-19')).toHaveTextContent('Chrome → เมนู ⋮ → ดาวน์โหลด');
     illustrations().forEach((figure) =>
       expect(figure.querySelector('.guide-device-phone__status')).toHaveTextContent('08:075G76'),
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
-    expect(illustrations()).toHaveLength(17);
+    expect(container.querySelectorAll('#export-steps > li')).toHaveLength(19);
     expect(illustrations()[9]).toHaveTextContent('Last 6 months');
-    expect(illustrations()[11]).toHaveTextContent('Request submitted');
-    expect(illustrations()[12]).toHaveTextContent('Available downloads');
-    expect(illustrations()[14]).toHaveTextContent('Download complete');
-    expect(illustrations()[14]).toHaveTextContent('Open in…');
-    expect(illustrations()[15]).toHaveTextContent('Save to Files');
-    expect(illustrations()[16]).toHaveTextContent('Downloads');
-    expect(illustrations()[16]).toHaveTextContent('Save as');
+    expect(formatButton()).toHaveTextContent('Save');
+    expect(startButton()).toHaveTextContent('Start export');
+    expect(illustrations()[11]).toHaveTextContent(/Confirm your export.*All time.*JSON/);
+    expect(illustrations()[12]).toHaveTextContent('Request submitted');
+    expect(illustrations()[13]).toHaveTextContent('Available downloads');
+    expect(illustrations()[14]).toHaveTextContent('Download your files');
+    expect(illustrations()[14].querySelector('.guide-highlight-btn')).toHaveTextContent('Download');
+    expect(illustrations()[15]).toHaveTextContent('please enter your password again');
+    expect(illustrations()[15]).toHaveTextContent('Continue');
+    expect(downloadPrompt()).toHaveTextContent('Save…');
+    expect(downloadPrompt()).not.toHaveTextContent('Download complete');
+    expect(container.querySelector('#m-16')).toHaveTextContent(
+      /Android.*skip steps 17–18.*step 19/,
+    );
+    expect(screen.getAllByRole('heading', { name: /^iPhone only/ })).toHaveLength(2);
+    expect(downloadComplete()).toHaveTextContent('Download complete');
+    expect(downloadComplete()).toHaveTextContent('Open in…');
+    expect(illustrations().at(-2)).toHaveTextContent('Save to Files');
+    expect(illustrations().at(-1)).toHaveTextContent('Downloads');
+    expect(illustrations().at(-1)).toHaveTextContent('Save as');
+    expect(container.querySelector('#m-19')).toHaveTextContent('Chrome → ⋮ menu → Downloads');
+    expect(
+      within(document.getElementById('m-19')!).getByRole('button', {
+        name: 'Choose your ZIP file',
+      }),
+    ).toBeVisible();
+    const officialGuide = within(screen.getByRole('region', { name: 'Official Instagram guide' }));
+    expect(officialGuide.getByRole('link', { name: 'Read Instagram Help Center' })).toBeVisible();
+    expect(officialGuide.queryByRole('button')).not.toBeInTheDocument();
     illustrations().forEach((figure) => expect(figure).not.toHaveTextContent(/[\u0e00-\u0e7f]/));
 
     fireEvent.click(screen.getByRole('button', { name: 'Desktop web' }));
-    expect(illustrations()).toHaveLength(11);
+    expect(illustrations()).toHaveLength(15);
     expect(illustrations()[3]).toHaveTextContent('accountscenter.instagram.com');
-    expect(illustrations().at(-1)).toHaveTextContent('Available downloads');
+    expect(illustrations()[8]).toHaveTextContent('All time');
+    expect(illustrations()[9].querySelector('.guide-highlight-btn')).toHaveTextContent('Save');
+    expect(illustrations()[10].querySelector('.guide-highlight-btn')).toHaveTextContent(
+      'Start export',
+    );
+    expect(illustrations()[11]).toHaveTextContent('Available downloads');
+    expect(illustrations()[12]).toHaveTextContent('Download your files');
+    expect(illustrations()[13]).toHaveTextContent('please enter your password again');
+    expect(illustrations()[13].querySelector('input, form')).toBeNull();
     illustrations().forEach((figure) => expect(figure).not.toHaveTextContent(/[\u0e00-\u0e7f]/));
-    const finalDesktopStep = within(document.getElementById('w-11')!);
+    const finalDesktopStep = within(document.getElementById('w-15')!);
     expect(finalDesktopStep.getByText('Save as', { selector: 'mark' })).toBeVisible();
     expect(finalDesktopStep.getByText('Show in folder', { selector: 'mark' })).toBeVisible();
     expect(finalDesktopStep.getByText(/select the original \.zip file/)).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'ไทย' }));
-    expect(illustrations().at(-1)).toHaveTextContent('ไฟล์ที่พร้อมให้ดาวน์โหลด');
+    expect(illustrations()[8]).toHaveTextContent('ตลอดเวลา');
+    expect(illustrations()[10]).toHaveTextContent('ตลอดเวลา');
+    expect(illustrations()[11]).toHaveTextContent('ไฟล์ที่พร้อมให้ดาวน์โหลด');
+    expect(illustrations()[13]).toHaveTextContent('โปรดป้อนรหัสผ่านของคุณอีกครั้ง');
     expect(finalDesktopStep.getByText('บันทึกเป็น', { selector: 'mark' })).toBeVisible();
     expect(finalDesktopStep.getByText('แสดงในโฟลเดอร์', { selector: 'mark' })).toBeVisible();
     expect(finalDesktopStep.getByText(/เลือกไฟล์ \.zip ที่เพิ่งดาวน์โหลดทั้งไฟล์/)).toBeVisible();
@@ -339,7 +447,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(preview.getByRole('note')).toHaveTextContent('ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น');
     expect(preview.getByText('@demo_account_014')).toBeVisible();
     expect(preview.getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
-    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบ 2 รอบ' })).toHaveAttribute(
+    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' })).toHaveAttribute(
       'href',
       '#/results?demo',
     );
@@ -367,12 +475,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       render(<App />);
     });
     const newFollowers = screen.getByRole('button', { name: /ติดตามใหม่/ });
-    expect(newFollowers).toHaveAccessibleDescription('มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP ใหม่');
     fireEvent.click(newFollowers);
     expect(screen.getByRole('heading', { name: 'ติดตามใหม่' })).toBeVisible();
 
     const missingFollowers = screen.getByRole('button', { name: /หายจากรายชื่อ/ });
-    expect(missingFollowers).toHaveAccessibleDescription('มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP เก่า');
     fireEvent.click(missingFollowers);
     const row = screen.getByText('@demo_account_014').closest('details');
     expect(row).not.toHaveAttribute('open');
@@ -382,66 +488,18 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(within(row!).getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
   });
 
-  it('opens older sample results without accessing real history', async () => {
-    const openDatabase = vi.fn();
-    vi.stubGlobal('indexedDB', { open: openDatabase });
-    window.history.replaceState(null, '', '/#/results?demo');
+  it('opens the sample comparison directly and omits the sample-history entry', async () => {
+    window.history.replaceState(null, '', '/#/');
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่าง' }));
-    expect(window.location.hash).toBe('#/history?demo');
-    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(2);
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-
-    const backToDashboard = screen.getByRole('link', { name: 'กลับไปแดชบอร์ดตัวอย่าง' });
-    expect(backToDashboard).toHaveAttribute('href', '#/results?demo');
-    fireEvent.click(backToDashboard);
-    expect(window.location.hash).toBe('#/results?demo');
-    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่าง' }));
-
-    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่างทั้งหมด (6 รายการ)' }));
-    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(4);
-    fireEvent.click(screen.getByRole('button', { name: 'ถัดไป' }));
-    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'ก่อนหน้า' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })[1]);
-
-    expect(window.location.hash).toBe('#/results?demo&record=instagram-demo-2026-10-19.zip');
-    const comparison = screen.getByRole('region', { name: 'ผู้ติดตามเปลี่ยนไปยังไง' });
-    expect(within(comparison).getByText('instagram-demo-2026-10-19.zip')).toBeVisible();
-    expect(within(comparison).getByText('ไฟล์ที่เปิดอยู่')).toBeVisible();
-    expect(within(comparison).queryByText('เปลี่ยนไฟล์ย้อนหลัง')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม' })).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: 'สร้างรายงาน PDF ตัวอย่าง' }));
-    await screen.findByText(/ดาวน์โหลด PDF ลงเครื่อง/i);
-    expect(window.location.hash).toBe('#/pdf?demo&record=instagram-demo-2026-10-19.zip');
-    expect(openDatabase).not.toHaveBeenCalled();
-  });
-
-  it('opens a comparison PDF from the selected sample history entry', async () => {
-    const openDatabase = vi.fn();
-    vi.stubGlobal('indexedDB', { open: openDatabase });
-    window.history.replaceState(null, '', '/#/history?demo');
-    render(<App />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่างทั้งหมด (6 รายการ)' }));
-    const baseline = 'instagram-demo-2026-09-19.zip';
-    const olderEntry = screen.getByText(baseline).closest('li')!;
-    fireEvent.click(within(olderEntry).getByRole('button', { name: 'สร้าง PDF เทียบกับไฟล์ล่าสุด' }));
-
-    const pdf = await screen.findByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' });
-    expect(within(pdf).getByText('instagram-demo-2026-11-19.zip')).toBeVisible();
-    expect(within(pdf).getByText(baseline, { selector: 'dd[aria-live] span' })).toBeVisible();
-    expect(within(pdf).getByText('เทียบกับ · เลือกเอง')).toBeVisible();
-    expect(screen.getByRole('checkbox', { name: 'สรุปผลเทียบสองไฟล์' })).toBeChecked();
-
-    fireEvent.click(within(pdf).getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
-    expect(
-      within(pdf).getByText('instagram-demo-2026-10-19.zip', { selector: 'dd[aria-live] span' }),
-    ).toBeVisible();
-    expect(within(pdf).getByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' })).toHaveFocus();
-    expect(openDatabase).not.toHaveBeenCalled();
+    const section = await screen.findByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' });
+    expect(within(section).getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' })).toHaveAttribute(
+      'href',
+      '#/results?demo',
+    );
+    expect(within(section).queryByRole('link', { name: 'ดูประวัติตัวอย่าง' })).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' }));
+    expect(await screen.findByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม' })).toBeVisible();
   });
 
   it('changes the sample comparison and timeline while keeping the latest ZIP fixed', async () => {
@@ -450,7 +508,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     window.history.replaceState(null, '', '/#/results?demo');
     render(<App />);
 
-    const comparison = within(await screen.findByRole('region', { name: 'ผู้ติดตามเปลี่ยนไปยังไง' }));
+    const comparison = within(
+      await screen.findByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' }),
+    );
     expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
     expect(comparison.getByText('ไฟล์ล่าสุด')).toBeVisible();
     fireEvent.click(comparison.getByText('เปลี่ยนไฟล์ย้อนหลัง'));
@@ -462,6 +522,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     );
     expect(comparison.getByText('เทียบกับ · เลือกเอง')).toBeVisible();
     expect(comparison.getByText('รอบเก่ากว่า', { selector: 'dt span' })).toBeVisible();
+    expect(comparison.getByText(/เว็บจะแสดงบัญชี A ในหมวด/)).toBeVisible();
     expect(
       comparison.getByText('instagram-demo-2026-11-19.zip', { selector: 'dd span' }),
     ).toBeVisible();
@@ -471,7 +532,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(screen.getByText('@demo_account_014', { exact: true }));
     expect(screen.getByText('พบในรายชื่อไฟล์ที่เลือกเทียบ')).toBeVisible();
     fireEvent.click(comparison.getByRole('radio', { name: /instagram-demo-2026-08-19.zip/ }));
-    expect(comparison.getByRole('button', { name: /หายจากรายชื่อ 0/ })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /หายจากรายชื่อผู้ติดตาม 0/ })).toBeVisible();
     expect(screen.queryByText('@demo_account_014', { exact: true })).not.toBeInTheDocument();
 
     fireEvent.click(comparison.getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
@@ -485,17 +546,34 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     });
     const sheet = pdfTitle.closest('[lang]');
     expect(sheet).toHaveTextContent('เทียบกับ instagram-demo-2026-09-19.zip');
-    const pdfComparison = within(screen.getByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' }));
-    fireEvent.click(pdfComparison.getByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' }));
-    fireEvent.click(pdfComparison.getByRole('radio', { name: /instagram-demo-2026-08-19.zip/ }));
-    expect(sheet).toHaveTextContent('เทียบกับ instagram-demo-2026-08-19.zip');
-    expect(sheet).toHaveTextContent('หายจากรายชื่อ 0');
+    expect(screen.queryByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' })).not.toBeInTheDocument();
+    expect(sheet).toHaveTextContent('หายจากรายชื่อ 1');
+    fireEvent.click(screen.getByRole('button', { name: 'หน้าถัดไป' }));
+    expect(screen.getByText(/ติดตามใหม่ \(94 บัญชี\)/)).toBeVisible();
     const includeComparison = screen.getByRole('checkbox', { name: 'สรุปผลเทียบสองไฟล์' });
     expect(includeComparison).toBeChecked();
     fireEvent.click(includeComparison);
     expect(sheet).not.toHaveTextContent('ความเปลี่ยนแปลงระหว่างสองไฟล์');
-    fireEvent.click(screen.getByRole('button', { name: 'กลับไปหน้าผลวิเคราะห์' }));
-    expect(screen.getByText('เทียบไฟล์ 19 ส.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+
+    const includeSummary = screen.getByRole('checkbox', {
+      name: 'หน้าสรุปภาพรวมและกราฟวงกลม 1 หน้า',
+    });
+    fireEvent.click(includeSummary);
+    expect(sheet).not.toHaveTextContent('รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram');
+    fireEvent.click(includeSummary);
+    expect(sheet).toHaveTextContent('รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram');
+
+    const estimateBefore = screen.getByText(/หน้า A4 · .*บัญชี|A4 pages · .*accounts/).textContent;
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: /รายชื่อผู้ติดตามทั้งหมด/,
+      }),
+    );
+    const estimateAfter = screen.getByText(/หน้า A4 · .*บัญชี|A4 pages · .*accounts/).textContent;
+    expect(estimateAfter).not.toBe(estimateBefore);
+    fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }));
+    expect(screen.getByText('เทียบไฟล์ 19 ก.ย. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
     expect(openDatabase).not.toHaveBeenCalled();
   });
 
@@ -507,7 +585,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(comparison).toHaveAttribute('href', '#/export-comparison');
     expect(screen.queryByRole('table', { name: /ล็อกอิน Instagram/ })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: 'ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP' }),
+      screen.queryByRole('heading', { name: 'ภาพรวม 3 ขั้นตอน: ขอไฟล์จนเลือก ZIP' }),
     ).not.toBeInTheDocument();
 
     fireEvent.click(comparison);
@@ -516,7 +594,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ดูวิธีขอไฟล์ ZIP' }));
     expect(window.location.hash).toBe('#/how-it-works');
-    expect(screen.getByRole('heading', { name: 'ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'ภาพรวม 3 ขั้นตอน: ขอไฟล์จนเลือก ZIP' })).toBeVisible();
   });
 
   it('shows a mobile back control outside the home page', async () => {
@@ -609,7 +687,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     });
     const preview = within(screen.getByRole('region', { name: 'ตัวอย่างแดชบอร์ด' }));
     const single = preview.getByRole('button', { name: 'ไฟล์เดียว' });
-    const compare = preview.getByRole('button', { name: 'เทียบ 2 รอบ' });
+    const compare = preview.getByRole('button', { name: 'เทียบ 2 ไฟล์' });
     expect(single).toHaveAttribute('aria-pressed', 'true');
     expect(preview.getByRole('heading', { name: 'ไม่ติดตามคุณกลับ' })).toBeVisible();
     expect(preview.queryByRole('button', { name: /เริ่มติดตามคุณ|หายจากรายชื่อ/ })).toBeNull();
@@ -639,7 +717,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     const trigger = within(screen.getByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' })).getByRole(
       'link',
-      { name: 'ลองดูผลเทียบ 2 รอบ' },
+      { name: 'ลองดูผลเทียบ 2 ไฟล์' },
     );
     expect(
       screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '#/results?demo'),
@@ -725,10 +803,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
         hasLatestSnapshot={false}
         onUpdatePreferences={vi.fn()}
         onOpenRecord={vi.fn()}
-        canOpenComparisonPdf={() => false}
-        onOpenComparisonPdf={vi.fn()}
         onDeleteRecord={onDeleteRecord}
         onClearAll={onClearAll}
+        onNavigate={vi.fn()}
       />,
     );
     const cards = screen.getAllByRole('article');

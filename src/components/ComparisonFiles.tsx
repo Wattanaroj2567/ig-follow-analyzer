@@ -152,7 +152,7 @@ export function ComparisonFiles({
               </fieldset>
             </dd>
           )}
-          {canChange && !automatic && (
+          {!automatic && (
             <dd className="mt-2 flex border-t border-rule pt-1 lg:col-span-2">
               <button
                 type="button"

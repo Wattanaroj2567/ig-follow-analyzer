@@ -72,7 +72,7 @@ export function LandingPreview({ demo, previousDemo }: LandingPreviewProps) {
         </button>
         <button type="button" aria-pressed={comparing} onClick={() => setComparing(true)}>
           <GitCompareArrows aria-hidden="true" />
-          {t('เทียบ 2 รอบ', 'Compare two ZIPs')}
+          {t('เทียบ 2 ไฟล์', 'Compare two ZIPs')}
         </button>
       </div>
       <p className="landing-preview__context" role="status">

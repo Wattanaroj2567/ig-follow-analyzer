@@ -1,16 +1,30 @@
 import { ChevronDown, ExternalLink, FileText, History, Star } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PageId } from '../components/AppShell';
 import { FeedbackForm } from '../components/FeedbackForm';
 import { NormalButton } from '../components/NormalButton';
+import { BackButton } from '../components/BackButton';
 import { ReviewForm } from '../components/ReviewForm';
 import { useLanguage } from '../lib/language';
 import { getReviewEndpoint } from '../lib/review';
-import { pageHref } from '../lib/routes';
+import { pageHref, type PrivacyTopic } from '../lib/routes';
 
-export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => void }) {
+export function TermsAndFaqScreen({
+  onNavigate,
+  privacyTopic,
+}: {
+  onNavigate: (id: PageId) => void;
+  privacyTopic?: PrivacyTopic;
+}) {
   const { t } = useLanguage();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaqs, setOpenFaqs] = useState(() => new Set([0]));
+
+  useEffect(() => {
+    if (!privacyTopic) return;
+    const heading = document.getElementById(privacyTopic);
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [privacyTopic]);
 
   const sections = [
     {
@@ -45,10 +59,10 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
       heading: t('ความเป็นส่วนตัว', 'Privacy'),
       items: [
         {
-          label: t('ไฟล์ ZIP รายชื่อ และรายงาน PDF', 'ZIP files, account lists, and PDF reports'),
+          label: t('การวิเคราะห์บนอุปกรณ์ของคุณ', 'Analysis on your device'),
           detail: t(
-            'เบราว์เซอร์อ่านไฟล์ คำนวณผล และสร้างรายงาน PDF บนอุปกรณ์ของคุณ ไฟล์ ZIP และรายชื่อจากการวิเคราะห์จะไม่ถูกส่งไปยังเซิร์ฟเวอร์',
-            'Your browser reads the ZIP, compares account lists, and creates the PDF on your device. It does not send the ZIP or account lists from your analysis to a server.',
+            'เบราว์เซอร์อ่านไฟล์ ZIP วิเคราะห์รายชื่อ และสร้าง PDF บนอุปกรณ์ของคุณ โดยไม่อัปโหลดข้อมูลเหล่านี้ไปยังเซิร์ฟเวอร์ เว็บใช้ไฟล์ที่คุณเลือกและไม่เชื่อมต่อบัญชี Instagram หรือ Instagram API',
+            'Your browser reads the ZIP, analyzes account lists, and creates the PDF on your device without uploading this data to a server. The site uses the file you select and does not connect to your Instagram account or the Instagram API.',
           ),
         },
         {
@@ -59,17 +73,33 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
           ),
         },
         {
-          label: t('ข้อความที่ส่งผ่านแบบฟอร์มความคิดเห็น', 'Feedback you choose to send'),
+          label: t('คุกกี้ เซสชัน และข้อมูลในเบราว์เซอร์', 'Cookies, sessions, and browser storage'),
           detail: t(
-            'เมื่อส่งความคิดเห็นจากหน้าเกี่ยวกับเรา แบบฟอร์มจะส่งหมวดหมู่ ข้อความ ระบบปฏิบัติการ เบราว์เซอร์ และขนาดพื้นที่แสดงผลของหน้าเว็บ ไปยัง Google Forms',
-            'When you submit feedback from the About page, the form sends your category, message, operating system, browser, and viewport size to Google Forms.',
+            'เว็บนี้ไม่ตั้งคุกกี้หรือสร้างเซสชันล็อกอิน ค่าภาษาและธีมจะเก็บไว้ใน localStorage ส่วนประวัติจะเก็บใน IndexedDB เมื่อคุณเปิดใช้',
+            'This site does not set cookies or create login sessions. Language and theme preferences use localStorage. History uses IndexedDB when you opt in.',
           ),
         },
         {
+          topic: 'feedback-data',
+          label: t('การแจ้งปัญหาและเสนอฟีเจอร์', 'Bug reports and feature suggestions'),
+          detail: t(
+            'เมื่อคุณกดส่งข้อเสนอแนะ เราส่งประเภทเรื่องและข้อความไปยัง Google Forms เพื่อใช้ตรวจปัญหาหรือพิจารณาฟีเจอร์ที่เสนอ แบบฟอร์มแนบชื่อระบบปฏิบัติการ ชื่อเบราว์เซอร์ และขนาดพื้นที่แสดงผลของเว็บเพื่อช่วยตรวจปัญหาที่เกิดเฉพาะบางอุปกรณ์ ไฟล์ ZIP และรายชื่อจากการวิเคราะห์อยู่บนอุปกรณ์ของคุณ',
+            'When you submit feedback, we send the topic and message to Google Forms so we can investigate the issue or consider your suggestion. The form includes the operating system name, browser name, and viewport size to help diagnose device-specific issues. Your ZIP file and the account lists from your analysis stay on your device.',
+          ),
+        },
+        {
+          topic: 'review-data',
           label: t('คะแนนและข้อความรีวิว', 'Ratings and review comments'),
           detail: t(
-            'แบบฟอร์มส่งคะแนน ชื่อ และข้อความที่คุณกรอกไปยัง Google Forms เว็บไซต์ใช้รหัสสุ่มที่เก็บในเบราว์เซอร์และชีตส่วนตัวเพื่อกันคะแนนซ้ำจากเบราว์เซอร์เดิม หน้าแรกแสดงคะแนนเฉลี่ยและจำนวนคะแนน รวมถึงชื่อและข้อความที่ได้รับอนุญาตและผ่านการคัดกรองอัตโนมัติ',
-            'The form sends your rating, name, and any comment you enter to Google Forms. A random ID stored in your browser and a private spreadsheet helps prevent duplicate ratings from that browser. The homepage shows the average and number of ratings, plus comments and names that were authorized and pass automated screening.',
+            'เมื่อคุณส่งรีวิว Google Apps Script จะรับคะแนน ชื่อแสดงผล ข้อความ และตัวเลือกเผยแพร่ เราเก็บคำตอบใน Google Forms และใช้ Google Sheets ที่จำกัดการเข้าถึงเพื่อจัดการรีวิว เราใช้รหัสสุ่มที่เก็บในเบราว์เซอร์และในชีตเพื่อช่วยลดการให้คะแนนซ้ำ',
+            'When you submit a review, Google Apps Script receives your rating, display name, optional comment, and publication choice. We save your answers in Google Forms and use a restricted Google Sheet to manage reviews. A random ID stored in your browser and in the sheet helps prevent duplicate ratings.',
+          ),
+        },
+        {
+          label: t('ข้อมูลรีวิวที่แสดงบนหน้าแรก', 'Review data shown on the homepage'),
+          detail: t(
+            'คะแนนของคุณอาจนับรวมในค่าเฉลี่ยและจำนวนคะแนนบนหน้าแรก แม้คุณไม่อนุญาตให้เผยแพร่ชื่อและข้อความ ชื่อและข้อความจะแสดงได้เมื่อคุณอนุญาตและผ่านการคัดกรองอัตโนมัติ',
+            'Your rating may contribute to the homepage average and rating count even if you decline to publish your comment. Your display name and comment can appear on the homepage if you give permission and they pass automated screening.',
           ),
         },
       ],
@@ -86,6 +116,14 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
         'ไม่ต้องกรอกรหัสผ่านและไม่มีระบบล็อกอินครับ เว็บนี้ไม่เชื่อม Instagram API และไม่กดติดตามหรือเลิกติดตามแทนคุณ ทุกอย่างใช้เฉพาะไฟล์ .zip ทางการที่คุณขอจากศูนย์บัญชี Instagram ด้วยตัวเอง จึงไม่เสี่ยงโดนแบนเหมือนแอปภายนอกที่ขอรหัสผ่าน',
         'No password or login is ever required. This app does not use the Instagram API and never follows or unfollows anyone on your behalf. It only reads the official .zip file you request from Instagram Accounts Center yourself.',
       ),
+    },
+    {
+      q: t('เว็บนี้เก็บคุกกี้หรือเซสชันไว้ไหม?', 'Does this site use cookies or login sessions?'),
+      a: t(
+        'ไม่เก็บคุกกี้และไม่มีเซสชันล็อกอินครับ ภาษาและธีมใช้ localStorage ส่วนประวัติใช้ IndexedDB เมื่อคุณเปิดความยินยอมเองเท่านั้น และล้างได้จากหน้าประวัติบนเครื่อง',
+        'No cookies or login sessions are used. Language and theme use localStorage, while history uses IndexedDB only after you opt in. You can clear saved history from the History page.',
+      ),
+      link: { page: 'history', label: t('ไปที่หน้าประวัติบนเครื่อง', 'Open History settings') },
     },
     {
       q: t(
@@ -187,23 +225,30 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
   ];
 
   return (
-    <div className="product-wrap max-w-5xl py-9 lg:py-14">
-      <h1 className="text-2xl text-ink sm:text-4xl">
+    <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
+      <h1 className="page-heading max-w-5xl">
         {t('เงื่อนไขการใช้งาน', 'Terms,')}{' '}
         <span className="whitespace-nowrap">{t('ความเป็นส่วนตัว', 'privacy,')}</span>{' '}
         {t('และคำถามที่พบบ่อย', 'and frequently asked questions')}
       </h1>
 
-      <div className="panels mt-7 md:grid-cols-2">
+      <div className="panels mx-auto mt-7 max-w-5xl md:grid-cols-2">
         {sections.map(({ id, heading, items }) => (
           <section key={id} aria-labelledby={id} className="p-5 sm:p-7">
             <h2 id={id} className="text-xl text-ink">
               {heading}
             </h2>
             <dl className="mt-4 space-y-4 border-t border-rule pt-4 text-sm leading-relaxed">
-              {items.map(({ label, detail }) => (
+              {items.map(({ topic, label, detail }) => (
                 <div key={label}>
-                  <dt className="font-semibold text-ink">{label}</dt>
+                  <dt
+                    id={topic}
+                    tabIndex={topic ? -1 : undefined}
+                    className="scroll-mt-24 font-semibold text-ink"
+                  >
+                    {label}
+                  </dt>
                   <dd className="mt-1 text-ink-2">{detail}</dd>
                 </div>
               ))}
@@ -212,13 +257,13 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
         ))}
       </div>
 
-      <section aria-labelledby="faq-heading" className="mt-9">
+      <section aria-labelledby="faq-heading" className="mx-auto mt-9 max-w-5xl">
         <h2 id="faq-heading" className="text-xl text-ink">
           {t('คำถามที่พบบ่อย', 'Frequently asked questions')}
         </h2>
-        <div className="mt-4 divide-y divide-rule border-y border-rule">
+        <div className="mt-4 overflow-hidden rounded-[10px] border border-rule bg-paper-2 px-5 divide-y divide-rule">
           {faqs.map(({ q, a, link }, idx) => {
-            const expanded = openFaq === idx;
+            const expanded = openFaqs.has(idx);
             const answerId = `faq-answer-${idx}`;
             return (
               <div key={answerId}>
@@ -227,14 +272,19 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
                     type="button"
                     aria-expanded={expanded}
                     aria-controls={answerId}
-                    onClick={() => setOpenFaq(expanded ? null : idx)}
-                    className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-4 py-3 text-left text-sm font-semibold text-ink hover:text-accent sm:text-base"
+                    onClick={() =>
+                      setOpenFaqs((current) => {
+                        const next = new Set(current);
+                        if (next.has(idx)) next.delete(idx);
+                        else next.add(idx);
+                        return next;
+                      })
+                    }
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-4 py-3 text-left text-sm font-semibold text-ink hover:text-accent active:transform-none sm:text-base"
                   >
                     <span>{q}</span>
                     <ChevronDown
-                      className={`size-4 shrink-0 text-muted motion-safe:transition-transform ${
-                        expanded ? 'rotate-180' : ''
-                      }`}
+                      className={`size-4 shrink-0 text-muted ${expanded ? 'rotate-180' : ''}`}
                       aria-hidden="true"
                     />
                   </button>
@@ -276,19 +326,20 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
 
   return (
     <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
       <header className="border-b border-rule pb-8">
-        <h1 className="max-w-[26ch] text-3xl leading-[1.2] text-ink sm:text-5xl">
+        <h1 className="page-heading max-w-[26ch]">
           {t('ทำไมเราถึงสร้าง', 'Why we built')}{' '}
           <span className="inline-block max-w-full">IG Follow Analyzer</span>
         </h1>
-        <p className="mt-4 max-w-[60ch] text-base leading-relaxed text-pretty text-ink-2">
+        <p className="max-w-[60ch] text-base leading-relaxed text-pretty text-ink-2">
           {t(
             'เวลายอดผู้ติดตามลดลง ตัวเลขบอกได้แค่ว่าลดไปเท่าไร การจะรู้ว่าบัญชีไหนหายไปต้องเทียบรายชื่อจากสองช่วงเวลา เราจึงสร้างเครื่องมือนี้เพื่อให้คุณเทียบรายชื่อจากไฟล์ที่ขอจาก Instagram ได้ง่ายขึ้น',
             'A drop in your follower count tells you how much it changed. To see which accounts are missing, you need to compare two follower lists. We built this tool to make that easier with the files you request from Instagram.',
           )}
         </p>
         <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
-          <span>{t('สร้างโดย', 'Created by')}</span>
+          <span>{t('ผลงานจากนักพัฒนาชาวไทย', 'Built by Thai developer')}</span>
           <a
             href="https://github.com/Wattanaroj2567"
             target="_blank"

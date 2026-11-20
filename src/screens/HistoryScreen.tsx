@@ -5,13 +5,14 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  FileText,
   Info,
   Trash2,
   User,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NormalButton } from '../components/NormalButton';
+import { BackButton } from '../components/BackButton';
+import type { PageId } from '../components/AppShell';
 import { formatSnapshotDate } from '../lib/dates';
 import { formatBytes } from '../lib/fileSize';
 import { useLanguage } from '../lib/language';
@@ -25,10 +26,9 @@ interface HistoryScreenProps {
   hasLatestSnapshot: boolean;
   onUpdatePreferences: (next: HistoryPreferences) => Promise<void>;
   onOpenRecord: (record: HistoryRecord) => void;
-  canOpenComparisonPdf: (id: string) => boolean;
-  onOpenComparisonPdf: (id: string) => void;
   onDeleteRecord: (id: string) => Promise<void>;
   onClearAll: () => Promise<void>;
+  onNavigate: (id: PageId) => void;
 }
 
 const HISTORY_PAGE_SIZE = 5;
@@ -53,10 +53,9 @@ export function HistoryScreen({
   hasLatestSnapshot,
   onUpdatePreferences,
   onOpenRecord,
-  canOpenComparisonPdf,
-  onOpenComparisonPdf,
   onDeleteRecord,
   onClearAll,
+  onNavigate,
 }: HistoryScreenProps) {
   const { t, locale } = useLanguage();
   const feedbackMessages = {
@@ -174,11 +173,12 @@ export function HistoryScreen({
 
   return (
     <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
       <header className="border-b border-rule pb-7">
-        <h1 className="text-3xl text-ink sm:text-4xl">
+        <h1 className="page-heading">
           {t('ประวัติการวิเคราะห์บนเบราว์เซอร์เครื่องนี้', 'Analysis history on this device')}
         </h1>
-        <p className="mt-2 max-w-[66ch] text-base leading-relaxed text-ink-2">
+        <p className="max-w-[66ch] text-base leading-relaxed text-ink-2">
           {t(
             'ปกติเมื่อปิดหน้าเว็บ ข้อมูลทั้งหมดจะหายไปทันที หากต้องการเก็บสถิติย้อนหลัง เปิดดูผลรอบก่อน หรือเทียบว่าใครเพิ่งเลิกติดตาม สามารถเลือกเปิดสวิตช์ด้านล่างได้ (เก็บเฉพาะในเบราว์เซอร์เครื่องนี้ ไม่ส่งเข้าเซิร์ฟเวอร์)',
             'Normally, analysis data disappears when you close the page. Use the options below to keep counts, reopen earlier results, or see who unfollowed you. History stays in this browser.',
@@ -378,7 +378,7 @@ export function HistoryScreen({
                   setAccountFilter(null);
                   setPageIndex(0);
                 }}
-                className={`inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                   effectiveAccountFilter === null
                     ? 'border-ink bg-ink text-paper'
                     : 'border-rule bg-paper-2 text-muted hover:border-rule-2 hover:text-ink'
@@ -398,7 +398,7 @@ export function HistoryScreen({
                       setAccountFilter(group.key);
                       setPageIndex(0);
                     }}
-                    className={`inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                    className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                       active
                         ? 'border-cool bg-cool text-paper'
                         : 'border-rule bg-paper-2 text-muted hover:border-rule-2 hover:text-ink'
@@ -627,7 +627,7 @@ export function HistoryScreen({
                           type="button"
                           aria-expanded={isExpanded}
                           onClick={() => setExpandedId(isExpanded ? null : rec.id)}
-                          className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
+                          className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
                         >
                           <span>
                             {isExpanded
@@ -644,22 +644,12 @@ export function HistoryScreen({
 
                         {canOpenFull ? (
                           <div className="ml-auto flex flex-wrap justify-end gap-2">
-                            {canOpenComparisonPdf(rec.id) && (
-                              <NormalButton
-                                variant="secondary"
-                                onClick={() => onOpenComparisonPdf(rec.id)}
-                                className="text-xs!"
-                              >
-                                <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-                                {t('สร้าง PDF เทียบกับไฟล์ล่าสุด', 'Compare with latest in PDF')}
-                              </NormalButton>
-                            )}
                             <NormalButton
                               variant="primary"
                               onClick={() => onOpenRecord(rec)}
-                              className="min-h-[36px] px-3.5 py-1.5 text-xs"
+                              className="min-h-9 px-3.5 py-1.5 text-xs"
                             >
-                              <span>{t('เปิดดูรายชื่อ', 'Open account lists')}</span>
+                              <span>{t('เปิดผลวิเคราะห์', 'Open results')}</span>
                               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                             </NormalButton>
                           </div>

@@ -1,9 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell, type PageId } from './components/AppShell';
-import { demoHref, pageHref } from './lib/routes';
+import { demoHref, pageHref, PRIVACY_TOPICS, type PrivacyTopic } from './lib/routes';
 import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
 import { RELATIONSHIP_ORDER, type RelationshipKey } from './data/relationshipMetrics';
-import { getComparisonExports, getHistoryComparisonTargets } from './lib/comparison';
+import {
+  getComparisonExports,
+  getHistoryComparisonTargets,
+  type ComparisonExport,
+} from './lib/comparison';
 import {
   buildHandleSnapshot,
   clearAllHistory,
@@ -49,7 +53,14 @@ const PdfReportScreen = lazy(() =>
   import('./screens/PdfReportScreen').then(({ PdfReportScreen }) => ({ default: PdfReportScreen })),
 );
 
-function readHash(): { page: PageId; demo: boolean; category?: RelationshipKey; record?: string } {
+function readHash(): {
+  page: PageId;
+  demo: boolean;
+  compareWithLatest: boolean;
+  category?: RelationshipKey;
+  record?: string;
+  privacyTopic?: PrivacyTopic;
+} {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [name, query = ''] = raw.split('?');
   const page = PAGE_IDS.find((id) => id === name) ?? 'landing';
@@ -59,7 +70,10 @@ function readHash(): { page: PageId; demo: boolean; category?: RelationshipKey; 
     ? RELATIONSHIP_ORDER.find((key) => key === params.get('category'))
     : undefined;
   const record = demo && page !== 'history' ? (params.get('record') ?? undefined) : undefined;
-  return { page, demo, category, record };
+  const privacyTopic =
+    page === 'terms' ? PRIVACY_TOPICS.find((topic) => topic === params.get('section')) : undefined;
+  const compareWithLatest = page === 'pdf' && params.get('compare') === 'latest';
+  return { page, demo, category, record, privacyTopic, compareWithLatest };
 }
 
 export function App() {
@@ -85,38 +99,19 @@ export function App() {
   );
 }
 
-const BACK_TARGETS: Partial<Record<PageId, PageId>> = {
-  'how-it-works': 'landing',
-  'export-comparison': 'landing',
-  upload: 'landing',
-  results: 'upload',
-  pdf: 'results',
-  history: 'landing',
-  terms: 'landing',
-  about: 'landing',
-};
-
 function AppContent() {
   const { t } = useLanguage();
   const [route, setRoute] = useState(readHash);
+  const contentRef = useRef<HTMLDivElement>(null);
   const activePage = route.page;
-  const inAppSteps = useRef(0);
   const navigate = useCallback((next: string) => {
     if (window.location.hash !== next) {
       window.history.pushState(null, '', next);
-      inAppSteps.current += 1;
     }
     setRoute(readHash());
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
   }, []);
   const setActivePage = useCallback((id: PageId) => navigate(pageHref(id)), [navigate]);
-  const goBack = useCallback(() => {
-    if (inAppSteps.current > 0) {
-      window.history.back();
-      return;
-    }
-    setActivePage(BACK_TARGETS[activePage] ?? 'landing');
-  }, [activePage, setActivePage]);
   const navigateFromResult = (id: PageId) => {
     if (route.demo && (id === 'results' || id === 'pdf')) {
       navigate(demoHref(id, route.category, route.record));
@@ -128,15 +123,15 @@ function AppContent() {
   };
 
   useEffect(() => {
-    const onHash = () => setRoute(readHash());
-    const onPop = () => {
-      inAppSteps.current = Math.max(0, inAppSteps.current - 1);
-      setRoute(readHash());
+    const onHash = () => {
+      const next = readHash();
+      if (!next.privacyTopic) contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
+      setRoute(next);
     };
-    window.addEventListener('popstate', onPop);
+    window.addEventListener('popstate', onHash);
     window.addEventListener('hashchange', onHash);
     return () => {
-      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('popstate', onHash);
       window.removeEventListener('hashchange', onHash);
     };
   }, []);
@@ -229,14 +224,6 @@ function AppContent() {
     setActiveRecordId(null);
   };
 
-  const handlePdfSaved = (savedTo: 'device' | 'google_drive', fileName: string) => {
-    if (route.demo || !activeRecordId) return;
-    void (async () => {
-      await updateHistoryRecordPdfStatus(activeRecordId, savedTo, fileName);
-      setHistoryRecords(await listHistoryRecords());
-    })();
-  };
-
   const needsSamples = route.demo || activePage === 'landing';
   const sampleAnalyses = useMemo(
     () => (needsSamples ? buildDemoAnalyses(demoAnalysis) : []),
@@ -250,25 +237,52 @@ function AppContent() {
   const activeAnalysis = route.demo ? sampleAnalysis : analysis;
   const historyComparisonTargets = useMemo(
     () =>
-      !route.demo && activePage === 'history' && historyPrefs.tier2HandlesOptIn
+      !route.demo && activePage === 'pdf' && historyPrefs.tier2HandlesOptIn
         ? getHistoryComparisonTargets(historyRecords)
         : null,
     [activePage, route.demo, historyPrefs.tier2HandlesOptIn, historyRecords],
   );
-  const openHistoryComparisonPdf = (previousId: string) => {
-    const latest = historyComparisonTargets?.get(previousId);
-    if (!latest) return;
-    const current = latest.analysis.ownerHandle
-      ? latest.analysis
-      : { ...latest.analysis, ownerHandle: latest.ownerHandle };
-    setAnalysis(current);
-    setActiveRecordId(latest.id);
-    setComparisonSelection({ current, previousId });
-    setActivePage('pdf');
-  };
-  const openDemoHistoryComparisonPdf = (previousId: string) => {
-    setComparisonSelection({ current: sampleAnalyses[0], previousId });
-    navigate(demoHref('pdf'));
+  const selectedRecordId = route.demo ? activeAnalysis?.sourceFileName : activeRecordId;
+  const latestSample = sampleIndex > 0 ? sampleAnalyses[0] : undefined;
+  const latestPdfTarget: ComparisonExport | undefined =
+    activePage === 'pdf' && selectedRecordId
+      ? route.demo && latestSample
+        ? { id: latestSample.sourceFileName, analysis: latestSample }
+        : historyComparisonTargets?.get(selectedRecordId)
+      : undefined;
+  const latestComparison =
+    route.compareWithLatest && latestPdfTarget
+      ? getComparisonExports(latestPdfTarget.analysis, historyRecords, sampleAnalyses)
+      : null;
+  let selectedLatestPreviousId: string | undefined;
+  if (comparisonSelection && comparisonSelection.current === latestPdfTarget?.analysis) {
+    selectedLatestPreviousId = comparisonSelection.previousId;
+  }
+  const latestPrevious =
+    latestComparison && selectedLatestPreviousId
+      ? (latestComparison.earlier.find((file) => file.id === selectedLatestPreviousId) ??
+        latestComparison.earlier[0])
+      : (latestComparison?.earlier.find((file) => file.id === selectedRecordId) ??
+        latestComparison?.earlier[0]);
+  const latestPdfPair =
+    route.compareWithLatest && latestPdfTarget && latestPrevious && selectedRecordId
+      ? {
+          latest: latestPdfTarget,
+          earlier: {
+            id: latestPrevious.id,
+            analysis: latestPrevious.analysis,
+            ownerHandle: latestPdfTarget.ownerHandle,
+          },
+        }
+      : null;
+  const reportResult = latestPdfPair?.latest.analysis ?? activeAnalysis;
+  const handlePdfSaved = (savedTo: 'device' | 'google_drive', fileName: string) => {
+    const reportRecordId = latestPdfPair?.latest.id ?? activeRecordId;
+    if (route.demo || !reportRecordId) return;
+    void (async () => {
+      await updateHistoryRecordPdfStatus(reportRecordId, savedTo, fileName);
+      setHistoryRecords(await listHistoryRecords());
+    })();
   };
   const comparison = useMemo(() => {
     if (!activeAnalysis || (!route.demo && !historyPrefs.tier2HandlesOptIn)) return null;
@@ -289,17 +303,31 @@ function AppContent() {
         }
       : null;
   const selectComparison = (previousId: string | null) => {
+    if (!previousId && route.compareWithLatest) {
+      if (latestPdfTarget && latestComparison?.earlier[0]) {
+        const previous = latestComparison.earlier[0];
+        setComparisonSelection({
+          current: latestPdfTarget.analysis,
+          previousId: previous.id,
+        });
+      } else {
+        setComparisonSelection(null);
+      }
+      return;
+    }
     setComparisonSelection(
       previousId && activeAnalysis ? { current: activeAnalysis, previousId } : null,
     );
   };
+  const reportBaseline = latestPdfPair?.earlier.analysis ?? previous?.analysis;
+  const reportOwner = latestPdfPair ? latestPdfPair.earlier.ownerHandle : previous?.ownerHandle;
   const diff = useMemo(() => {
-    if (!activeAnalysis || !previous) return null;
-    const snapshot = buildHandleSnapshot(previous.analysis, previous.ownerHandle);
-    return activeAnalysis.isDemoData
-      ? compareFollowerSnapshots(snapshot, activeAnalysis)
-      : computeHistoryDiff(snapshot, activeAnalysis);
-  }, [activeAnalysis, previous]);
+    if (!reportResult || !reportBaseline) return null;
+    const snapshot = buildHandleSnapshot(reportBaseline, reportOwner);
+    return reportResult.isDemoData
+      ? compareFollowerSnapshots(snapshot, reportResult)
+      : computeHistoryDiff(snapshot, reportResult);
+  }, [reportResult, reportBaseline, reportOwner]);
   const hasComparisonBaseline = historyRecords.some(
     (record) => record.id === activeRecordId && record.savedAnalysis,
   );
@@ -323,8 +351,8 @@ function AppContent() {
   return (
     <AppShell
       activePage={activePage}
+      contentRef={contentRef}
       onNavigate={setActivePage}
-      onBack={goBack}
       hasAnalysis={!route.demo && Boolean(analysis)}
     >
       {activePage === 'landing' && (
@@ -362,20 +390,24 @@ function AppContent() {
           />
         ))}
       {activePage === 'pdf' &&
-        (activeAnalysis ? (
+        (reportResult ? (
           <Suspense
             fallback={
-              <p className="product-wrap py-9 text-muted" role="status">
-                {t('กำลังโหลดหน้ารายงาน PDF…', 'Loading the PDF report…')}
-              </p>
+              <div
+                className="grid min-h-[calc(100dvh-var(--nav-bar-height)-2rem)] place-items-center px-5"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-sm font-medium text-muted">
+                  {t('กำลังโหลดหน้ารายงาน PDF…', 'Loading the PDF report…')}
+                </p>
+              </div>
             }
           >
             <PdfReportScreen
               key={resultKey}
-              result={activeAnalysis}
+              result={reportResult}
               diff={diff}
-              comparison={comparisonFiles}
-              onSelectComparison={selectComparison}
               onPdfSaved={handlePdfSaved}
               onNavigate={navigateFromResult}
             />
@@ -391,7 +423,6 @@ function AppContent() {
           <DemoHistoryScreen
             samples={sampleAnalyses}
             onOpenResults={(record) => navigate(demoHref('results', undefined, record))}
-            onOpenComparisonPdf={openDemoHistoryComparisonPdf}
           />
         ) : (
           <HistoryScreen
@@ -402,13 +433,14 @@ function AppContent() {
             hasLatestSnapshot={hasSavedLists}
             onUpdatePreferences={handleUpdatePreferences}
             onOpenRecord={handleOpenHistoryRecord}
-            canOpenComparisonPdf={(id) => historyComparisonTargets?.has(id) ?? false}
-            onOpenComparisonPdf={openHistoryComparisonPdf}
             onDeleteRecord={handleDeleteRecord}
             onClearAll={handleClearAllHistory}
+            onNavigate={setActivePage}
           />
         ))}
-      {activePage === 'terms' && <TermsAndFaqScreen onNavigate={setActivePage} />}
+      {activePage === 'terms' && (
+        <TermsAndFaqScreen onNavigate={setActivePage} privacyTopic={route.privacyTopic} />
+      )}
       {activePage === 'about' && <AboutScreen onNavigate={setActivePage} />}
     </AppShell>
   );

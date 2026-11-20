@@ -1,4 +1,5 @@
 import { ArrowRight, ExternalLink } from 'lucide-react';
+import { BackButton } from '../components/BackButton';
 import { NormalButton } from '../components/NormalButton';
 import type { PageId } from '../components/AppShell';
 import { useLanguage } from '../lib/language';
@@ -8,11 +9,12 @@ export function ExportComparisonScreen({ onNavigate }: { onNavigate: (id: PageId
 
   return (
     <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
       <header className="max-w-[68ch]">
-        <h1 id="export-comparison" className="text-3xl text-ink sm:text-5xl">
+        <h1 id="export-comparison" className="page-heading">
           {t('ล็อกอิน Instagram กับใช้ไฟล์ ZIP ต่างกันอย่างไร?', 'Instagram Login or ZIP export?')}
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-ink-2">
+        <p className="text-base leading-relaxed text-ink-2">
           {t(
             'API ทางการของ Instagram อ่านจำนวนผู้ติดตามได้ แต่ไม่มีรายชื่อที่ใช้ตรวจว่าใครไม่ติดตามกลับ เว็บนี้จึงใช้ไฟล์ ZIP จากศูนย์บัญชี',
             'Instagram’s official API can read follower counts, but it doesn’t provide the lists needed to see who doesn’t follow back. This tool uses your Accounts Center ZIP.',
@@ -23,7 +25,7 @@ export function ExportComparisonScreen({ onNavigate }: { onNavigate: (id: PageId
       <div className="panels mt-7">
         <table
           aria-labelledby="export-comparison"
-          className="w-full table-fixed border-collapse text-left text-sm leading-relaxed [overflow-wrap:anywhere] [&_td]:px-2 [&_td]:py-3 [&_th]:px-2 [&_th]:py-3 sm:[&_td]:px-5 sm:[&_th]:px-5"
+          className="w-full table-fixed border-collapse text-left text-sm leading-relaxed wrap-anywhere [&_td]:px-2 [&_td]:py-3 [&_th]:px-2 [&_th]:py-3 sm:[&_td]:px-5 sm:[&_th]:px-5"
         >
           <thead className="border-b border-rule bg-paper-3">
             <tr>

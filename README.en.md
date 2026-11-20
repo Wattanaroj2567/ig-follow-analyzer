@@ -22,14 +22,14 @@
 
 ## Features
 
-- **100% Browser-Local Processing:** Extracts and analyzes Instagram `.zip` archives (JSON and HTML) inside a Web Worker without uploading follower data to any server.
+- **100% Browser-Local ZIP Analysis:** Extracts and analyzes Instagram `.zip` archives (JSON and HTML) inside a Web Worker without uploading follower data to any server.
 - **Step-by-Step Export Guide:** Visual walkthrough for requesting your data on mobile and desktop, with a separate comparison explaining why analysis uses a ZIP.
 - **Dashboard & Account Table:** Summarizes Followers, Following, Mutuals, Not Following Back, and Not Followed Back with interactive charts, search, filters, sorting, and pagination.
 - **Report Export:** Optionally download an A4 PDF (Thai or English) to read or print later. Create a comparison report when account lists are available for both exports.
 - **Opt-In Local History:** Automatically compare the latest ZIP with the preceding export, or choose an older export for the same account. See new and missing followers plus account timelines. History stays in the browser (`IndexedDB`), is off by default, and can be cleared after confirmation.
 - **Sample Mode:** Preview a single ZIP or compare two fictitious exports, then browse sample history and reopen past results before uploading your own file.
 - **Bilingual & Themed UI:** Supports Thai and English, plus System (default), Dark, and Light themes.
-- **Feedback and Reviews:** Report issues, suggest features, or leave a rating from the About page. When enabled, the homepage displays rating totals and consented, screened comments.
+- **Feedback and Reviews:** Report issues, suggest features, or leave a rating from the About page. When you submit a review, Google Apps Script receives the review data for storage in Google Forms and management in Google Sheets.
 
 > Out of scope by design: website sign-up/login, Instagram OAuth, user accounts, and automated follow/unfollow actions.
 
@@ -84,6 +84,7 @@ Run code quality checks and production builds:
 
 ```bash
 npm run lint
+npm run lint:tailwind
 npm run format:check
 npm run typecheck
 npm run deadcode
@@ -91,7 +92,9 @@ npm run test
 npm run build
 ```
 
-Automated quality checks run via GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)) on every push and PR to `main` (`deadcode`, `lint`, `format:check`, `typecheck`, `test`, and `build`). For production hosting on **Cloudflare Pages**, set the build command to `npm run build` and the output directory to `dist`.
+`npm run lint:tailwind` runs the Tailwind CSS IntelliSense language server from the terminal, including PowerShell on Windows. It reports file and line numbers for Tailwind warnings and exits with a failure when it finds any.
+
+GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)) runs these checks on every push and PR to `main`. For production hosting on **Cloudflare Pages**, set the build command to `npm run build` and the output directory to `dist`.
 
 See the [owner's guide to enabling and managing reviews](docs/features/i18n-themes-and-privacy.en.md#collecting-reviews-through-google-forms).
 

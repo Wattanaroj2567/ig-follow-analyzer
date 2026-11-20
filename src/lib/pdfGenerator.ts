@@ -7,6 +7,7 @@ import type {
   PdfReportOptions,
 } from '../types/analyzer';
 import { formatDate, formatSnapshotDate } from './dates';
+import { buildSafeProfileHref } from './igParser';
 import { getLanguageFormat, type Language, type Translator } from './language';
 
 export const PDF_TABLE_ROWS_PER_PAGE = 20;
@@ -97,9 +98,21 @@ export function getPdfComparisonSummary(
     .filter(Boolean)
     .join(' · ');
   const net = diff.followersDelta.toLocaleString(locale, { signDisplay: 'exceptZero' });
+  const formatHandles = (handles: string[]) => {
+    const preview = handles
+      .slice(0, 30)
+      .map((handle) => `@${handle}`)
+      .join(', ');
+    const extraCount = handles.length - 30;
+    return extraCount > 0
+      ? `${preview} · +${extraCount.toLocaleString(locale)} ${copy.accounts}`
+      : preview;
+  };
   return {
     reference: `${copy.comparedWith} ${file}`,
     counts: `${copy.newFollowers} ${diff.newFollowers.length.toLocaleString(locale)} · ${copy.missingFollowers} ${diff.recentUnfollowers.length.toLocaleString(locale)} · ${copy.netFollowers} ${net}`,
+    newFollowersPreview: formatHandles(diff.newFollowers),
+    missingFollowersPreview: formatHandles(diff.recentUnfollowers),
   };
 }
 
@@ -262,6 +275,11 @@ export function estimatePdfPageCount(
 
   if (options.includeSummary || (options.includeDiffSection && diff)) {
     pages += 1;
+  }
+  if (options.includeDiffSection && diff) {
+    listedAccounts += diff.newFollowers.length + diff.recentUnfollowers.length;
+    pages += Math.max(1, Math.ceil(diff.newFollowers.length / rowsPerPage));
+    pages += Math.max(1, Math.ceil(diff.recentUnfollowers.length / rowsPerPage));
   }
   if (options.includeNotFollowingBack) {
     listedAccounts += result.counts.notFollowingBack;
@@ -538,16 +556,6 @@ export async function generatePdfBlob(
   if (options.includeDiffSection && diff) {
     hasFrontContent = true;
     const summary = getPdfComparisonSummary(diff, copy, locale);
-    const extraMissingCount = diff.recentUnfollowers.length - 30;
-    const unfollowerPreview =
-      diff.recentUnfollowers
-        .slice(0, 30)
-        .map((handle) => `@${handle}`)
-        .join(', ') +
-      (extraMissingCount > 0
-        ? t(` และอีก ${extraMissingCount} บัญชี`, ` and ${extraMissingCount} more`)
-        : '');
-
     content.push({
       table: {
         widths: ['*'],
@@ -567,9 +575,7 @@ export async function generatePdfBlob(
                   color: palette.inkSecondary,
                 },
                 {
-                  text: reportText(
-                    `${summary.counts}${unfollowerPreview ? `\n${unfollowerPreview}` : ''}`,
-                  ),
+                  text: reportText(summary.counts),
                   fontSize: 10.5,
                   color: palette.inkSecondary,
                   margin: [0, 2, 0, 0],
@@ -692,6 +698,31 @@ export async function generatePdfBlob(
       });
     }
   };
+
+  if (options.includeDiffSection && diff) {
+    const newFollowerEntries = result.followers.filter((entry) =>
+      diff.newFollowers.includes(entry.handle),
+    );
+    const missingFollowerEntries = diff.recentUnfollowers.map((handle) => ({
+      handle,
+      href: buildSafeProfileHref(handle),
+      timestamp: diff.unfollowerTimestamps.get(handle),
+    }));
+    pushAccountTable(
+      copy.newFollowers,
+      copy.dateTheyFollowed,
+      palette.ok,
+      palette.surface,
+      newFollowerEntries,
+    );
+    pushAccountTable(
+      copy.missingFollowers,
+      copy.dateTheyFollowed,
+      palette.accent,
+      palette.accentSoft,
+      missingFollowerEntries,
+    );
+  }
 
   if (options.includeNotFollowingBack) {
     pushAccountTable(

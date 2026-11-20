@@ -13,7 +13,7 @@ export default defineConfig({
   },
   server: {
     watch: {
-      ignored: ['**/.taste-skill/**', '**/.hallmark/**', '**/shots/**'],
+      ignored: ['**/.taste-skill/**', '**/.hallmark/**', '**/shots/**', '**/logs/**'],
     },
   },
   test: {

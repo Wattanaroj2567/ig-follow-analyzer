@@ -57,14 +57,14 @@ function MobileDeviceFrame({ inAppSheet, children }: MobileMockupProps) {
             <span className="text-[10px] font-medium">5G</span>
 
             <span className="inline-flex items-center gap-[1.5px]">
-              <span className="grid h-[11px] w-[19px] place-items-center rounded-[3.5px] bg-current">
+              <span className="grid h-2.75 w-4.75 place-items-center rounded-[3.5px] bg-current">
                 <span
                   className={`measured text-[8px] leading-none font-semibold ${inAppSheet ? 'text-neutral-950' : 'text-ig-light-bg'}`}
                 >
                   76
                 </span>
               </span>
-              <span className="h-[4px] w-[1.5px] rounded-r-full bg-current/50" />
+              <span className="h-1 w-[1.5px] rounded-r-full bg-current/50" />
             </span>
           </div>
         </div>
@@ -105,6 +105,16 @@ function DesktopDeviceFrame({
       </div>
       <div className="bg-ig-dark-bg p-4 text-left text-xs text-ig-dark-ink">{children}</div>
     </figure>
+  );
+}
+
+function DesktopAccountsPanel({ children }: { children: ReactNode }) {
+  return (
+    <DesktopDeviceFrame>
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-light-rule bg-ig-light-bg p-3.5 text-ig-light-ink">
+        {children}
+      </div>
+    </DesktopDeviceFrame>
   );
 }
 
@@ -493,11 +503,17 @@ export function MobileDestinationMockup() {
   );
 }
 
-export function MobileConfirmExportMockup() {
+function ConfirmExportPanel({
+  configured,
+  desktop = false,
+}: {
+  configured: boolean;
+  desktop?: boolean;
+}) {
   const { t } = useLanguage();
 
   return (
-    <MobileDeviceFrame inAppSheet>
+    <>
       <p className="text-base font-medium">{t('ยืนยันการส่งออกของคุณ', 'Confirm your export')}</p>
       <p className="mt-0.5 text-[10px] leading-snug text-ig-light-muted">
         {t(
@@ -523,7 +539,9 @@ export function MobileConfirmExportMockup() {
           <Bell className="h-3.5 w-3.5 text-ig-light-muted" />
           <div>
             <p className="text-[10px] font-medium">
-              {t('แจ้ง (แตะเปลี่ยนอีเมลได้)', 'Notify (tap to change email)')}
+              {desktop
+                ? t('แจ้ง (คลิกเปลี่ยนอีเมลได้)', 'Notify (click to change email)')
+                : t('แจ้ง (แตะเปลี่ยนอีเมลได้)', 'Notify (tap to change email)')}
             </p>
             <p className="text-[10px] text-ig-light-muted">example@mail.example</p>
           </div>
@@ -532,7 +550,9 @@ export function MobileConfirmExportMockup() {
       </div>
 
       <div className="mt-2 space-y-1 rounded-lg border border-ig-light-rule bg-ig-light-bg p-1.5">
-        <div className="guide-highlight-row flex items-center justify-between px-2 py-2">
+        <div
+          className={`flex items-center justify-between px-2 py-2${configured ? '' : ' guide-highlight-row'}`}
+        >
           <div className="flex items-center gap-2">
             <ListFilter className="h-3.5 w-3.5 text-ig-blue" />
             <div>
@@ -540,7 +560,9 @@ export function MobileConfirmExportMockup() {
                 {t('1. ปรับแต่งข้อมูล', '1. Customize information')}
               </p>
               <p className="text-[10px] text-ig-light-muted">
-                {t('เดิมเป็น: ข้อมูลที่มีทั้งหมด', 'Default: All available information')}
+                {configured
+                  ? t('ผู้ติดตามและคนที่คุณติดตาม', 'Followers and following')
+                  : t('เดิมเป็น: ข้อมูลที่มีทั้งหมด', 'Default: All available information')}
               </p>
             </div>
           </div>
@@ -553,7 +575,9 @@ export function MobileConfirmExportMockup() {
             <div>
               <p className="text-[11px] font-medium">{t('2. ช่วงวันที่', '2. Date range')}</p>
               <p className="text-[10px] text-ig-light-muted">
-                {t('เดิมเป็น: ปีที่แล้ว', 'Default: Last year')}
+                {configured
+                  ? t(desktop ? 'ตลอดเวลา' : 'ตั้งแต่ต้น', 'All time')
+                  : t('เดิมเป็น: ปีที่แล้ว', 'Default: Last year')}
               </p>
             </div>
           </div>
@@ -566,7 +590,7 @@ export function MobileConfirmExportMockup() {
             <div>
               <p className="text-[11px] font-medium">{t('3. รูปแบบ', '3. Format')}</p>
               <p className="text-[10px] text-ig-light-muted">
-                {t('เดิมเป็น: HTML', 'Default: HTML')}
+                {configured ? 'JSON' : t('เดิมเป็น: HTML', 'Default: HTML')}
               </p>
             </div>
           </div>
@@ -586,6 +610,19 @@ export function MobileConfirmExportMockup() {
           <ChevronRight className="h-3.5 w-3.5" />
         </div>
       </div>
+      {configured && (
+        <div className="guide-highlight-btn mt-2.5 rounded-full bg-ig-blue py-2 text-center text-xs font-medium text-ig-blue-ink">
+          {t('เริ่มส่งออก', 'Start export')}
+        </div>
+      )}
+    </>
+  );
+}
+
+export function MobileConfirmExportMockup({ configured = false }: { configured?: boolean }) {
+  return (
+    <MobileDeviceFrame inAppSheet>
+      <ConfirmExportPanel configured={configured} />
     </MobileDeviceFrame>
   );
 }
@@ -716,11 +753,11 @@ export function MobileDateRangeMockup() {
   );
 }
 
-export function MobileFormatAndStartMockup() {
+function FormatPanel() {
   const { t } = useLanguage();
 
   return (
-    <MobileDeviceFrame inAppSheet>
+    <>
       <p className="text-[10px] text-ig-light-muted">somchai.demo · Instagram</p>
       <p className="mt-0.5 text-base font-medium">{t('รูปแบบ', 'Format')}</p>
 
@@ -751,80 +788,128 @@ export function MobileFormatAndStartMockup() {
         </div>
       </div>
 
-      <div className="mt-2 rounded-lg border border-ig-light-rule bg-ig-light-surface px-2.5 py-2 text-[10px] text-ig-light-muted">
-        {t('กด', 'Tap')} <strong className="text-ig-light-ink">{t('บันทึก', 'Save')}</strong>{' '}
-        {t(
-          '→ กลับมาหน้ายืนยัน (คุณภาพของสื่อคงเดิมได้) แล้วเลื่อนลงกดปุ่มด้านล่าง',
-          '→ Return to Confirm your export, keep Media quality as is, then scroll down and tap the button below.',
-        )}
-      </div>
-
       <div className="guide-highlight-btn mt-2.5 rounded-full bg-ig-blue py-2 text-center text-xs font-medium text-ig-blue-ink">
-        {t('เริ่มส่งออก', 'Start export')}
+        {t('บันทึก', 'Save')}
       </div>
+    </>
+  );
+}
+
+function ConfirmPasswordPanel() {
+  const { t } = useLanguage();
+
+  return (
+    <>
+      <p className="text-sm font-semibold">
+        {t(
+          'เพื่อเป็นการรักษาความปลอดภัย โปรดป้อนรหัสผ่านของคุณอีกครั้ง',
+          'For your security, please enter your password again',
+        )}
+      </p>
+      <div className="mt-3 flex items-center gap-2 rounded-lg bg-ig-light-surface p-2.5">
+        <User className="size-4 shrink-0 text-ig-light-muted" />
+        <span className="mr-auto text-[11px] font-medium">somchai.demo</span>
+        <ChevronRight className="size-4 shrink-0 text-ig-light-muted" />
+      </div>
+      <div className="mt-2 rounded-lg border border-ig-light-rule px-3 py-2 text-ig-light-muted">
+        {t('รหัสผ่าน', 'Password')}
+      </div>
+      <div className="guide-highlight-btn mt-2.5 rounded-full bg-ig-blue py-2 text-center font-medium text-ig-blue-ink">
+        {t('ดำเนินการต่อ', 'Continue')}
+      </div>
+      <p className="mt-2.5 text-center text-[11px] text-ig-light-muted">
+        {t('ลืมรหัสผ่านใช่ไหม', 'Forgot password?')}
+      </p>
+    </>
+  );
+}
+
+export function MobileFormatMockup() {
+  return (
+    <MobileDeviceFrame inAppSheet>
+      <FormatPanel />
     </MobileDeviceFrame>
   );
 }
 
-export function MobileOpenExternalBrowserMockup() {
+export function MobileConfirmPasswordMockup() {
+  return (
+    <MobileDeviceFrame inAppSheet>
+      <ConfirmPasswordPanel />
+    </MobileDeviceFrame>
+  );
+}
+
+export function DesktopConfirmPasswordMockup() {
+  return (
+    <DesktopAccountsPanel>
+      <ConfirmPasswordPanel />
+    </DesktopAccountsPanel>
+  );
+}
+
+function DownloadFilesPanel() {
   const { t } = useLanguage();
 
   return (
-    <MobileDeviceFrame inAppSheet>
-      <div className="opacity-55">
-        <p className="text-sm font-medium">{t('ดาวน์โหลดไฟล์ของคุณ', 'Download your files')}</p>
-        <div className="mt-2 flex items-center justify-between rounded-lg border border-ig-light-rule bg-ig-light-bg p-2.5">
-          <div>
-            <p className="text-[11px] font-medium">somchai.demo</p>
-            <p className="text-[10px] text-ig-light-muted">
-              {t('ไฟล์ที่ 1 จาก 1 · ไม่เกิน 1 MB', 'File 1 of 1 · Up to 1 MB')}
-            </p>
-          </div>
-          <span className="rounded-full bg-ig-light-surface px-3 py-1 text-[10px] font-medium">
-            {t('ดาวน์โหลด', 'Download')}
-          </span>
+    <>
+      <p className="text-sm font-medium">{t('ดาวน์โหลดไฟล์ของคุณ', 'Download your files')}</p>
+      <div className="mt-2 flex items-center gap-2 rounded-lg border border-ig-light-rule bg-ig-light-bg p-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ig-light-surface text-ig-light-muted">
+          <User className="size-4" />
+        </span>
+        <div className="mr-auto min-w-0">
+          <p className="text-[11px] font-medium break-all">somchai.demo</p>
+          <p className="text-[10px] text-ig-light-muted">{t('ไฟล์ที่ 1 จาก 1', 'File 1 of 1')}</p>
+          <p className="text-[10px] text-ig-light-muted">{t('ไม่เกิน 1 MB', 'Up to 1 MB')}</p>
         </div>
+        <span className="guide-highlight-btn shrink-0 rounded-full bg-ig-blue px-3 py-1 text-[10px] font-medium text-ig-blue-ink">
+          {t('ดาวน์โหลด', 'Download')}
+        </span>
       </div>
+    </>
+  );
+}
 
-      {/* System Modal Overlay (S__54272032) */}
-      <div className="mt-3 rounded-2xl border border-ig-light-rule bg-ig-light-bg p-3 text-center shadow-sm">
-        <p className="text-xs font-semibold text-ig-light-ink">Instagram</p>
-        <p className="mt-1 text-[10px] leading-snug text-ig-light-muted">
-          {t(
-            'คุณต้องการเปิดแอปภายนอก Instagram หรือไม่?',
-            'Do you want to open an app outside Instagram?',
-          )}
-        </p>
-        <div className="mt-2.5 space-y-1.5 border-t border-ig-light-rule pt-2">
-          <div className="guide-highlight-row py-1.5 text-xs font-semibold text-ig-blue">
-            {t('เปิด (Open)', 'Open')}
-          </div>
-          <div className="py-1 text-[11px] text-ig-light-muted">{t('ยกเลิก', 'Cancel')}</div>
-        </div>
-      </div>
+export function MobileDownloadFilesMockup() {
+  return (
+    <MobileDeviceFrame inAppSheet>
+      <DownloadFilesPanel />
     </MobileDeviceFrame>
+  );
+}
+
+export function DesktopDownloadFilesMockup() {
+  return (
+    <DesktopAccountsPanel>
+      <DownloadFilesPanel />
+    </DesktopAccountsPanel>
   );
 }
 
 const demoExportFileName = 'instagram-somchai.demo-2026.zip';
 
-export function MobileBrowserDownloadBarMockup() {
+export function MobileBrowserDownloadBarMockup({ state }: { state: 'save' | 'complete' }) {
   const { t } = useLanguage();
+  const complete = state === 'complete';
 
   return (
     <MobileDeviceFrame>
       <div className="h-40" />
       <div className="border-y border-ig-light-rule py-3">
-        <p className="mb-1.5 text-[11px] font-semibold">
-          {t('ดาวน์โหลดเสร็จสมบูรณ์', 'Download complete')}
-        </p>
+        {complete && (
+          <p className="mb-1.5 text-[11px] font-semibold">
+            {t('ดาวน์โหลดเสร็จสมบูรณ์', 'Download complete')}
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <Download className="size-4 shrink-0 text-ig-light-muted" />
           <p className="measured min-w-0 text-[10px] break-all text-ig-light-muted">
             {demoExportFileName}
+            {!complete && ' (169 KB)'}
           </p>
           <span className="guide-highlight-row ml-auto shrink-0 px-2 py-1 text-[11px] font-semibold">
-            {t('เปิดใน…', 'Open in…')}
+            {complete ? t('เปิดใน…', 'Open in…') : t('บันทึก…', 'Save…')}
           </span>
         </div>
       </div>
@@ -1055,7 +1140,7 @@ export function DesktopCreateExportMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
         <p className="text-sm font-medium text-ig-dark-ink">
           {t('ส่งออกข้อมูลของคุณ', 'Export your information')}
         </p>
@@ -1086,7 +1171,7 @@ export function DesktopSelectProfileMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
         <p className="text-sm font-medium text-ig-dark-ink">{t('เลือกโปรไฟล์', 'Select profiles')}</p>
         <p className="mt-0.5 text-[10px] text-ig-dark-muted">
           {t('เลือกโปรไฟล์เพื่อส่งออกข้อมูลของคุณ', 'Choose a profile to export your information')}
@@ -1124,7 +1209,7 @@ export function DesktopDestinationMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-4">
         <p className="text-[10px] text-ig-dark-muted">somchai.demo · Instagram</p>
         <p className="mt-0.5 text-sm font-medium text-ig-dark-ink">
           {t('เลือกปลายทางเพื่อส่งออก', 'Choose where to export')}
@@ -1151,70 +1236,11 @@ export function DesktopDestinationMockup() {
   );
 }
 
-export function DesktopConfirmExportMockup() {
-  const { t } = useLanguage();
-
+export function DesktopConfirmExportMockup({ configured = false }: { configured?: boolean }) {
   return (
-    <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
-        <p className="text-sm font-medium text-ig-dark-ink">
-          {t('ยืนยันการส่งออกของคุณ', 'Confirm your export')}
-        </p>
-        <p className="mt-0.5 text-[10px] text-ig-dark-muted">
-          {t(
-            'คุณจะมีเวลา 4 วันเท่านั้นในการดาวน์โหลดไฟล์เพื่อเป็นการรักษาความปลอดภัย',
-            'For security, you have four days to download your files.',
-          )}
-        </p>
-
-        <div className="mt-2.5 flex items-center justify-between rounded-lg border border-ig-dark-rule bg-ig-dark-surface px-3 py-2 text-[11px]">
-          <div>
-            <p className="font-medium text-ig-dark-ink">
-              {t('แจ้ง (คลิกเปลี่ยนอีเมลได้)', 'Notify (click to change email)')}
-            </p>
-            <p className="text-[10px] text-ig-dark-muted">example@mail.example</p>
-          </div>
-          <ChevronRight className="h-3.5 w-3.5 text-ig-dark-muted" />
-        </div>
-
-        <div className="mt-2 space-y-1 rounded-lg border border-ig-dark-rule bg-ig-dark-surface p-1.5 text-[11px]">
-          <div className="guide-highlight-row--dark flex items-center justify-between px-2.5 py-2">
-            <div>
-              <p className="font-semibold text-accent">
-                {t('1. ปรับแต่งข้อมูล', '1. Customize information')}
-              </p>
-              <p className="text-[10px] text-ig-dark-muted">
-                {t('เดิมเป็น: ข้อมูลที่มีทั้งหมด', 'Default: All available information')}
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-accent" />
-          </div>
-          <div className="flex items-center justify-between px-2.5 py-1.5">
-            <div>
-              <p className="font-medium text-ig-dark-ink">{t('2. ช่วงวันที่', '2. Date range')}</p>
-              <p className="text-[10px] text-ig-dark-muted">
-                {t('เดิมเป็น: ปีที่แล้ว', 'Default: Last year')}
-              </p>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-ig-dark-muted" />
-          </div>
-          <div className="flex items-center justify-between px-2.5 py-1.5">
-            <div>
-              <p className="font-medium text-ig-dark-ink">{t('3. รูปแบบ', '3. Format')}</p>
-              <p className="text-[10px] text-ig-dark-muted">{t('เดิมเป็น: HTML', 'Default: HTML')}</p>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-ig-dark-muted" />
-          </div>
-          <div className="flex items-center justify-between px-2.5 py-1.5 text-ig-dark-muted">
-            <div>
-              <p className="font-medium text-ig-dark-ink">{t('คุณภาพของสื่อ', 'Media quality')}</p>
-              <p className="text-[10px]">{t('คุณภาพปานกลาง (ไม่ต้องแก้)', 'Medium (leave as is)')}</p>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </div>
-        </div>
-      </div>
-    </DesktopDeviceFrame>
+    <DesktopAccountsPanel>
+      <ConfirmExportPanel configured={configured} desktop />
+    </DesktopAccountsPanel>
   );
 }
 
@@ -1223,7 +1249,7 @@ export function DesktopCustomizeDataMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[390px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
+      <div className="mx-auto max-w-97.5 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
         <p className="text-sm font-medium text-ig-dark-ink">
           {t('เลือกข้อมูลที่ต้องการส่งออก', 'Select information to export')}
         </p>
@@ -1288,7 +1314,7 @@ export function DesktopDateRangeMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
         <p className="text-[10px] text-ig-dark-muted">somchai.demo · Instagram</p>
         <p className="mt-0.5 text-sm font-medium text-ig-dark-ink">{t('ช่วงวันที่', 'Date range')}</p>
 
@@ -1327,53 +1353,11 @@ export function DesktopDateRangeMockup() {
   );
 }
 
-export function DesktopFormatAndStartMockup() {
-  const { t } = useLanguage();
-
+export function DesktopFormatMockup() {
   return (
-    <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
-        <p className="text-[10px] text-ig-dark-muted">somchai.demo · Instagram</p>
-        <p className="mt-0.5 text-sm font-medium text-ig-dark-ink">{t('รูปแบบ', 'Format')}</p>
-
-        <div className="mt-2 space-y-1.5 rounded-lg border border-ig-dark-rule bg-ig-dark-surface p-2 text-[11px]">
-          <div className="flex items-center justify-between rounded-md px-2 py-1.5 text-ig-dark-muted">
-            <div>
-              <p className="font-medium">HTML</p>
-              <p className="text-[9px]">
-                {t('ดูข้อมูลบนคอมพิวเตอร์แบบออฟไลน์', 'View information offline on your computer')}
-              </p>
-            </div>
-            <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-ig-dark-rule" />
-          </div>
-
-          <div className="guide-highlight-row--dark flex items-center justify-between px-2 py-2">
-            <div>
-              <p className="font-semibold text-accent">{t('JSON (แนะนำ)', 'JSON (recommended)')}</p>
-              <p className="text-[9px] text-ig-dark-muted">
-                {t(
-                  'นำเข้าข้อมูลไปยังเว็บไซต์หรือแอพอื่นได้',
-                  'Import your information into another website or app',
-                )}
-              </p>
-            </div>
-            <span className="h-4 w-4 shrink-0 rounded-full border-4 border-ig-blue bg-ig-dark-bg" />
-          </div>
-        </div>
-
-        <div className="mt-2 rounded-lg border border-ig-dark-rule bg-ig-dark-bg px-2.5 py-2 text-[10px] text-ig-dark-muted">
-          {t('คลิก', 'Click')} <strong className="text-ig-dark-ink">{t('บันทึก', 'Save')}</strong>{' '}
-          {t(
-            '→ กลับมาหน้ายืนยัน (คุณภาพของสื่อคงเดิมได้) แล้วคลิกปุ่มด้านล่าง',
-            '→ Return to Confirm your export, keep Media quality as is, then click the button below.',
-          )}
-        </div>
-
-        <div className="guide-highlight-btn mt-2.5 rounded-full bg-ig-blue py-2 text-center text-xs font-medium text-ig-blue-ink">
-          {t('เริ่มส่งออก', 'Start export')}
-        </div>
-      </div>
-    </DesktopDeviceFrame>
+    <DesktopAccountsPanel>
+      <FormatPanel />
+    </DesktopAccountsPanel>
   );
 }
 
@@ -1382,7 +1366,7 @@ export function DesktopDownloadReadyMockup() {
 
   return (
     <DesktopDeviceFrame address="accountscenter.instagram.com">
-      <div className="mx-auto max-w-[380px] rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
         <div className="grid grid-cols-2 border-b border-ig-dark-rule text-center text-[11px] font-medium">
           <div className="border-b-2 border-ig-dark-ink pb-2 text-ig-dark-ink">
             {t('กิจกรรมปัจจุบัน', 'Current activity')}
@@ -1411,13 +1395,21 @@ export function DesktopDownloadReadyMockup() {
             </div>
           </div>
         </div>
+      </div>
+    </DesktopDeviceFrame>
+  );
+}
 
-        <div className="mt-2.5 flex items-center justify-between rounded-lg border border-ig-dark-rule bg-ig-dark-bg px-3 py-2 text-[10px] text-ig-dark-ink">
-          <span className="measured inline-flex items-center gap-1.5">
-            <HardDrive className="h-3.5 w-3.5 text-cool" />
-            Downloads/instagram-somchai.demo.zip
-          </span>
-          <span className="text-ig-dark-muted">{t('ไม่ต้องแตกไฟล์', 'Keep the file zipped')}</span>
+export function DesktopSavedZipMockup() {
+  const { t } = useLanguage();
+
+  return (
+    <DesktopDeviceFrame address={t('ดาวน์โหลด', 'Downloads')}>
+      <div className="mx-auto max-w-95 rounded-lg border border-ig-dark-rule bg-ig-dark-elevated p-3.5">
+        <p className="font-medium">{t('ไฟล์ที่ดาวน์โหลดแล้ว', 'Downloaded file')}</p>
+        <div className="guide-highlight-row--dark mt-2 flex items-center gap-2 p-2.5">
+          <HardDrive className="size-4 shrink-0 text-accent" />
+          <span className="measured min-w-0 break-all">{demoExportFileName}</span>
         </div>
       </div>
     </DesktopDeviceFrame>

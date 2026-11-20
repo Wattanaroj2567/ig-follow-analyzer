@@ -1,27 +1,32 @@
 import { AlertTriangle, ExternalLink, Laptop, Smartphone, Upload } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import {
   DesktopConfirmExportMockup,
+  DesktopConfirmPasswordMockup,
   DesktopCreateExportMockup,
   DesktopCustomizeDataMockup,
   DesktopDateRangeMockup,
   DesktopDestinationMockup,
+  DesktopDownloadFilesMockup,
   DesktopDownloadReadyMockup,
-  DesktopFormatAndStartMockup,
+  DesktopFormatMockup,
   DesktopMoreSettingsMockup,
   DesktopPermissionsMockup,
+  DesktopSavedZipMockup,
   DesktopSelectProfileMockup,
   DesktopSettingsAccountsCenterMockup,
   MobileAccountsCenterMockup,
   MobileBrowserDownloadBarMockup,
   MobileConfirmExportMockup,
+  MobileConfirmPasswordMockup,
   MobileCustomizeDataMockup,
   MobileDateRangeMockup,
   MobileDestinationMockup,
+  MobileDownloadFilesMockup,
   MobileExportMockup,
-  MobileFormatAndStartMockup,
-  MobileOpenExternalBrowserMockup,
+  MobileFormatMockup,
   MobilePermissionsMockup,
   MobileProfileMockup,
   MobileSaveDestinationMockup,
@@ -38,6 +43,12 @@ interface HowItWorksScreenProps {
 
 type Device = 'mobile' | 'web';
 
+function focusGuideStep(id: string) {
+  const step = document.getElementById(id);
+  step?.focus({ preventScroll: true });
+  step?.scrollIntoView({ block: 'start' });
+}
+
 interface GuideStep {
   id: string;
   title: string;
@@ -46,105 +57,59 @@ interface GuideStep {
   mockup: ReactNode;
 }
 
-const STEP_HIGHLIGHT_PATTERNS = [
+const STEP_UNDERLINE_PATTERNS = [
   'ผู้ติดตามและคนที่คุณติดตาม',
   'ข้อมูลและสิทธิ์การอนุญาตของคุณ',
-  'ดาวน์โหลดเสร็จสมบูรณ์',
-  'ไฟล์ที่พร้อมให้ดาวน์โหลด',
-  'ดาวน์โหลดไฟล์ของคุณ',
-  'บันทึกไปยัง แอปไฟล์',
-  'ดาวน์โหลด \\(Downloads\\)',
-  'แสดงในโฟลเดอร์',
-  'บันทึกเป็น',
   'ส่งออกไปยังอุปกรณ์',
   'ส่งออกข้อมูลของคุณ',
-  'ตลอดเวลา \\(All time\\)',
   'กิจกรรมปัจจุบัน',
   'สร้างไฟล์ส่งออก',
-  'รายการดาวน์โหลด',
   'เมนูสามขีดที่มุมขวาบน',
   'ปรับแต่งข้อมูล',
-  'คุณภาพของสื่อ',
-  'คุณภาพปานกลาง',
-  'เพิ่มเติม \\(≡\\)',
-  'เปิด \\(Open\\)',
-  'บัญชีของคุณ',
-  'การเชื่อมต่อ',
   'ล้างทั้งหมด',
   'เริ่มส่งออก',
-  'ส่งคำขอแล้ว',
   'รูปโปรไฟล์',
   'ศูนย์บัญชี',
   'ช่วงวันที่',
   'ตั้งแต่ต้น',
   'ตลอดเวลา',
-  'ปีที่แล้ว',
-  'กำหนดเอง',
   'การตั้งค่า',
-  'เปิดใน…',
   'แอปไฟล์',
+  'บันทึกเป็น',
+  'แสดงในโฟลเดอร์',
   'รูปแบบ',
-  '(?<=แตะ |คลิก )ดาวน์โหลด(?!ไฟล์)',
-  '(?<!ลง)บันทึก(?!ไว้)',
-  'แจ้ง(?!เตือน)',
   'Your information and permissions',
   'Export your information',
   'Followers and following',
-  'Confirm your export',
   'Customize information',
-  'Available downloads',
-  'Request submitted',
-  'Download complete',
   'Current activity',
   'Export to device',
   'Accounts Center',
-  'Your account',
   'Create export',
   'Start export',
-  'Media quality',
-  'Connections',
-  'Save to Files',
-  'Clear all',
   'Date range',
   'All time',
-  'Last year',
-  'Downloads',
-  'Show in folder',
-  'Save as',
   'Settings',
-  'Open in…',
-  'Download',
-  'Format',
-  'Notify',
-  'Medium',
-  'Custom',
   'Files',
-  'More',
-  'Open',
-  'Save',
+  'Save as',
+  'Show in folder',
   'JSON',
-  'HTML',
 ];
 
-const STEP_HIGHLIGHT_REGEX = new RegExp(
-  `(${STEP_HIGHLIGHT_PATTERNS.map((pattern) =>
+const STEP_UNDERLINE_REGEX = new RegExp(
+  `(${STEP_UNDERLINE_PATTERNS.map((pattern) =>
     /^[A-Za-z]/.test(pattern) ? `(?<![A-Za-z])${pattern}(?![A-Za-z])` : pattern,
   ).join('|')})`,
   'g',
 );
 
-function highlightStepText(text: string, variant: 'summary' | 'tip' = 'summary'): ReactNode {
-  const parts = text.split(STEP_HIGHLIGHT_REGEX);
+function underlineStepText(text: string): ReactNode {
+  const parts = text.split(STEP_UNDERLINE_REGEX);
   if (parts.length === 1) return text;
 
-  const badgeClass =
-    variant === 'tip'
-      ? 'rounded border border-accent/50 bg-paper-2 px-1.5 py-0.5 font-semibold text-ink'
-      : 'rounded border border-accent/40 bg-accent-soft px-1.5 py-0.5 font-semibold text-ink';
-
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <mark key={i} className={badgeClass}>
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <mark key={index} className="bg-transparent font-semibold text-ink">
         {part}
       </mark>
     ) : (
@@ -286,28 +251,28 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
   },
   {
     id: 'm-11',
-    title: t(
-      'แตะ รูปแบบ — เปลี่ยนเป็น JSON กด บันทึก แล้วกดปุ่ม เริ่มส่งออก',
-      'Choose JSON, save, then tap Start export',
+    title: t('เลือกรูปแบบ JSON แล้วแตะ บันทึก', 'Choose JSON as the format and tap Save'),
+    summary: t(
+      'แตะแถว รูปแบบ เปลี่ยนจาก HTML เป็น JSON แล้วแตะ บันทึก เพื่อกลับไปหน้า ยืนยันการส่งออกของคุณ',
+      'Open Format, change HTML to JSON, and tap Save to return to Confirm your export.',
     ),
-    summary: [
-      t(
-        'แตะแถว รูปแบบ แล้วเปลี่ยนจาก HTML เป็น JSON จากนั้นกด บันทึก',
-        'Open Format, change HTML to JSON, and tap Save.',
-      ),
-      t(
-        'เมื่อกลับมาหน้ายืนยัน ให้เลื่อนลงสุดแล้วแตะปุ่มสีน้ำเงิน เริ่มส่งออก',
-        'Scroll to the bottom of the confirmation screen and tap Start export.',
-      ),
-    ],
     tip: t(
       'ทำไมแนะนำ JSON มากกว่า HTML: ไฟล์ JSON เล็กและอ่านไวกว่า รวมถึงมีข้อมูลวันที่ทั้งฝั่งเขาฟอลคุณและคุณฟอลเขา และตรวจเตือนไฟล์ช่วง "ปีที่แล้ว" ได้ ส่วนไฟล์ HTML วิเคราะห์แยกหมวดรายชื่อได้เหมือนกัน แต่จะไม่มีวันที่เริ่มติดตามและตรวจเตือนไฟล์ไม่ครบไม่ได้ครับ',
       'JSON is smaller and includes follow dates when available. Those dates help flag exports that may cover only the past year. HTML works for comparing account lists.',
     ),
-    mockup: <MobileFormatAndStartMockup />,
+    mockup: <MobileFormatMockup />,
   },
   {
     id: 'm-12',
+    title: t('กลับมาหน้ายืนยัน แล้วแตะ เริ่มส่งออก', 'Back on the confirmation screen, tap Start export'),
+    summary: t(
+      'ในหน้า ยืนยันการส่งออกของคุณ ตรวจว่าเลือกเฉพาะ ผู้ติดตามและคนที่คุณติดตาม ช่วงวันที่ ตั้งแต่ต้น และรูปแบบ JSON แล้วเลื่อนลงสุดเพื่อแตะ เริ่มส่งออก',
+      'On Confirm your export, check that only Followers and following is selected, the date range is All time, and the format is JSON. Scroll to the bottom and tap Start export.',
+    ),
+    mockup: <MobileConfirmExportMockup configured />,
+  },
+  {
+    id: 'm-13',
     title: t(
       'เช็กว่า ส่งคำขอแล้ว แล้วรอ Instagram เตรียมไฟล์',
       'Check for Request submitted, then wait for Instagram',
@@ -326,7 +291,7 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
     mockup: <MobileExportMockup state="pending" />,
   },
   {
-    id: 'm-13',
+    id: 'm-14',
     title: t(
       'เมื่อไฟล์พร้อม กลับเข้าแอป IG หน้า ส่งออกข้อมูลของคุณ แล้วแตะ ดาวน์โหลด',
       'Return to Export your information and tap Download',
@@ -344,38 +309,56 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
     mockup: <MobileExportMockup state="ready" />,
   },
   {
-    id: 'm-14',
-    title: t('แตะ เปิด เพื่อไปยังเบราว์เซอร์', 'Tap Open to continue in your browser'),
-    summary: [
-      t(
-        'หากหน้า ดาวน์โหลดไฟล์ของคุณ ปรากฏขึ้น ให้แตะ ดาวน์โหลด ที่แถวไฟล์ ZIP อีกครั้ง',
-        'If a file list appears after tapping Download, tap Download next to the ZIP.',
-      ),
-      t(
-        'เมื่อ Instagram ถามว่าจะเปิดแอปภายนอกหรือไม่ ให้แตะ เปิด (Open) เพื่อไปยังเบราว์เซอร์',
-        'When Instagram asks to open an external app, tap Open to continue in your browser.',
-      ),
-    ],
-    mockup: <MobileOpenExternalBrowserMockup />,
-  },
-  {
     id: 'm-15',
-    title: t('เมื่อดาวน์โหลดเสร็จ ให้แตะ เปิดใน…', 'When the download is complete, tap Open in…'),
-    summary: [
-      t(
-        'บน iPhone เบราว์เซอร์อาจเปิดหน้าว่าง about:blank ให้ดูแถบด้านล่าง (ถ้าขึ้นปุ่ม บันทึก ก่อน ให้แตะแล้วรอจนเสร็จ)',
-        'On iPhone, the browser may show a blank about:blank page. If the bottom bar shows Save first, tap it and wait for the download to finish.',
-      ),
-      t(
-        'เมื่อขึ้นว่า ดาวน์โหลดเสร็จสมบูรณ์ ให้แตะ เปิดใน… ข้างไฟล์ ZIP',
-        'When the bottom bar says Download complete, tap Open in… next to the ZIP.',
-      ),
-    ],
-    mockup: <MobileBrowserDownloadBarMockup />,
+    title: t('แตะดาวน์โหลดที่แถวไฟล์ ZIP', 'Tap Download next to the ZIP file'),
+    summary: t(
+      'ในหน้า ดาวน์โหลดไฟล์ของคุณ ให้แตะปุ่ม ดาวน์โหลด ข้างชื่อบัญชี',
+      'On Download your files, tap Download next to your account name.',
+    ),
+    mockup: <MobileDownloadFilesMockup />,
   },
   {
     id: 'm-16',
-    title: t('บน iPhone เลือก บันทึกไปยัง แอปไฟล์', 'On iPhone, choose Save to Files'),
+    title: t('ยืนยันรหัสผ่านในศูนย์บัญชี', 'Confirm your password in Accounts Center'),
+    summary: [
+      t(
+        'กรอกรหัสผ่านของบัญชีที่แสดงในศูนย์บัญชีของ Instagram แล้วแตะ ดำเนินการต่อ',
+        'Enter the password for the account shown in Instagram’s Accounts Center, then tap Continue.',
+      ),
+      t(
+        'บน Android เบราว์เซอร์จะเปิดและดาวน์โหลดไฟล์ ZIP อัตโนมัติ เมื่อดาวน์โหลดเสร็จ ให้ข้ามขั้นที่ 17–18 ไปหาไฟล์ในขั้นที่ 19',
+        'On Android, your browser opens and downloads the ZIP automatically. Once it finishes, skip steps 17–18 and find the file in step 19.',
+      ),
+      t(
+        'บน iPhone ถ้าหน้า about:blank แสดงแถบไฟล์ ZIP ที่ด้านล่าง ให้แตะ บันทึก… ข้างชื่อไฟล์',
+        'On iPhone, if the about:blank page shows the ZIP in the bottom bar, tap Save… next to the file.',
+      ),
+    ],
+    mockup: (
+      <div className="grid items-center gap-4 xl:grid-cols-2">
+        <MobileConfirmPasswordMockup />
+        <div>
+          <p className="mb-2 text-center text-sm font-semibold text-muted">iPhone</p>
+          <MobileBrowserDownloadBarMockup state="save" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'm-17',
+    title: t(
+      'สำหรับ iPhone เท่านั้น — แตะ เปิดใน… เมื่อดาวน์โหลดเสร็จ',
+      'iPhone only — tap Open in… when the download is complete',
+    ),
+    summary: t(
+      'บน iPhone หลังแตะ บันทึก… ให้รอจนแถบด้านล่างขึ้นว่า ดาวน์โหลดเสร็จสมบูรณ์ แล้วแตะ เปิดใน… ข้างไฟล์ ZIP',
+      'On iPhone, after tapping Save…, wait until the bottom bar says Download complete, then tap Open in… next to the ZIP.',
+    ),
+    mockup: <MobileBrowserDownloadBarMockup state="complete" />,
+  },
+  {
+    id: 'm-18',
+    title: t('สำหรับ iPhone เท่านั้น — เลือก บันทึกไปยัง แอปไฟล์', 'iPhone only — choose Save to Files'),
     summary: t(
       'ในเมนูแชร์ที่เปิดขึ้น ให้เลื่อนลงไปที่รายการคำสั่ง แล้วแตะ บันทึกไปยัง แอปไฟล์',
       'In the share sheet, scroll down to the list of actions and tap Save to Files.',
@@ -383,19 +366,28 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
     mockup: <MobileShareDownloadMockup />,
   },
   {
-    id: 'm-17',
-    title: t('เลือกโฟลเดอร์ แล้วแตะ บันทึก', 'Choose a folder and tap Save'),
+    id: 'm-19',
+    title: t('หาไฟล์ ZIP แล้วเลือกไฟล์เพื่อวิเคราะห์', 'Find and select your ZIP for analysis'),
     summary: [
       t(
-        'ในแอปไฟล์ เลือกโฟลเดอร์ รายการดาวน์โหลด หรือโฟลเดอร์ที่จำได้ แล้วแตะ บันทึก มุมขวาบน (บน Android ไฟล์จะอยู่ในโฟลเดอร์ดาวน์โหลด)',
-        'In Files, choose Downloads or another folder you can find again, then tap Save at the top right (on Android, look in the Downloads folder).',
+        'บน iPhone ในแอปไฟล์ เลือกโฟลเดอร์ดาวน์โหลดหรือโฟลเดอร์ที่จำได้ แล้วแตะ บันทึก มุมขวาบน',
+        'On iPhone, choose Downloads or another folder in Files, then tap Save at the top right.',
+      ),
+      t(
+        'บน Android ให้ดูที่ Chrome → เมนู ⋮ → ดาวน์โหลด หรือดูรายการดาวน์โหลดในเบราว์เซอร์ที่เปิดขึ้น อีกทางคือเปิดแอปจัดการไฟล์แล้วดูโฟลเดอร์ Download',
+        'On Android, check Chrome → ⋮ menu → Downloads or the Downloads list in the browser that opened. You can also check the Download folder in your file manager.',
       ),
       t(
         'กลับมาที่หน้า วิเคราะห์ไฟล์ ใน IG Follow Analyzer แตะ เลือกไฟล์ .ZIP จากเครื่อง ไปที่โฟลเดอร์ที่บันทึกไว้ แล้วแตะไฟล์ .zip ที่เพิ่งดาวน์โหลดทั้งไฟล์',
         'In IG Follow Analyzer, open Analyze ZIP and tap Choose a ZIP from your device. Go to the folder where you saved it and select the original .zip file.',
       ),
     ],
-    mockup: <MobileSaveDestinationMockup />,
+    mockup: (
+      <div>
+        <p className="mb-2 text-center text-sm font-semibold text-muted">iPhone</p>
+        <MobileSaveDestinationMockup />
+      </div>
+    ),
   },
 ];
 
@@ -516,31 +508,31 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
   },
   {
     id: 'w-10',
-    title: t(
-      'คลิก รูปแบบ — เปลี่ยนเป็น JSON คลิก บันทึก แล้วคลิก เริ่มส่งออก',
-      'Choose JSON, save, then click Start export',
+    title: t('เลือกรูปแบบ JSON แล้วคลิก บันทึก', 'Choose JSON as the format and click Save'),
+    summary: t(
+      'คลิกแถว รูปแบบ เปลี่ยนจาก HTML เป็น JSON แล้วคลิก บันทึก เพื่อกลับไปหน้า ยืนยันการส่งออกของคุณ',
+      'Open Format, change HTML to JSON, and click Save to return to Confirm your export.',
     ),
-    summary: [
-      t(
-        'คลิกแถว รูปแบบ แล้วเปลี่ยนจาก HTML เป็น JSON จากนั้นคลิก บันทึก',
-        'Click Format, change HTML to JSON, and click Save.',
-      ),
-      t(
-        'เมื่อกลับมาหน้ายืนยัน ให้คลิกปุ่มสีน้ำเงิน เริ่มส่งออก',
-        'On the confirmation screen, click Start export.',
-      ),
-    ],
     tip: t(
       'ทำไมแนะนำ JSON มากกว่า HTML: ไฟล์ JSON เล็กกว่า มีข้อมูลวันที่เริ่มติดตามครบทั้ง 2 ฝั่ง และตรวจเตือนไฟล์ช่วง "ปีที่แล้ว" ได้ ส่วนไฟล์ HTML วิเคราะห์แยกหมวดรายชื่อได้ครบเช่นกัน แต่จะไม่มีวันที่เริ่มติดตามและแจ้งเตือนไฟล์ไม่ครบไม่ได้ครับ',
       'JSON is smaller and includes follow dates when available. Those dates help flag exports that may cover only the past year. HTML works for comparing account lists.',
     ),
-    mockup: <DesktopFormatAndStartMockup />,
+    mockup: <DesktopFormatMockup />,
   },
   {
     id: 'w-11',
+    title: t('กลับมาหน้ายืนยัน แล้วคลิก เริ่มส่งออก', 'Back on the confirmation screen, click Start export'),
+    summary: t(
+      'ในหน้า ยืนยันการส่งออกของคุณ ตรวจว่าเลือกเฉพาะ ผู้ติดตามและคนที่คุณติดตาม ช่วงวันที่ ตลอดเวลา และรูปแบบ JSON แล้วคลิก เริ่มส่งออก',
+      'On Confirm your export, check that only Followers and following is selected, the date range is All time, and the format is JSON. Then click Start export.',
+    ),
+    mockup: <DesktopConfirmExportMockup configured />,
+  },
+  {
+    id: 'w-12',
     title: t(
-      'เช็กสถานะ แล้วดาวน์โหลดและเลือกไฟล์ ZIP',
-      'Check the export status, then download and select the ZIP',
+      'เช็กสถานะ แล้วคลิก ดาวน์โหลด เมื่อไฟล์พร้อม',
+      'Check the status and click Download when the ZIP is ready',
     ),
     summary: [
       t(
@@ -548,9 +540,35 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
         'After clicking Start export, return to Export your information → Current activity. Request submitted means Instagram is still preparing your file.',
       ),
       t(
-        'ใต้หัวข้อ ไฟล์ที่พร้อมให้ดาวน์โหลด คลิก ดาวน์โหลด ภายใน 4 วัน หากเปิดหน้า ดาวน์โหลดไฟล์ของคุณ ให้คลิก ดาวน์โหลด ข้างไฟล์ .zip อีกครั้ง',
-        'Under Available downloads, click Download within four days. If the Download your files page opens, click Download next to the .zip file.',
+        'ใต้หัวข้อ ไฟล์ที่พร้อมให้ดาวน์โหลด คลิก ดาวน์โหลด ภายใน 4 วัน',
+        'Under Available downloads, click Download within four days.',
       ),
+    ],
+    tip: getExportWaitTip(t),
+    mockup: <DesktopDownloadReadyMockup />,
+  },
+  {
+    id: 'w-13',
+    title: t('คลิกดาวน์โหลดที่แถวไฟล์ ZIP', 'Click Download next to the ZIP file'),
+    summary: t(
+      'ในหน้า ดาวน์โหลดไฟล์ของคุณ ให้คลิกปุ่ม ดาวน์โหลด ข้างชื่อบัญชี',
+      'On Download your files, click Download next to your account name.',
+    ),
+    mockup: <DesktopDownloadFilesMockup />,
+  },
+  {
+    id: 'w-14',
+    title: t('ยืนยันรหัสผ่านในศูนย์บัญชี', 'Confirm your password in Accounts Center'),
+    summary: t(
+      'กรอกรหัสผ่านของบัญชีที่แสดงในศูนย์บัญชีของ Instagram แล้วคลิก ดำเนินการต่อ เพื่อดาวน์โหลดไฟล์ ZIP',
+      'Enter the password for the account shown in Instagram’s Accounts Center, then click Continue to download the ZIP.',
+    ),
+    mockup: <DesktopConfirmPasswordMockup />,
+  },
+  {
+    id: 'w-15',
+    title: t('หาไฟล์ ZIP แล้วเลือกไฟล์เพื่อวิเคราะห์', 'Find and select your ZIP for analysis'),
+    summary: [
       t(
         'ถ้ามีหน้าต่าง บันทึกเป็น ให้เลือกโฟลเดอร์ที่หาเจอ เช่น ดาวน์โหลด (Downloads) แล้วกด บันทึก ถ้าไฟล์ถูกดาวน์โหลดอัตโนมัติ ให้ดูในโฟลเดอร์ดาวน์โหลด หรือเปิดรายการดาวน์โหลดแล้วเลือก แสดงในโฟลเดอร์',
         'If a Save as dialog opens, choose a folder you can find again, such as Downloads, and click Save. If your browser saves automatically, check Downloads or choose Show in folder in your browser’s download list.',
@@ -560,8 +578,7 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
         'In IG Follow Analyzer, go to Analyze ZIP and click Choose a ZIP from your device. Open the folder where you saved it and select the original .zip file without opening or extracting it.',
       ),
     ],
-    tip: getExportWaitTip(t),
-    mockup: <DesktopDownloadReadyMockup />,
+    mockup: <DesktopSavedZipMockup />,
   },
 ];
 
@@ -572,13 +589,14 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
 
   return (
     <div className="product-wrap py-9 lg:py-14">
+      <BackButton onNavigate={onNavigate} target="landing" />
       <header className="border-b border-rule pb-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-[66ch]">
-            <h1 className="text-3xl text-ink sm:text-5xl">
+            <h1 className="page-heading">
               {t('วิธีขอไฟล์ ZIP จาก Instagram', 'How to export your Instagram ZIP')}
             </h1>
-            <p className="mt-3 text-base leading-relaxed text-ink-2">
+            <p className="text-base leading-relaxed text-ink-2">
               {t(
                 'คู่มือทีละขั้นตอนถอดจากหน้าจอจริงของศูนย์บัญชี Instagram ทั้งบนแอปมือถือและคอมพิวเตอร์ เลือกอุปกรณ์ที่คุณใช้งานด้านล่างแล้วทำตามลำดับได้เลย',
                 'Follow the Accounts Center steps for your phone or computer.',
@@ -596,7 +614,7 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
               aria-pressed={device === 'mobile'}
               aria-controls="export-steps"
               onClick={() => setDevice('mobile')}
-              className={`inline-flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
                 device === 'mobile'
                   ? 'border-accent bg-accent text-accent-ink'
                   : 'border-rule-2 bg-paper-2 text-ink hover:border-ink'
@@ -610,7 +628,7 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
               aria-pressed={device === 'web'}
               aria-controls="export-steps"
               onClick={() => setDevice('web')}
-              className={`inline-flex min-h-[44px] cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
                 device === 'web'
                   ? 'border-accent bg-accent text-accent-ink'
                   : 'border-rule-2 bg-paper-2 text-ink hover:border-ink'
@@ -639,12 +657,8 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
         </p>
         <button
           type="button"
-          className="min-h-[44px] cursor-pointer font-semibold text-cool underline underline-offset-4"
-          onClick={() => {
-            const waitStep = document.getElementById(device === 'mobile' ? 'm-12' : 'w-11');
-            waitStep?.focus({ preventScroll: true });
-            waitStep?.scrollIntoView({ block: 'start' });
-          }}
+          className="min-h-11 cursor-pointer font-semibold text-cool underline underline-offset-4"
+          onClick={() => focusGuideStep(device === 'mobile' ? 'm-13' : 'w-12')}
         >
           {t('ขอไฟล์แล้ว? ดูวิธีเช็กและดาวน์โหลด', 'Already requested? Check and download your export')}
         </button>
@@ -652,45 +666,73 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
 
       <section className="pb-6" aria-labelledby="export-overview">
         <h2 id="export-overview" className="mt-6 text-xl text-ink sm:text-2xl">
-          {t('ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP', 'Request, check, and select your ZIP')}
+          {t('ภาพรวม 3 ขั้นตอน: ขอไฟล์จนเลือก ZIP', '3-step overview: request to ZIP')}
         </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          {t(
+            'ทำตาม 3 ขั้นนี้ก่อน แล้วเลื่อนลงเพื่อดูรายละเอียดและภาพประกอบทุกหน้าจอ',
+            'Start with these three steps, then scroll for detailed instructions and screen examples.',
+          )}
+        </p>
         <ol className="panels mt-7 md:grid-cols-3" role="list">
           <li className="p-5">
             <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 1', 'Step 1')}</p>
             <h3 className="mt-1 text-lg font-semibold text-ink">
-              {t('ตั้งค่าก่อนกดเริ่มส่งออก', 'Check your export settings')}
+              {t('ตั้งค่าแล้วขอไฟล์', 'Set up and request the export')}
             </h3>
-            <p className="mt-2 text-sm text-ink-2">
-              {t(
-                'ในศูนย์บัญชี Instagram เลือกส่งออกไปยังอุปกรณ์ แล้วตรวจ 3 อย่างนี้',
-                'In Instagram Accounts Center, choose Export to device and check these three settings.',
-              )}
-            </p>
-            <ul className="mt-2 list-disc space-y-1 ps-5 text-sm font-semibold text-cool">
-              <li>{t('เลือกเฉพาะ ผู้ติดตามและคนที่คุณติดตาม', 'Select only Followers and following')}</li>
-              <li>{t('ช่วงวันที่ ตั้งแต่ต้น (All time)', 'Date range All time')}</li>
-              <li>{t('รูปแบบ JSON', 'Format JSON')}</li>
+            <ul className="mt-2 list-disc space-y-1 ps-5 text-sm text-ink-2">
+              <li>
+                {device === 'mobile'
+                  ? t(
+                      'เริ่มจากแอป Instagram → โปรไฟล์ → เมนูสามขีด → การตั้งค่าและกิจกรรม → ศูนย์บัญชี',
+                      'Start in the Instagram app → Profile → menu → Settings and activity → Accounts Center',
+                    )
+                  : t(
+                      'เริ่มจาก instagram.com → เพิ่มเติม → การตั้งค่า → ศูนย์บัญชี',
+                      'Start at instagram.com → More → Settings → Accounts Center',
+                    )}
+              </li>
+              <li>
+                {t(
+                  'เลือก ข้อมูลและสิทธิ์การอนุญาตของคุณ → ส่งออกข้อมูลของคุณ → สร้างไฟล์ส่งออก',
+                  'Choose Your information and permissions → Export your information → Create export',
+                )}
+              </li>
+              <li>
+                {t(
+                  'เลือกโปรไฟล์ Instagram ที่ต้องการตรวจสอบ แล้วเลือก ส่งออกไปยังอุปกรณ์',
+                  'Select the Instagram profile to check, then choose Export to device',
+                )}
+              </li>
+              <li>
+                {t(
+                  'แตะ ปรับแต่งข้อมูล → ล้างทั้งหมด ทุกหมวด → เลือก ผู้ติดตามและคนที่คุณติดตาม → บันทึก',
+                  'Open Customize information → Clear all in every category → select Followers and following → Save',
+                )}
+              </li>
+              <li>
+                {device === 'mobile'
+                  ? t(
+                      'ตั้งค่า ช่วงวันที่ เป็น ตั้งแต่ต้น (All time) และ รูปแบบ เป็น JSON เมื่อบันทึกแล้ว ให้กลับมาหน้ายืนยันและแตะ เริ่มส่งออก',
+                      'Set Date range to All time and Format to JSON. After saving, return to the confirmation screen and tap Start export',
+                    )
+                  : t(
+                      'ตั้งค่า ช่วงวันที่ เป็น ตลอดเวลา (All time) และ รูปแบบ เป็น JSON เมื่อบันทึกแล้ว ให้กลับมาหน้ายืนยันและคลิก เริ่มส่งออก',
+                      'Set Date range to All time and Format to JSON. After saving, return to the confirmation screen and click Start export',
+                    )}
+              </li>
             </ul>
-            <p className="mt-2 text-sm text-ink-2">
-              {t('บันทึกการตั้งค่า แล้วกด เริ่มส่งออก', 'Save your settings, then tap Start export.')}
-            </p>
           </li>
 
           <li className="p-5">
             <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 2', 'Step 2')}</p>
             <h3 className="mt-1 text-lg font-semibold text-ink">
-              {t('รอแล้วกลับมาเช็กใน Instagram', 'Wait and check back in Instagram')}
+              {t('รอแล้วเช็กสถานะ', 'Wait and check the status')}
             </h3>
             <p className="mt-2 text-sm text-ink-2">
               {t(
-                'ส่งคำขอแล้ว หมายถึง Instagram กำลังเตรียมไฟล์ แม้ไม่มีอีเมลแจ้งเตือน ก็กลับไปที่ ส่งออกข้อมูลของคุณ → กิจกรรมปัจจุบัน ได้',
-                'Request submitted means Instagram is preparing your file. Even without an email, you can return to Export your information → Current activity.',
-              )}
-            </p>
-            <p className="mt-2 text-sm text-ink-2">
-              {t(
-                'ลองเช็กอีกครั้งใน 2–5 นาที ถ้ายังไม่พร้อม ค่อยกลับมาเช็กภายหลัง เมื่อเห็น ไฟล์ที่พร้อมให้ดาวน์โหลด ให้กด ดาวน์โหลด',
-                'Try again in 2–5 minutes. If it’s still pending, come back later. When the file appears under Available downloads, select Download.',
+                'กลับไปที่ กิจกรรมปัจจุบัน จนเห็นว่าไฟล์พร้อมให้ดาวน์โหลด',
+                'Return to Current activity and wait until the file is ready to download.',
               )}
             </p>
           </li>
@@ -698,18 +740,12 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
           <li className="p-5">
             <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 3', 'Step 3')}</p>
             <h3 className="mt-1 text-lg font-semibold text-ink">
-              {t('เลือก ZIP ต้นฉบับในเว็บนี้', 'Select the original ZIP here')}
+              {t('ดาวน์โหลดแล้วเลือก ZIP', 'Download and select the ZIP')}
             </h3>
             <p className="mt-2 text-sm text-ink-2">
               {t(
-                'กด เลือกไฟล์ .ZIP จากเครื่อง แล้วเปิดโฟลเดอร์ดาวน์โหลดหรือโฟลเดอร์ที่บันทึกไว้ เลือกไฟล์ .zip ที่เพิ่งโหลดทั้งไฟล์โดยไม่ต้องแตกไฟล์',
-                'Click Choose a ZIP from your device, open Downloads or the folder where you saved it, and select the .zip you just downloaded. Keep it zipped.',
-              )}
-            </p>
-            <p className="mt-2 text-sm text-ink-2">
-              {t(
-                'ดูผลได้ทันทีหลังวิเคราะห์เสร็จ การดาวน์โหลด PDF และการเปิดประวัติเป็นทางเลือก',
-                'View results as soon as analysis finishes. Downloading a PDF and enabling history are optional.',
+                'ดาวน์โหลดไฟล์ .zip แล้วกลับมาที่หน้านี้เพื่อเลือกไฟล์โดยไม่ต้องแตกไฟล์',
+                'Download the .zip, then return here and select it without extracting the archive.',
               )}
             </p>
           </li>
@@ -722,7 +758,7 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
           <li
             key={step.id}
             id={step.id}
-            tabIndex={step.id === 'm-12' || step.id === 'w-11' ? -1 : undefined}
+            tabIndex={['m-13', 'm-19', 'w-12'].includes(step.id) ? -1 : undefined}
             className="grid scroll-mt-(--nav-bar-height) grid-cols-1 gap-8 py-9 lg:grid-cols-12 lg:items-center"
           >
             <div className="lg:col-span-6">
@@ -736,13 +772,23 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
               {Array.isArray(step.summary) ? (
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-relaxed text-ink-2 marker:text-accent">
                   {step.summary.map((item, idx) => (
-                    <li key={idx}>{highlightStepText(item, 'summary')}</li>
+                    <li key={idx}>{underlineStepText(item)}</li>
                   ))}
                 </ul>
               ) : (
                 <p className="mt-3 text-base leading-relaxed text-ink-2">
-                  {highlightStepText(step.summary, 'summary')}
+                  {underlineStepText(step.summary)}
                 </p>
+              )}
+
+              {step.id === 'm-16' && (
+                <button
+                  type="button"
+                  className="mt-2 min-h-11 cursor-pointer text-start font-semibold text-cool underline underline-offset-4"
+                  onClick={() => focusGuideStep('m-19')}
+                >
+                  {t('Android · ไปขั้นที่ 19 เพื่อหาไฟล์ ZIP', 'Android · Go to step 19 to find your ZIP')}
+                </button>
               )}
 
               {step.tip && (
@@ -751,7 +797,7 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
                     className="mt-0.5 h-4 w-4 shrink-0 text-accent"
                     aria-hidden="true"
                   />
-                  <span>{highlightStepText(step.tip, 'tip')}</span>
+                  <span>{underlineStepText(step.tip)}</span>
                 </div>
               )}
 
@@ -787,7 +833,7 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
               )}
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div>
             <a
               href="https://help.instagram.com/181231772500920"
               target="_blank"
@@ -797,9 +843,6 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
               <span>{t('อ่านคู่มือ Instagram Help Center', 'Read Instagram Help Center')}</span>
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
             </a>
-            <NormalButton variant="primary" onClick={() => onNavigate('upload')}>
-              {t('พร้อมอัปโหลดไฟล์ ZIP', 'Ready to select your ZIP')}
-            </NormalButton>
           </div>
         </div>
       </section>

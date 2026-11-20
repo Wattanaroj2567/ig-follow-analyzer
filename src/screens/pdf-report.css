@@ -1,30 +1,40 @@
 @font-face {
-  font-family: 'TH Sarabun New';
-  src: url('/fonts/THSarabunNew-Regular.ttf') format('truetype');
+  font-family: 'Report Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'TH Sarabun New';
-  src: url('/fonts/THSarabunNew-Bold.ttf') format('truetype');
+  font-family: 'Report Plus Jakarta Sans';
+  src: url('/fonts/PlusJakartaSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'TH Sarabun New';
-  src: url('/fonts/THSarabunNew-Italic.ttf') format('truetype');
+  font-family: 'Report IBM Plex Sans Thai';
+  src: url('/fonts/IBMPlexSansThai-Regular.ttf') format('truetype');
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   font-display: swap;
+  unicode-range: U+0E00-0E7F;
+}
+
+@font-face {
+  font-family: 'Report IBM Plex Sans Thai';
+  src: url('/fonts/IBMPlexSansThai-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0E00-0E7F;
 }
 
 .pdf-sheet-font,
 .pdf-sheet-font * {
-  font-family: 'TH Sarabun New', 'IBM Plex Sans Thai', sans-serif;
+  font-family: 'Report Plus Jakarta Sans', 'Report IBM Plex Sans Thai', var(--font-text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -35,7 +45,7 @@ html:has(.pdf-preview-dialog) {
 }
 
 .pdf-preview-scroll {
-  scrollbar-color: rgb(255 255 255 / 38%) transparent;
+  scrollbar-color: var(--color-rule-2) transparent;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
 }

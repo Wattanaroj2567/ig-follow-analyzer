@@ -31,9 +31,9 @@ function ThemeSwitcher({
 }) {
   const { t } = useLanguage();
   const options = [
+    { id: 'system', label: t('ตามระบบ', 'System'), Icon: Monitor },
     { id: 'light', label: t('สว่าง', 'Light'), Icon: Sun },
     { id: 'dark', label: t('มืด', 'Dark'), Icon: Moon },
-    { id: 'system', label: t('ตามระบบ', 'System'), Icon: Monitor },
   ] as const;
 
   return (
@@ -263,27 +263,11 @@ export function AppShell({ activePage, onNavigate, hasAnalysis, children }: AppS
             </p>
           </div>
           <nav className="app-subfooter__links" aria-label={t('ข้อมูลเว็บไซต์', 'Site information')}>
-            <a href={pageHref('how-it-works')} onClick={link('how-it-works')}>
-              {t('วิธีขอไฟล์ ZIP', 'How to export your ZIP')}
-            </a>
             <a href={pageHref('terms')} onClick={link('terms')}>
               {t('เงื่อนไขและความเป็นส่วนตัว', 'Terms and privacy')}
             </a>
             <a href={pageHref('about')} onClick={link('about')}>
               {t('เกี่ยวกับเรา', 'About')}
-            </a>
-            <a
-              href={pageHref('about')}
-              onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                event.preventDefault();
-                onNavigate('about');
-                window.setTimeout(() => {
-                  document.getElementById('feedback')?.scrollIntoView({ behavior: 'smooth' });
-                }, 60);
-              }}
-            >
-              {t('เสนอแนะ / แจ้งปัญหา', 'Feedback')}
             </a>
           </nav>
         </div>

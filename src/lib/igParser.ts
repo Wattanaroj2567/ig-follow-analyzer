@@ -493,6 +493,7 @@ export function compareFollowerSnapshots(
 
   return {
     previousDateLabel: previous.snapshotDateLabel,
+    previousSourceFileName: previous.sourceFileName,
     followersDelta: current.counts.followers - previous.counts.followers,
     followingDelta: current.counts.following - previous.counts.following,
     notFollowingBackDelta: current.counts.notFollowingBack - previous.counts.notFollowingBack,

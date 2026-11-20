@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowDownNarrowWide,
   ArrowRight,
   Calendar,
   CheckCircle2,
@@ -19,11 +20,12 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
+import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
 import { FollowerTimeline } from '../components/FollowerTimeline';
 import { NormalButton } from '../components/NormalButton';
 import { RelationshipOverview } from '../components/RelationshipOverview';
 import type { RelationshipKey } from '../data/relationshipMetrics';
-import { formatDate, formatSnapshotDate } from '../lib/dates';
+import { formatAnalysisTime, formatDate, formatSnapshotDate } from '../lib/dates';
 import { buildSafeProfileHref } from '../lib/igParser';
 import { useLanguage } from '../lib/language';
 import type { AccountEntry, AnalysisResult, HistoryDiff } from '../types/analyzer';
@@ -31,7 +33,9 @@ import type { AccountEntry, AnalysisResult, HistoryDiff } from '../types/analyze
 interface ResultsScreenProps {
   result: AnalysisResult;
   diff: HistoryDiff | null;
-  comparisonStatus: 'off' | 'waiting' | 'ready';
+  comparison: ComparisonFilesState | null;
+  comparisonStatus: 'off' | 'waiting' | 'ready' | 'unknown-owner';
+  onSelectComparison: (id: string | null) => void;
   onNavigate: (id: PageId) => void;
   initialCategory?: RelationshipKey;
 }
@@ -44,7 +48,9 @@ const PAGE_SIZE = 25;
 export function ResultsScreen({
   result,
   diff,
+  comparison,
   comparisonStatus,
+  onSelectComparison,
   onNavigate,
   initialCategory,
 }: ResultsScreenProps) {
@@ -108,6 +114,10 @@ export function ResultsScreen({
     {
       key: 'newFollowers' as const,
       label: t('ติดตามใหม่', 'New followers'),
+      explanation: t(
+        'มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP ใหม่',
+        'Listed as one of your followers only in the newer ZIP.',
+      ),
       icon: UserPlus,
       tone: 'bg-ok-soft text-ok',
       entries: newFollowerEntries,
@@ -115,6 +125,10 @@ export function ResultsScreen({
     {
       key: 'recentUnfollowers' as const,
       label: t('หายจากรายชื่อ', 'Missing from the list'),
+      explanation: t(
+        'มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP เก่า',
+        'Listed as one of your followers only in the older ZIP.',
+      ),
       icon: UserMinus,
       tone: 'bg-bad-soft text-bad',
       entries: recentUnfollowerEntries,
@@ -188,6 +202,15 @@ export function ResultsScreen({
     currentTab.key === 'recentUnfollowers' || currentTab.key === 'newFollowers';
   const previousDate = diff ? formatSnapshotDate(diff.previousDateLabel, locale) : '';
   const currentDate = formatSnapshotDate(result.snapshotDateLabel, locale);
+  const showTimelineTime = previousDate === currentDate && comparison;
+  const timelineMilliseconds =
+    comparison?.previous.analysis.analyzedAtIso.slice(0, 19) === result.analyzedAtIso.slice(0, 19);
+  const timelinePreviousDate = showTimelineTime
+    ? `${previousDate} · ${formatAnalysisTime(comparison.previous.analysis.analyzedAtIso, locale, timelineMilliseconds)}`
+    : previousDate;
+  const timelineCurrentDate = showTimelineTime
+    ? `${currentDate} · ${formatAnalysisTime(result.analyzedAtIso, locale, timelineMilliseconds)}`
+    : currentDate;
   const isFollowingSideTab =
     currentTab.key === 'notFollowingBack' || currentTab.key === 'following';
   const singleDateColumnLabel = isFollowingSideTab
@@ -226,9 +249,23 @@ export function ResultsScreen({
                 ? t('ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', 'Sample follower analysis')
                 : t('ผลการวิเคราะห์ผู้ติดตาม', 'Follower analysis')}
             </h1>
+            {result.isDemoData && diff && (
+              <p className="mt-1.5 text-sm text-muted">
+                {t(
+                  `เทียบไฟล์ ${previousDate} กับ ${currentDate}`,
+                  `Comparing the ${previousDate} and ${currentDate} exports`,
+                )}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
+            {result.isDemoData && (
+              <NormalButton variant="secondary" onClick={() => onNavigate('history')}>
+                <History className="h-4 w-4" aria-hidden="true" />
+                {t('ดูประวัติตัวอย่าง', 'View sample history')}
+              </NormalButton>
+            )}
             <NormalButton
               variant="secondary"
               onClick={() => onNavigate('upload')}
@@ -334,29 +371,59 @@ export function ResultsScreen({
           <h2 id="comparison-heading" className="text-xl font-semibold text-ink">
             {t('ผู้ติดตามเปลี่ยนไปยังไง', 'What changed in your followers?')}
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
-            {t('เทียบไฟล์', 'Comparing exports')} {previousDate} → {currentDate}
+          {comparison && (
+            <ComparisonFiles
+              current={result}
+              comparison={comparison}
+              onSelect={(id) => {
+                if (isComparisonTab) setPageIndex(0);
+                onSelectComparison(id);
+              }}
+            />
+          )}
+          <p
+            role="note"
+            className="mt-4 flex items-center gap-2 text-sm leading-relaxed text-muted"
+          >
+            <Info className="size-4 shrink-0" aria-hidden="true" />
+            {t(
+              'เว็บเทียบรายชื่อคนที่ติดตามคุณจาก ZIP สองไฟล์',
+              'The app compares your follower lists from two ZIP files.',
+            )}
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
-            {comparisonTabs.map(({ key, label, icon: Icon, tone, entries }) => (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={activeTab === key}
-                onClick={() => jumpToCategory(key)}
-                className={`flex min-h-20 min-w-0 cursor-pointer flex-col justify-between gap-2 rounded-lg border p-3 text-left transition-colors hover:border-current sm:flex-row sm:items-center sm:p-4 ${tone} ${activeTab === key ? 'border-current' : 'border-transparent'}`}
-              >
-                <span className="flex items-center gap-2 text-sm font-semibold">
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  {label}
-                </span>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="measured text-2xl font-semibold">
-                    {entries.length.toLocaleString(locale)}
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 sm:gap-3">
+            {comparisonTabs.map(({ key, label, explanation, icon: Icon, tone, entries }) => (
+              <div key={key} className="min-w-0">
+                <button
+                  type="button"
+                  aria-pressed={activeTab === key}
+                  aria-describedby={`${key}-explanation`}
+                  onClick={() => jumpToCategory(key)}
+                  className={`flex min-h-20 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border p-3 text-left transition-colors hover:border-current sm:p-4 ${tone} ${activeTab === key ? 'border-current' : 'border-transparent'}`}
+                >
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                    {label}
                   </span>
-                  <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-                </span>
-              </button>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="measured text-2xl font-semibold">
+                      {entries.length.toLocaleString(locale)}
+                    </span>
+                    <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+                  </span>
+                </button>
+                <div className="mt-2 space-y-1 px-1 text-sm leading-relaxed text-muted">
+                  <p id={`${key}-explanation`}>{explanation}</p>
+                  {key === 'recentUnfollowers' && (
+                    <p>
+                      {t(
+                        'ถ้าชื่อหายไป เรารู้ได้ว่าหายระหว่างสองรอบ ส่วนวันที่แน่นอนและสาเหตุยังระบุไม่ได้',
+                        'When a name disappears, the ZIPs show the interval in which it happened. The exact date and reason are unknown.',
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
           <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
@@ -533,19 +600,29 @@ export function ResultsScreen({
                   />
                 </div>
 
-                <select
-                  aria-label={t('เรียงลำดับรายชื่อ', 'Sort accounts')}
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value as 'newest' | 'az' | 'za');
-                    setPageIndex(0);
-                  }}
-                  className="min-h-[44px] rounded-md border border-rule-2 bg-paper-3 px-4 text-sm font-medium text-ink"
-                >
-                  <option value="newest">{t('เรียงตามวันที่ล่าสุดก่อน', 'Newest first')}</option>
-                  <option value="az">{t('เรียงชื่อบัญชี A ถึง Z', 'Username A to Z')}</option>
-                  <option value="za">{t('เรียงชื่อบัญชี Z ถึง A', 'Username Z to A')}</option>
-                </select>
+                <div className="relative sm:shrink-0">
+                  <ArrowDownNarrowWide
+                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <select
+                    aria-label={t('เรียงลำดับรายชื่อ', 'Sort accounts')}
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value as 'newest' | 'az' | 'za');
+                      setPageIndex(0);
+                    }}
+                    className="min-h-[44px] w-full cursor-pointer appearance-none rounded-md border border-rule-2 bg-paper-3 pr-10 pl-10 text-sm text-ink hover:border-muted focus:border-accent sm:min-w-48 forced-colors:appearance-auto"
+                  >
+                    <option value="newest">{t('วันที่ล่าสุดก่อน', 'Newest first')}</option>
+                    <option value="az">{t('ชื่อบัญชี A–Z', 'Username A–Z')}</option>
+                    <option value="za">{t('ชื่อบัญชี Z–A', 'Username Z–A')}</option>
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted forced-colors:hidden"
+                    aria-hidden="true"
+                  />
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
@@ -602,14 +679,16 @@ export function ResultsScreen({
                               </summary>
                               <div className="pt-1 pb-4 pl-6">
                                 <FollowerTimeline
-                                  previousDate={previousDate}
-                                  currentDate={currentDate}
+                                  previousDate={timelinePreviousDate}
+                                  currentDate={timelineCurrentDate}
                                   followDate={
                                     timestamp
                                       ? formatDate(new Date(timestamp * 1000), locale)
                                       : undefined
                                   }
                                   missing={currentTab.key === 'recentUnfollowers'}
+                                  previousWasSelected={comparison?.automatic === false}
+                                  isLatestExport={comparison?.isLatest}
                                 />
                               </div>
                             </details>
@@ -790,25 +869,30 @@ export function ResultsScreen({
           );
         })()}
 
-      {!diff && (
+      {!diff && !result.isDemoData && (
         <section className="mt-7 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3 text-sm text-ink-2">
             <History className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
             <span>
-              {comparisonStatus === 'ready'
+              {comparisonStatus === 'unknown-owner'
                 ? t(
-                    'บันทึกรายชื่อไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูความเปลี่ยนแปลง',
-                    'Your follower list is saved. Upload a newer ZIP for the same account to see changes.',
+                    'ใช้ชื่อไฟล์ ZIP เดิมจาก Instagram เพื่อให้ระบบรู้ว่าเป็นไฟล์ของบัญชีเดียวกัน',
+                    'Use the original Instagram ZIP filename so we can identify exports from the same account.',
                   )
-                : comparisonStatus === 'waiting'
+                : comparisonStatus === 'ready'
                   ? t(
-                      'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP รอบแรกเพื่อเก็บรายชื่อไว้เทียบ',
-                      'Account list storage is on. Upload a first ZIP to save a list for comparison.',
+                      'บันทึกรายชื่อไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูความเปลี่ยนแปลง',
+                      'Your follower list is saved. Upload a newer ZIP for the same account to see changes.',
                     )
-                  : t(
-                      'เปิดบันทึกสรุปและจำรายชื่อในหน้าประวัติ เพื่อเทียบความเปลี่ยนแปลงครั้งหน้า',
-                      'Enable both history options to compare follower lists next time.',
-                    )}
+                  : comparisonStatus === 'waiting'
+                    ? t(
+                        'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP รอบแรกเพื่อเก็บรายชื่อไว้เทียบ',
+                        'Account list storage is on. Upload a first ZIP to save a list for comparison.',
+                      )
+                    : t(
+                        'เปิดบันทึกประวัติและจำรายชื่อไว้ เพื่อเทียบกับ ZIP รอบถัดไป',
+                        'Turn on history and save account lists to compare your next ZIP.',
+                      )}
             </span>
           </div>
           <NormalButton

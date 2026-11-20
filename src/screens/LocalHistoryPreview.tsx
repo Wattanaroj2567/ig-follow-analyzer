@@ -4,6 +4,7 @@ import {
   FileArchive,
   FileUp,
   HardDrive,
+  Lightbulb,
   UserRoundMinus,
 } from 'lucide-react';
 import type { MouseEventHandler } from 'react';
@@ -19,51 +20,59 @@ import { useLanguage } from '../lib/language';
 import { demoHref, pageHref } from '../lib/routes';
 
 interface LocalHistoryPreviewProps {
+  onOpenDemo: () => void;
   onOpenHistory: MouseEventHandler<HTMLAnchorElement>;
 }
 
-export function LocalHistoryPreview({ onOpenHistory }: LocalHistoryPreviewProps) {
+export function LocalHistoryPreview({ onOpenDemo, onOpenHistory }: LocalHistoryPreviewProps) {
   const { t, locale } = useLanguage();
   const uploads = [
     {
       icon: FileArchive,
       stage: t('รอบแรก', 'First export'),
-      title: t('เปิดประวัติ แล้วอัปโหลด ZIP', 'Turn on history and upload a ZIP'),
-      detail: t('เปิดทั้งสวิตช์บันทึกสรุปและจำรายชื่อ', 'Enable both summary and account list storage.'),
+      title: t('เปิดประวัติ แล้วอัปโหลด ZIP 1 ไฟล์', 'Turn on history and upload one ZIP'),
+      detail: t(
+        'เปิดทั้งบันทึกสรุปและจำรายชื่อ เพื่อเก็บรายชื่อรอบแรกไว้เทียบ',
+        'Enable summary and account list storage to save the first list for comparison.',
+      ),
     },
     {
       icon: FileUp,
       stage: t('รอบถัดไป', 'Next export'),
-      title: t('อัปโหลด ZIP รอบใหม่', 'Upload a newer ZIP'),
-      detail: t('ใช้บัญชีเดิมและเบราว์เซอร์เดิม', 'Use the same account and browser.'),
+      title: t('อัปโหลด ZIP ใหม่ 1 ไฟล์', 'Upload one new ZIP'),
+      detail: t(
+        'ใช้บัญชีและเบราว์เซอร์เดิม ระบบจะเทียบกับรอบก่อนให้ แล้วเลือกไฟล์ย้อนหลังได้ในหน้าผล',
+        'Use the same account and browser. The app compares with the previous export, and you can choose an older file in your results.',
+      ),
     },
   ];
 
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-rule bg-paper-2">
-      <ol
-        role="list"
-        className="grid divide-y divide-rule md:grid-cols-3 md:divide-x md:divide-y-0"
-      >
+      <ol role="list" className="grid md:grid-cols-3">
         {uploads.map(({ icon: Icon, stage, title, detail }) => (
-          <li key={stage} className="relative flex gap-3 px-4 py-5 md:flex-col md:gap-4 md:p-6">
+          <li
+            key={stage}
+            className="relative flex gap-3 px-4 py-5 md:flex-col md:gap-4 md:p-6 md:pl-9 md:first:pl-6"
+          >
             <Icon className="size-6 shrink-0 text-accent" aria-hidden="true" />
             <div className="min-w-0">
               <p className="text-xs font-semibold text-accent">{stage}</p>
               <h3 className="mt-0.5 text-base leading-snug font-semibold text-ink">{title}</h3>
               <p className="mt-1 text-sm leading-snug text-muted">{detail}</p>
             </div>
-            <ArrowDown
-              className="absolute bottom-1 left-5 size-4 text-muted md:hidden"
+            <span
               aria-hidden="true"
-            />
-            <ArrowRight
-              className="absolute top-7 right-3 hidden size-4 text-muted md:block"
-              aria-hidden="true"
-            />
+              className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 flex translate-y-1/2 items-center gap-3 text-accent md:top-0 md:left-auto md:translate-x-1/2 md:translate-y-0 md:flex-col"
+            >
+              <span className="h-px flex-1 bg-rule md:h-auto md:w-px" />
+              <ArrowDown className="size-5 shrink-0 md:hidden" />
+              <ArrowRight className="hidden size-7 shrink-0 md:block" />
+              <span className="h-px flex-1 bg-rule md:h-auto md:w-px" />
+            </span>
           </li>
         ))}
-        <li className="flex gap-3 bg-bad-soft px-4 py-5 md:flex-col md:gap-4 md:p-6">
+        <li className="flex gap-3 bg-bad-soft px-4 py-5 md:flex-col md:gap-4 md:p-6 md:pl-9">
           <UserRoundMinus className="size-6 shrink-0 text-bad" aria-hidden="true" />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-bad">
@@ -86,14 +95,40 @@ export function LocalHistoryPreview({ onOpenHistory }: LocalHistoryPreviewProps)
           </div>
         </li>
       </ol>
+      <div
+        role="note"
+        className="flex items-start gap-2.5 border-t border-rule px-4 py-3 text-sm leading-relaxed text-ink-2 md:px-6"
+      >
+        <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
+        <p>
+          <strong className="font-semibold text-ink">
+            {t('ทิปสำหรับเทียบย้อนหลัง', 'Tip for comparing exports')}
+          </strong>{' '}
+          {t(
+            'แต่ละรอบใช้ ZIP เพียงไฟล์เดียว ถ้าอยากเห็นความเปลี่ยนแปลงชัดขึ้น ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น ไฟล์ที่ขอวันเดียวกันอาจมีรายชื่อเหมือนกัน',
+            'Use one ZIP per analysis. To give your follower list time to change, request a fresh ZIP the next day or later. Exports requested on the same day may contain the same list.',
+          )}
+        </p>
+      </div>
       <div className="flex flex-col gap-3 border-t border-rule bg-paper-3 p-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <p className="flex items-center gap-2 text-sm text-muted">
           <HardDrive className="size-4 shrink-0" aria-hidden="true" />
           {t('ประวัติเก็บในเบราว์เซอร์นี้', 'History stays in this browser.')}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <a className="btn btn--secondary" href={demoHref('results')}>
-            {t('ลองดูผลเทียบตัวอย่าง', 'Try the sample comparison')}
+          <a
+            className="btn btn--secondary"
+            href={demoHref('results')}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onOpenDemo();
+            }}
+          >
+            {t('ลองดูผลเทียบ 2 รอบ', 'Try comparing two sample ZIPs')}
+          </a>
+          <a className="btn btn--secondary" href={demoHref('history')}>
+            {t('ดูประวัติตัวอย่าง', 'View sample history')}
           </a>
           <a className="btn btn--primary" href={pageHref('history')} onClick={onOpenHistory}>
             {t('ตั้งค่าประวัติบนเครื่อง', 'Set up local history')}

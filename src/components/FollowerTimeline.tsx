@@ -5,6 +5,8 @@ interface FollowerTimelineProps {
   currentDate: string;
   followDate?: string;
   missing: boolean;
+  previousWasSelected?: boolean;
+  isLatestExport?: boolean;
 }
 
 export function FollowerTimeline({
@@ -12,9 +14,17 @@ export function FollowerTimeline({
   currentDate,
   followDate,
   missing,
+  previousWasSelected = false,
+  isLatestExport = true,
 }: FollowerTimelineProps) {
   const { t } = useLanguage();
   const followLabel = t('เริ่มติดตามตามวันที่ในไฟล์', 'Follow date recorded in the file');
+  const previousList = previousWasSelected
+    ? t('รายชื่อไฟล์ที่เลือกเทียบ', 'the selected export’s follower list')
+    : t('รายชื่อรอบก่อน', 'the previous follower list');
+  const currentList = isLatestExport
+    ? t('รายชื่อรอบล่าสุด', 'the latest follower list')
+    : t('รายชื่อไฟล์ที่เปิดอยู่', 'the current follower list');
   const steps = [
     ...(missing && followDate
       ? [{ date: followDate, label: followLabel, color: 'bg-accent' }]
@@ -22,15 +32,15 @@ export function FollowerTimeline({
     {
       date: previousDate,
       label: missing
-        ? t('พบในรายชื่อรอบก่อน', 'In the previous follower list')
-        : t('ไม่พบในรายชื่อรอบก่อน', 'Absent from the previous follower list'),
+        ? t(`พบใน${previousList}`, `In ${previousList}`)
+        : t(`ไม่พบใน${previousList}`, `Absent from ${previousList}`),
       color: 'bg-muted',
     },
     {
       date: currentDate,
       label: missing
-        ? t('ไม่พบในรายชื่อรอบล่าสุด', 'Absent from the latest follower list')
-        : t('พบในรายชื่อรอบล่าสุด', 'In the latest follower list'),
+        ? t(`ไม่พบใน${currentList}`, `Absent from ${currentList}`)
+        : t(`พบใน${currentList}`, `In ${currentList}`),
       color: missing ? 'bg-bad' : 'bg-ok',
     },
   ];

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
+import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
 import { NormalButton } from '../components/NormalButton';
 import { formatDate, formatSnapshotDate } from '../lib/dates';
 import {
@@ -23,10 +24,11 @@ import {
   buildReportFileName,
   estimatePdfPageCount,
   generatePdfBlob,
+  getPdfComparisonSummary,
   getPdfReportLabels,
   getPdfSummaryMetrics,
   getRelationshipTotal,
-  PDF_REPORT_COLORS,
+  PDF_PREVIEW_PALETTE,
   PDF_TABLE_ROWS_PER_PAGE,
   triggerBrowserDownload,
 } from '../lib/pdfGenerator';
@@ -46,6 +48,8 @@ const MAX_PREVIEW_PAGES = 60;
 interface PdfReportScreenProps {
   result: AnalysisResult;
   diff: HistoryDiff | null;
+  comparison: ComparisonFilesState | null;
+  onSelectComparison: (id: string | null) => void;
   onPdfSaved: (savedTo: 'device' | 'google_drive', fileName: string) => void;
   onNavigate: (id: PageId) => void;
 }
@@ -61,12 +65,20 @@ type PreviewPageDescriptor =
       title: string;
       dateHeader: string;
       accent: string;
+      fill: string;
       totalInCategory: number;
       startIndex: number;
       rows: AccountEntry[];
     };
 
-export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfReportScreenProps) {
+export function PdfReportScreen({
+  result,
+  diff,
+  comparison,
+  onSelectComparison,
+  onPdfSaved,
+  onNavigate,
+}: PdfReportScreenProps) {
   const { language, t } = useLanguage();
   const [reportLanguage, setReportLanguage] = useState<Language>(language);
   useEffect(() => {
@@ -74,13 +86,14 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   }, [language]);
   const { t: reportT, locale: reportLocale } = getLanguageFormat(reportLanguage);
   const report = useMemo(() => getPdfReportLabels(reportT), [reportT]);
+  const comparisonSummary = diff && getPdfComparisonSummary(diff, report, reportLocale);
   const snapshotDate = formatSnapshotDate(result.snapshotDateLabel, reportLocale);
   const [options, setOptions] = useState<PdfReportOptions>({
     includeSummary: true,
     includeNotFollowingBack: true,
     includeNotFollowedBack: true,
     includeAllFollowers: false,
-    includeDiffSection: Boolean(diff),
+    includeDiffSection: true,
     includeTimestamps: true,
   });
 
@@ -142,27 +155,31 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
       title: string;
       dateHeader: string;
       accent: string;
+      fill: string;
       entries: AccountEntry[];
     }[] = [
       {
         enabled: options.includeNotFollowingBack,
         title: report.notFollowingBackList,
         dateHeader: report.dateYouFollowed,
-        accent: PDF_REPORT_COLORS.notFollowingBack.ink,
+        accent: PDF_PREVIEW_PALETTE.accent,
+        fill: PDF_PREVIEW_PALETTE.accentSoft,
         entries: result.notFollowingBack,
       },
       {
         enabled: options.includeNotFollowedBack,
         title: report.notFollowedBackList,
         dateHeader: report.dateTheyFollowed,
-        accent: PDF_REPORT_COLORS.notFollowedBack.ink,
+        accent: PDF_PREVIEW_PALETTE.cool,
+        fill: PDF_PREVIEW_PALETTE.coolSoft,
         entries: result.notFollowedBack,
       },
       {
         enabled: options.includeAllFollowers,
         title: report.followersList,
         dateHeader: report.dateTheyFollowed,
-        accent: PDF_REPORT_COLORS.followers.ink,
+        accent: PDF_PREVIEW_PALETTE.ink,
+        fill: PDF_PREVIEW_PALETTE.surface,
         entries: result.followers,
       },
     ];
@@ -180,6 +197,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
           title: cat.title,
           dateHeader: cat.dateHeader,
           accent: cat.accent,
+          fill: cat.fill,
           totalInCategory: 0,
           startIndex: 0,
           rows: [],
@@ -195,6 +213,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
           title: cat.title,
           dateHeader: cat.dateHeader,
           accent: cat.accent,
+          fill: cat.fill,
           totalInCategory: cat.entries.length,
           startIndex: start,
           rows: cat.entries.slice(start, start + PDF_TABLE_ROWS_PER_PAGE),
@@ -398,25 +417,24 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
       return (
         <div
           lang={reportLanguage}
-          className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-[#D1D5DB] bg-white text-[#111827] shadow-sm"
+          className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-rule bg-paper-2 text-ink shadow-sm"
         >
           <div>
-            <div className="h-1.5 w-full bg-[#B45309]" />
+            <div className="h-1.5 w-full bg-accent" />
 
             <div className="p-7">
-              <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] pb-3.5">
+              <div className="flex items-start justify-between gap-3 border-b border-rule pb-3.5">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-bold leading-tight text-[#B45309]">
+                  <p className="text-[11px] font-bold leading-tight text-accent">
                     {report.eyebrow}
                   </p>
-                  <h3 className="mt-0.5 text-[24px] font-bold leading-tight text-[#111827]">
+                  <h3 className="mt-0.5 text-[18px] font-bold leading-tight text-ink">
                     {report.title}
                   </h3>
-                  <p className="mt-1 text-[15px] leading-snug wrap-anywhere text-[#334155]">
+                  <p className="mt-1 text-[11px] leading-snug wrap-anywhere text-ink-2">
                     {result.ownerHandle && (
                       <>
-                        <strong className="font-bold text-[#111827]">@{result.ownerHandle}</strong>{' '}
-                        •{' '}
+                        <strong className="font-bold text-ink">@{result.ownerHandle}</strong> •{' '}
                       </>
                     )}
                     {report.source} {result.sourceFileName}
@@ -424,7 +442,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[15px] font-bold leading-tight text-[#111827]">
+                  <p className="text-[11px] font-bold leading-tight text-ink">
                     {report.asOf} {snapshotDate}
                   </p>
                 </div>
@@ -436,18 +454,18 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                     {getPdfSummaryMetrics(counts, report).map(({ label, count, ink, fill }) => (
                       <div
                         key={label}
-                        className="rounded border border-[#CBD5E1] px-1.5 py-2.5 text-center"
+                        className="rounded border border-rule px-1.5 py-2.5 text-center"
                         style={{ backgroundColor: fill, color: ink }}
                       >
-                        <p className="text-[16px] leading-tight font-bold">{label}</p>
-                        <p className="mt-0.5 text-[28px] leading-none font-bold">
+                        <p className="text-[11px] leading-tight font-bold">{label}</p>
+                        <p className="mt-0.5 text-[23px] leading-none font-bold">
                           {count.toLocaleString(reportLocale)}
                         </p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-12 items-center gap-4 rounded border border-[#CBD5E1] bg-[#F8FAFC] px-4 py-3.5">
+                  <div className="mt-4 grid grid-cols-12 items-center gap-4 rounded border border-rule bg-paper-3 px-4 py-3.5">
                     <div className="col-span-4 flex justify-center">
                       <svg viewBox="0 0 180 180" className="h-[132px] w-[132px]" aria-hidden="true">
                         <circle
@@ -455,7 +473,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                           cy="90"
                           r="64"
                           fill="none"
-                          stroke="#E5E7EB"
+                          stroke={PDF_PREVIEW_PALETTE.rule}
                           strokeWidth="22"
                         />
                         {donutArcs.map((arc) => (
@@ -471,41 +489,41 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                     </div>
 
                     <div className="col-span-8">
-                      <p className="text-[19px] font-bold text-[#111827]">{report.chart}</p>
-                      <div className="mt-1.5 divide-y divide-[#CBD5E1] text-[16px] font-bold">
+                      <p className="text-[14px] font-bold text-ink">{report.chart}</p>
+                      <div className="mt-1.5 divide-y divide-rule text-[11px] font-bold">
                         <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-[#374151]">
+                          <span className="inline-flex items-center gap-1.5 text-ink-2">
                             <span
                               className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_REPORT_COLORS.mutual }}
+                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.ok }}
                             />
                             {report.mutual}
                           </span>
-                          <strong style={{ color: PDF_REPORT_COLORS.mutual }}>
+                          <strong style={{ color: PDF_PREVIEW_PALETTE.ok }}>
                             {counts.mutual.toLocaleString(reportLocale)} ({mutualPct}%)
                           </strong>
                         </div>
                         <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-[#374151]">
+                          <span className="inline-flex items-center gap-1.5 text-ink-2">
                             <span
                               className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_REPORT_COLORS.notFollowingBack.ink }}
+                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.accent }}
                             />
                             {report.notFollowingBack}
                           </span>
-                          <strong style={{ color: PDF_REPORT_COLORS.notFollowingBack.ink }}>
+                          <strong style={{ color: PDF_PREVIEW_PALETTE.accent }}>
                             {counts.notFollowingBack.toLocaleString(reportLocale)} ({notBackPct}%)
                           </strong>
                         </div>
                         <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-[#374151]">
+                          <span className="inline-flex items-center gap-1.5 text-ink-2">
                             <span
                               className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_REPORT_COLORS.notFollowedBack.ink }}
+                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.cool }}
                             />
                             {report.notFollowedBack}
                           </span>
-                          <strong style={{ color: PDF_REPORT_COLORS.notFollowedBack.ink }}>
+                          <strong style={{ color: PDF_PREVIEW_PALETTE.cool }}>
                             {counts.notFollowedBack.toLocaleString(reportLocale)} ({notFollowedPct}
                             %)
                           </strong>
@@ -514,21 +532,21 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                     </div>
                   </div>
 
-                  <div className="mt-3.5 divide-y divide-[#E5E7EB] border-y border-[#E5E7EB] text-[16px]">
+                  <div className="mt-3.5 divide-y divide-rule border-y border-rule text-[11px]">
                     <div className="flex items-center justify-between py-1.5">
-                      <span className="text-[#374151]">{report.mutualDetail}</span>
-                      <strong className="font-bold text-[#047857]">
+                      <span className="text-ink-2">{report.mutualDetail}</span>
+                      <strong className="font-bold text-ok">
                         {counts.mutual.toLocaleString(reportLocale)} {report.accounts} ({mutualPct}
                         %)
                       </strong>
                     </div>
                     <div className="flex items-center justify-between py-1.5">
-                      <span className="text-[#374151]">{report.followBackRate}</span>
-                      <strong className="font-bold text-[#1D4ED8]">{followBackRate}%</strong>
+                      <span className="text-ink-2">{report.followBackRate}</span>
+                      <strong className="font-bold text-cool">{followBackRate}%</strong>
                     </div>
                     <div className="flex items-center justify-between py-1.5">
-                      <span className="text-[#374151]">{report.netDifference}</span>
-                      <strong className="font-bold text-[#111827]">
+                      <span className="text-ink-2">{report.netDifference}</span>
+                      <strong className="font-bold text-ink">
                         {netDiff >= 0 ? '+' : ''}
                         {netDiff.toLocaleString(reportLocale)} {report.accounts}
                       </strong>
@@ -537,24 +555,21 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                 </>
               )}
 
-              {options.includeDiffSection && diff && (
-                <div className="mt-3 rounded border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[15px]">
-                  <p className="font-bold text-[#B45309]">
-                    การเปลี่ยนแปลงเทียบกับรอบก่อน ({diff.previousDateLabel})
-                  </p>
-                  <p className="text-[#374151]">
-                    ผู้ติดตาม{' '}
-                    {diff.followersDelta >= 0 ? `+${diff.followersDelta}` : diff.followersDelta} •
-                    หายจากรายชื่อผู้ติดตาม {diff.recentUnfollowers.length} บัญชี
-                  </p>
+              {options.includeDiffSection && comparisonSummary && (
+                <div className="mt-3 rounded border border-rule bg-accent-soft px-3 py-2 text-[11px]">
+                  <p className="font-bold text-accent">{report.comparisonTitle}</p>
+                  <p className="wrap-anywhere text-ink-2">{comparisonSummary.reference}</p>
+                  <p className="text-ink-2">{comparisonSummary.counts}</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex items-center justify-between border-t border-[#E5E7EB] bg-[#F9FAFB] px-6 py-2 text-[13px] text-[#6B7280]">
-            <span>© 2026 IG Follow Analyzer • {report.affiliation}</span>
-            <span className="shrink-0 font-bold text-[#111827]">
+          <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
+            <span>
+              © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
+            </span>
+            <span className="shrink-0 font-bold text-ink">
               {report.page} {page.pageNumber} / {totalDocumentPages}
             </span>
           </div>
@@ -567,30 +582,39 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
     return (
       <div
         lang={reportLanguage}
-        className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-[#D1D5DB] bg-white text-[#111827] shadow-sm"
+        className="pdf-sheet-font flex h-[792px] w-[560px] flex-col justify-between overflow-hidden rounded-[8px] border border-rule bg-paper-2 text-ink shadow-sm"
       >
         <div>
           <div className="h-1.5 w-full" style={{ backgroundColor: page.accent }} />
           <div className="p-7">
-            <div className="flex items-baseline justify-between gap-3 border-b border-[#E5E7EB] pb-2.5">
-              <h3 className="text-[21px] font-bold leading-tight" style={{ color: page.accent }}>
+            <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2.5">
+              <h3 className="text-[15px] font-bold leading-tight" style={{ color: page.accent }}>
                 {page.sectionNumber}. {page.title} (
                 {page.totalInCategory.toLocaleString(reportLocale)} {report.accounts})
                 {isContinuation ? reportT(' — ต่อ', ' — continued') : ''}
               </h3>
-              <span className="shrink-0 text-[14px] text-[#6B7280]">
+              <span className="shrink-0 text-[10px] text-muted">
                 {report.asOf} {snapshotDate}
               </span>
             </div>
 
             {page.rows.length === 0 ? (
-              <p className="mt-4 text-[15px] italic text-[#6B7280]">{report.empty}</p>
+              <p className="mt-4 text-[11px] text-muted">{report.empty}</p>
             ) : (
-              <div className="mt-3 overflow-hidden border-y border-[#D1D5DB]">
-                <table className="w-full border-collapse text-left text-[15px] leading-tight">
+              <div className="mt-3 overflow-hidden border-y border-rule">
+                <table className="w-full table-fixed border-collapse text-left text-[10px] leading-tight [overflow-wrap:anywhere]">
+                  <colgroup>
+                    <col className="w-[8%]" />
+                    <col />
+                    {options.includeTimestamps && <col className="w-[20%]" />}
+                    <col className="w-[38%]" />
+                  </colgroup>
                   <thead>
-                    <tr className="text-[16px] text-white" style={{ backgroundColor: page.accent }}>
-                      <th className="w-11 px-2 py-1.5 font-bold">{report.rank}</th>
+                    <tr
+                      className="text-[10px]"
+                      style={{ backgroundColor: page.fill, color: page.accent }}
+                    >
+                      <th className="px-2 py-1.5 font-bold">{report.rank}</th>
                       <th className="px-2 py-1.5 font-bold">{report.username}</th>
                       {options.includeTimestamps && (
                         <th className="px-2 py-1.5 font-bold">{page.dateHeader}</th>
@@ -598,22 +622,22 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                       <th className="px-2 py-1.5 font-bold">{report.profileLink}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
+                  <tbody className="divide-y divide-rule">
                     {page.rows.map((acc, idx) => (
-                      <tr key={acc.handle} className={idx % 2 === 1 ? 'bg-[#F1F5F9]' : 'bg-white'}>
-                        <td className="px-2 py-1 text-[#6B7280]">{page.startIndex + idx + 1}</td>
-                        <td className="px-2 py-1 font-bold text-[#111827]">@{acc.handle}</td>
+                      <tr key={acc.handle} className={idx % 2 === 1 ? 'bg-paper-3' : 'bg-paper-2'}>
+                        <td className="px-2 py-1 text-muted">{page.startIndex + idx + 1}</td>
+                        <td className="px-2 py-1 font-bold text-ink">@{acc.handle}</td>
                         {options.includeTimestamps && (
-                          <td className="px-2 py-1 text-[#4B5563]">
+                          <td className="px-2 py-1 text-ink-2">
                             {acc.timestamp
                               ? formatDate(new Date(acc.timestamp * 1000), reportLocale)
                               : '—'}
                           </td>
                         )}
-                        <td className="px-2 py-1 text-[#1D4ED8]">
-                          <span className="inline-flex items-center gap-0.5">
-                            instagram.com/{acc.handle}
-                            <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
+                        <td className="px-2 py-1 text-cool">
+                          <span>
+                            instagram.com/{acc.handle}{' '}
+                            <ExternalLink className="inline size-2.5" aria-hidden="true" />
                           </span>
                         </td>
                       </tr>
@@ -625,9 +649,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#E5E7EB] bg-[#F9FAFB] px-6 py-2 text-[13px] text-[#6B7280]">
-          <span>© 2026 IG Follow Analyzer • {report.snapshotNotice}</span>
-          <span className="shrink-0 font-bold text-[#111827]">
+        <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
+          <span>
+            © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
+          </span>
+          <span className="shrink-0 font-bold text-ink">
             {report.page} {page.pageNumber} / {totalDocumentPages}
           </span>
         </div>
@@ -662,6 +688,15 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
           {t('กลับไปหน้าผลวิเคราะห์', 'Back to analysis')}
         </NormalButton>
       </header>
+
+      {diff && comparison && (
+        <section className="mt-6" aria-labelledby="pdf-comparison-heading">
+          <h2 id="pdf-comparison-heading" className="text-base font-semibold text-ink">
+            {t('ไฟล์ที่ใช้เทียบในรายงาน', 'Exports compared in this report')}
+          </h2>
+          <ComparisonFiles current={result} comparison={comparison} onSelect={onSelectComparison} />
+        </section>
+      )}
 
       <section className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
         {/* Left Controls Panel */}
@@ -749,11 +784,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                     ? [
                         {
                           key: 'includeDiffSection' as const,
-                          label: t(
-                            'สรุปคนเพิ่งเลิกติดตามเทียบครั้งก่อน',
-                            'Recent unfollowers since the previous export',
-                          ),
-                          badge: `${diff.recentUnfollowers.length}`,
+                          label: t('สรุปผลเทียบสองไฟล์', 'Summary of changes between exports'),
                         },
                       ]
                     : []),
@@ -1019,11 +1050,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
           role="dialog"
           aria-modal="true"
           aria-label={t('ตัวอย่างเอกสาร PDF ขนาด A4 แบบขยายครบทุกหน้า', 'Full A4 report preview')}
-          className="pdf-preview-dialog fixed inset-0 z-50 flex flex-col bg-black/85 backdrop-blur-xs"
+          className="pdf-preview-dialog fixed inset-0 z-50 flex flex-col bg-paper/95 backdrop-blur-xs"
         >
           {/* Minimal Top Bar: Filename + Close */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <div className="flex min-w-0 items-center gap-2 text-xs text-white/90 sm:text-sm">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-ink sm:text-sm">
               <FileText className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
               <span className="truncate font-medium">{previewFileName}</span>
             </div>
@@ -1031,7 +1062,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
             <button
               type="button"
               onClick={() => setIsZoomOpen(false)}
-              className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-3.5 text-xs font-medium text-white transition-colors hover:border-accent hover:text-accent"
+              className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-rule bg-paper-2 px-3.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
             >
               <X className="h-4 w-4" aria-hidden="true" />
               <span>{t('ปิด', 'Close')}</span>
@@ -1078,7 +1109,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
               {truncatedPages > 0 && (
                 <p
-                  className="rounded-lg border border-white/15 bg-black/60 px-4 py-2.5 text-center text-xs text-white/80"
+                  className="rounded-lg border border-rule bg-paper-2 px-4 py-2.5 text-center text-xs text-muted"
                   style={{ maxWidth: A4_WIDTH * lightboxFitScale }}
                 >
                   {t('แสดงตัวอย่างครบ ', 'Previewing the first ')}

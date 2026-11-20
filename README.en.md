@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://ig-follow-analyzer.pages.dev/">Open Live App</a> ·
+  <a href="https://follow-analyzer.tawandev.site/">Open Live App</a> ·
   <a href="docs/README.en.md">Feature Docs</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -25,10 +25,11 @@
 - **100% Browser-Local Processing:** Extracts and analyzes Instagram `.zip` archives (JSON and HTML) inside a Web Worker without uploading follower data to any server.
 - **Step-by-Step Export Guide:** Visual walkthrough for requesting your data from Instagram Accounts Center on both mobile and desktop.
 - **Dashboard & Account Table:** Summarizes Followers, Following, Mutuals, Not Following Back, and Not Followed Back with interactive charts, search, filters, sorting, and pagination.
-- **Report Export:** Preview reports at screen width and download A4 PDFs (Thai & English) directly to your device.
-- **Opt-In Local History:** Compare two exports to see new and missing followers, with a timeline for each account. History stays in the browser (`IndexedDB`), is off by default, and can be cleared after confirmation.
-- **Sample Mode:** Try the dashboard, browse sample history, and reopen results from earlier fictitious ZIP exports before uploading your own file.
+- **Report Export:** Preview and download A4 PDFs (Thai & English) directly to your device. Start a comparison report from the dashboard or history when account lists are available for both exports.
+- **Opt-In Local History:** Automatically compare the latest ZIP with the preceding export, or choose an older export for the same account. See new and missing followers plus account timelines. History stays in the browser (`IndexedDB`), is off by default, and can be cleared after confirmation.
+- **Sample Mode:** Preview a single ZIP or compare two fictitious exports, then browse sample history and reopen past results before uploading your own file.
 - **Bilingual & Themed UI:** Supports Thai and English, plus System (default), Dark, and Light themes.
+- **Feedback and Reviews:** Report issues, suggest features, or leave a rating from the About page. When enabled, the homepage displays rating totals and consented, screened comments.
 
 > Out of scope by design: website sign-up/login, Instagram OAuth, user accounts, and automated follow/unfollow actions.
 
@@ -50,7 +51,7 @@ flowchart LR
 ## Tech Stack
 
 - **Frontend:** `Vite`, `React 19`, `TypeScript`, `Tailwind CSS v4`, `lucide-react`
-- **Client-Side Processing:** `fflate` (Web Worker), `pdfmake` (`TH Sarabun New` font), `idb` (`IndexedDB`)
+- **Client-Side Processing:** `fflate` (Web Worker), `pdfmake` (A4 PDF), `idb` (`IndexedDB`)
 - **Quality & Testing:** `Vitest`, Testing Library, `ESLint`, `Prettier`
 
 ## Getting Started
@@ -92,6 +93,8 @@ npm run build
 
 Automated quality checks run via GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)) on every push and PR to `main` (`deadcode`, `lint`, `format:check`, `typecheck`, `test`, and `build`). For production hosting on **Cloudflare Pages**, set the build command to `npm run build` and the output directory to `dist`.
 
+See the [owner's guide to enabling and managing reviews](docs/features/i18n-themes-and-privacy.en.md#collecting-reviews-through-google-forms).
+
 ## Documentation
 
 - [Feature Documentation](docs/README.en.md) (`docs/features/`)
@@ -100,5 +103,6 @@ Automated quality checks run via GitHub Actions ([`ci.yml`](.github/workflows/ci
 
 ## License & Notice
 
+- Created by [Wattanaroj Butdee (GitHub)](https://github.com/Wattanaroj2567).
 - `© 2026 IG Follow Analyzer` — Independent tool, not affiliated with Instagram or Meta.
-- The A4 report preview and downloaded PDF use `TH Sarabun New` from `public/fonts/`.
+- The A4 preview and exported PDF follow the active website theme and use `Plus Jakarta Sans` and `IBM Plex Sans Thai` from `public/fonts/`.

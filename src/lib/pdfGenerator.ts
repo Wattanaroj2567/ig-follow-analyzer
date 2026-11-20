@@ -11,13 +11,39 @@ import { getLanguageFormat, type Language, type Translator } from './language';
 
 export const PDF_TABLE_ROWS_PER_PAGE = 20;
 
-export const PDF_REPORT_COLORS = {
-  followers: { ink: '#155E75', fill: '#CFFAFE' },
-  following: { ink: '#334155', fill: '#E2E8F0' },
-  mutual: '#047857',
-  notFollowingBack: { ink: '#9A3412', fill: '#FFEDD5' },
-  notFollowedBack: { ink: '#1E40AF', fill: '#DBEAFE' },
-};
+function getPdfReportPalette(color = (token: string) => `var(--color-${token})`) {
+  return {
+    paper: color('paper-2'),
+    surface: color('paper-3'),
+    ink: color('ink'),
+    inkSecondary: color('ink-2'),
+    muted: color('muted'),
+    rule: color('rule'),
+    accent: color('accent'),
+    accentSoft: color('accent-soft'),
+    cool: color('cool'),
+    coolSoft: color('cool-soft'),
+    ok: color('ok'),
+  };
+}
+
+export const PDF_PREVIEW_PALETTE = getPdfReportPalette();
+
+function readPdfReportPalette() {
+  const styles = getComputedStyle(document.documentElement);
+  const pixel = document.createElement('canvas');
+  pixel.width = pixel.height = 1;
+  const context = pixel.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
+  if (!context) throw new Error('The PDF color palette could not be resolved.');
+
+  return getPdfReportPalette((token) => {
+    // CSS uses OKLCH. pdfmake and its SVG renderer expect sRGB colors.
+    context.fillStyle = styles.getPropertyValue(`--color-${token}`).trim();
+    context.fillRect(0, 0, 1, 1);
+    const rgb = context.getImageData(0, 0, 1, 1).data.subarray(0, 3);
+    return `#${Array.from(rgb, (channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  });
+}
 
 export function getPdfReportLabels(t: Translator) {
   return {
@@ -53,26 +79,49 @@ export function getPdfReportLabels(t: Translator) {
       'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
       'Independent tool. Unaffiliated with Instagram or Meta.',
     ),
-    snapshotNotice: t('ข้อมูลจากไฟล์ส่งออกไม่ใช่แบบ Real-time', 'Data comes from an export snapshot.'),
+    snapshotNotice: t('ข้อมูล ณ วันที่ส่งออกไฟล์', 'Data as of the export date.'),
+    comparisonTitle: t('ความเปลี่ยนแปลงระหว่างสองไฟล์', 'Changes between exports'),
+    comparedWith: t('เทียบกับ', 'Compared with'),
+    newFollowers: t('ติดตามใหม่', 'New followers'),
+    missingFollowers: t('หายจากรายชื่อ', 'Missing from the list'),
+    netFollowers: t('ผู้ติดตามสุทธิ', 'Net follower change'),
+  };
+}
+
+export function getPdfComparisonSummary(
+  diff: HistoryDiff,
+  copy: ReturnType<typeof getPdfReportLabels>,
+  locale: string,
+) {
+  const file = [diff.previousSourceFileName, formatSnapshotDate(diff.previousDateLabel, locale)]
+    .filter(Boolean)
+    .join(' · ');
+  const net = diff.followersDelta.toLocaleString(locale, { signDisplay: 'exceptZero' });
+  return {
+    reference: `${copy.comparedWith} ${file}`,
+    counts: `${copy.newFollowers} ${diff.newFollowers.length.toLocaleString(locale)} · ${copy.missingFollowers} ${diff.recentUnfollowers.length.toLocaleString(locale)} · ${copy.netFollowers} ${net}`,
   };
 }
 
 export function getPdfSummaryMetrics(
   counts: FollowCounts,
   copy: ReturnType<typeof getPdfReportLabels>,
+  palette = PDF_PREVIEW_PALETTE,
 ) {
   return [
-    { label: copy.followers, count: counts.followers, ...PDF_REPORT_COLORS.followers },
-    { label: copy.following, count: counts.following, ...PDF_REPORT_COLORS.following },
+    { label: copy.followers, count: counts.followers, ink: palette.ink, fill: palette.surface },
+    { label: copy.following, count: counts.following, ink: palette.ink, fill: palette.surface },
     {
       label: copy.notFollowingBack,
       count: counts.notFollowingBack,
-      ...PDF_REPORT_COLORS.notFollowingBack,
+      ink: palette.accent,
+      fill: palette.accentSoft,
     },
     {
       label: copy.notFollowedBack,
       count: counts.notFollowedBack,
-      ...PDF_REPORT_COLORS.notFollowedBack,
+      ink: palette.cool,
+      fill: palette.coolSoft,
     },
   ];
 }
@@ -81,7 +130,10 @@ export function getRelationshipTotal(counts: FollowCounts): number {
   return counts.mutual + counts.notFollowingBack + counts.notFollowedBack;
 }
 
-export function buildPdfDonutArcs(counts: FollowCounts): { color: string; d: string }[] {
+export function buildPdfDonutArcs(
+  counts: FollowCounts,
+  palette = PDF_PREVIEW_PALETTE,
+): { color: string; d: string }[] {
   const total = getRelationshipTotal(counts);
   if (total <= 0) return [];
   const cx = 90;
@@ -96,9 +148,9 @@ export function buildPdfDonutArcs(counts: FollowCounts): { color: string; d: str
     return `M ${point(start)} A ${r} ${r} 0 0 1 ${point(mid)} A ${r} ${r} 0 0 1 ${point(end)}`;
   };
   const slices = [
-    { value: counts.mutual, color: PDF_REPORT_COLORS.mutual },
-    { value: counts.notFollowingBack, color: PDF_REPORT_COLORS.notFollowingBack.ink },
-    { value: counts.notFollowedBack, color: PDF_REPORT_COLORS.notFollowedBack.ink },
+    { value: counts.mutual, color: palette.ok },
+    { value: counts.notFollowingBack, color: palette.accent },
+    { value: counts.notFollowedBack, color: palette.cool },
   ];
 
   let cursor = 0;
@@ -111,24 +163,22 @@ export function buildPdfDonutArcs(counts: FollowCounts): { color: string; d: str
     });
 }
 
-function buildPdfDonutSvg(counts: FollowCounts): string {
-  const paths = buildPdfDonutArcs(counts).map(
+function buildPdfDonutSvg(counts: FollowCounts, palette: typeof PDF_PREVIEW_PALETTE): string {
+  const paths = buildPdfDonutArcs(counts, palette).map(
     ({ d, color }) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="22" />`,
   );
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="144" height="144">
-    <circle cx="90" cy="90" r="64" fill="none" stroke="#E5E7EB" stroke-width="22" />
+    <circle cx="90" cy="90" r="64" fill="none" stroke="${palette.rule}" stroke-width="22" />
     ${paths.join('')}
   </svg>`;
 }
 
-interface SarabunFontBundle {
-  regular: string;
-  bold: string;
-  italic: string;
-  boldItalic: string;
-}
+const reportFonts = {
+  PlusJakartaSans: { normal: 'PlusJakartaSans-Regular.ttf', bold: 'PlusJakartaSans-Bold.ttf' },
+  IBMPlexSansThai: { normal: 'IBMPlexSansThai-Regular.ttf', bold: 'IBMPlexSansThai-Bold.ttf' },
+};
 
-let cachedFontsBase64: SarabunFontBundle | null = null;
+let reportFontLoad: Promise<Record<string, string>> | undefined;
 
 type PdfMake = typeof import('pdfmake/build/pdfmake');
 let pdfMakeLoad: Promise<PdfMake> | undefined;
@@ -166,31 +216,34 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function loadSarabunFontsBase64(): Promise<SarabunFontBundle> {
-  if (cachedFontsBase64) return cachedFontsBase64;
-  const fontDirectory = `${import.meta.env.BASE_URL}fonts/`;
-  const [regRes, boldRes, italicRes, boldItalicRes] = await Promise.all([
-    fetch(`${fontDirectory}THSarabunNew-Regular.ttf`),
-    fetch(`${fontDirectory}THSarabunNew-Bold.ttf`),
-    fetch(`${fontDirectory}THSarabunNew-Italic.ttf`),
-    fetch(`${fontDirectory}THSarabunNew-BoldItalic.ttf`),
-  ]);
-  if (!regRes.ok || !boldRes.ok || !italicRes.ok || !boldItalicRes.ok) {
-    throw new Error('ไม่สามารถโหลดไฟล์ฟอนต์ TH Sarabun New สำหรับสร้าง PDF ได้');
-  }
-  const [regBuf, boldBuf, italicBuf, boldItalicBuf] = await Promise.all([
-    regRes.arrayBuffer(),
-    boldRes.arrayBuffer(),
-    italicRes.arrayBuffer(),
-    boldItalicRes.arrayBuffer(),
-  ]);
-  cachedFontsBase64 = {
-    regular: arrayBufferToBase64(regBuf),
-    bold: arrayBufferToBase64(boldBuf),
-    italic: arrayBufferToBase64(italicBuf),
-    boldItalic: arrayBufferToBase64(boldItalicBuf),
-  };
-  return cachedFontsBase64;
+function loadReportFonts() {
+  const files = Object.values(reportFonts).flatMap(({ normal, bold }) => [normal, bold]);
+  reportFontLoad ??= Promise.all(
+    files.map(async (file) => {
+      const response = await fetch(`${import.meta.env.BASE_URL}fonts/${file}`);
+      if (!response.ok) throw new Error(`The PDF font ${file} could not be loaded.`);
+      return [file, arrayBufferToBase64(await response.arrayBuffer())] as const;
+    }),
+  )
+    .then((entries) => Object.fromEntries(entries))
+    .catch((error: unknown) => {
+      reportFontLoad = undefined;
+      throw error;
+    });
+  return reportFontLoad;
+}
+
+function reportText(value: string) {
+  if (!/[\u0E00-\u0E7F]/u.test(value)) return value;
+
+  // Keep Thai punctuation and combining marks with their surrounding text.
+  return value
+    .split(/([\u0E00-\u0E7F]+(?: +[\u0E00-\u0E7F]+)*)/u)
+    .filter(Boolean)
+    .map((text) => ({
+      text,
+      font: /^[\u0E00-\u0E7F]/u.test(text) ? 'IBMPlexSansThai' : 'PlusJakartaSans',
+    }));
 }
 
 export function buildReportFileName(now = new Date()): string {
@@ -234,22 +287,8 @@ export async function generatePdfBlob(
 ): Promise<{ blob: Blob; fileName: string }> {
   const { t, locale } = getLanguageFormat(language);
   const copy = getPdfReportLabels(t);
-  const [pdfMake, fonts] = await Promise.all([loadPdfMake(), loadSarabunFontsBase64()]);
-  const vfs = {
-    'THSarabunNew-Regular.ttf': fonts.regular,
-    'THSarabunNew-Bold.ttf': fonts.bold,
-    'THSarabunNew-Italic.ttf': fonts.italic,
-    'THSarabunNew-BoldItalic.ttf': fonts.boldItalic,
-  };
-
-  const fontConfig = {
-    THSarabunNew: {
-      normal: 'THSarabunNew-Regular.ttf',
-      bold: 'THSarabunNew-Bold.ttf',
-      italics: 'THSarabunNew-Italic.ttf',
-      bolditalics: 'THSarabunNew-BoldItalic.ttf',
-    },
-  };
+  const palette = readPdfReportPalette();
+  const [pdfMake, vfs] = await Promise.all([loadPdfMake(), loadReportFonts()]);
 
   const generatedDate = new Date();
   const generatedDateLabel = formatDate(generatedDate, locale);
@@ -274,7 +313,7 @@ export async function generatePdfBlob(
 
   const content: Content[] = [
     {
-      canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 4, r: 2, color: '#B45309' }],
+      canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 4, r: 2, color: palette.accent }],
       margin: [0, 0, 0, 12],
     },
     {
@@ -282,31 +321,33 @@ export async function generatePdfBlob(
         {
           stack: [
             {
-              text: copy.eyebrow,
-              fontSize: 12,
+              text: reportText(copy.eyebrow),
+              fontSize: 10,
               bold: true,
-              color: '#B45309',
+              color: palette.accent,
             },
             {
-              text: copy.title,
-              fontSize: 22,
+              text: reportText(copy.title),
+              fontSize: 18,
               bold: true,
-              color: '#111827',
+              color: palette.ink,
               margin: [0, 1, 0, 2],
             },
             {
-              text: `${result.ownerHandle ? `${t('บัญชีเจ้าของไฟล์:', 'Account:')} @${result.ownerHandle}  •  ` : ''}${t('สร้างรายงานเมื่อ', 'Generated on')} ${generatedLabel}  •  ${copy.source} ${result.sourceFileName}${result.isDemoData ? ` (${copy.demo})` : ''}`,
-              fontSize: 12,
-              color: '#4B5563',
+              text: reportText(
+                `${result.ownerHandle ? `${t('บัญชีเจ้าของไฟล์:', 'Account:')} @${result.ownerHandle}  •  ` : ''}${t('สร้างรายงานเมื่อ', 'Generated on')} ${generatedLabel}  •  ${copy.source} ${result.sourceFileName}${result.isDemoData ? ` (${copy.demo})` : ''}`,
+              ),
+              fontSize: 10,
+              color: palette.inkSecondary,
             },
           ],
           width: '*',
         },
         {
-          text: `${copy.asOf} ${snapshotDate}`,
-          fontSize: 12,
+          text: reportText(`${copy.asOf} ${snapshotDate}`),
+          fontSize: 10,
           bold: true,
-          color: '#111827',
+          color: palette.ink,
           alignment: 'right',
           width: 125,
           margin: [0, 4, 0, 0],
@@ -316,7 +357,7 @@ export async function generatePdfBlob(
     },
     {
       canvas: [
-        { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.75, lineColor: '#E5E7EB' },
+        { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.75, lineColor: palette.rule },
       ],
       margin: [0, 0, 0, 14],
     },
@@ -331,23 +372,25 @@ export async function generatePdfBlob(
       table: {
         widths: ['*', '*', '*', '*'],
         body: [
-          getPdfSummaryMetrics(counts, copy).map(({ label, count, ink, fill }): TableCell => ({
-            stack: [
-              { text: label, fontSize: 14, bold: true },
-              { text: count.toLocaleString(locale), fontSize: 30, bold: true },
-            ],
-            color: ink,
-            alignment: 'center',
-            fillColor: fill,
-            margin: [4, 8, 4, 8],
-          })),
+          getPdfSummaryMetrics(counts, copy, palette).map(
+            ({ label, count, ink, fill }): TableCell => ({
+              stack: [
+                { text: reportText(label), fontSize: 11, bold: true },
+                { text: count.toLocaleString(locale), fontSize: 23, bold: true },
+              ],
+              color: ink,
+              alignment: 'center',
+              fillColor: fill,
+              margin: [4, 8, 4, 8],
+            }),
+          ),
         ],
       },
       layout: {
         hLineWidth: () => 0.75,
         vLineWidth: () => 0.75,
-        hLineColor: () => '#E5E7EB',
-        vLineColor: () => '#E5E7EB',
+        hLineColor: () => palette.rule,
+        vLineColor: () => palette.rule,
       },
       margin: [0, 0, 0, 14],
     });
@@ -357,19 +400,19 @@ export async function generatePdfBlob(
         label: copy.mutual,
         count: counts.mutual,
         percent: mutualPct,
-        color: PDF_REPORT_COLORS.mutual,
+        color: palette.ok,
       },
       {
         label: copy.notFollowingBack,
         count: counts.notFollowingBack,
         percent: notBackPct,
-        color: PDF_REPORT_COLORS.notFollowingBack.ink,
+        color: palette.accent,
       },
       {
         label: copy.notFollowedBack,
         count: counts.notFollowedBack,
         percent: notFollowedPct,
-        color: PDF_REPORT_COLORS.notFollowedBack.ink,
+        color: palette.cool,
       },
     ];
 
@@ -381,16 +424,16 @@ export async function generatePdfBlob(
             {
               columns: [
                 {
-                  svg: buildPdfDonutSvg(counts),
+                  svg: buildPdfDonutSvg(counts, palette),
                   width: 150,
                 },
                 {
                   stack: [
                     {
-                      text: copy.chart,
-                      fontSize: 17,
+                      text: reportText(copy.chart),
+                      fontSize: 14,
                       bold: true,
-                      color: '#111827',
+                      color: palette.ink,
                       margin: [0, 2, 0, 6],
                     },
                     {
@@ -398,10 +441,15 @@ export async function generatePdfBlob(
                         widths: [6, '*', 'auto'],
                         body: legend.map(({ label, count, percent, color }): TableCell[] => [
                           { canvas: [{ type: 'ellipse', x: 3, y: 9, r1: 3, r2: 3, color }] },
-                          { text: label, fontSize: 14, bold: true, color: '#334155' },
                           {
-                            text: `${count.toLocaleString(locale)} (${percent}%)`,
-                            fontSize: 14,
+                            text: reportText(label),
+                            fontSize: 11,
+                            bold: true,
+                            color: palette.inkSecondary,
+                          },
+                          {
+                            text: reportText(`${count.toLocaleString(locale)} (${percent}%)`),
+                            fontSize: 11,
                             bold: true,
                             color,
                             alignment: 'right',
@@ -411,7 +459,7 @@ export async function generatePdfBlob(
                       layout: {
                         hLineWidth: (i, node) => (i > 0 && i < node.table.body.length ? 0.4 : 0),
                         vLineWidth: () => 0,
-                        hLineColor: () => '#E5E7EB',
+                        hLineColor: () => palette.rule,
                         paddingTop: () => 4,
                         paddingBottom: () => 4,
                       },
@@ -421,7 +469,7 @@ export async function generatePdfBlob(
                   margin: [8, 4, 0, 0],
                 },
               ],
-              fillColor: '#F9FAFB',
+              fillColor: palette.surface,
               margin: [12, 10, 14, 10],
             },
           ],
@@ -430,8 +478,8 @@ export async function generatePdfBlob(
       layout: {
         hLineWidth: () => 0.75,
         vLineWidth: () => 0.75,
-        hLineColor: () => '#E5E7EB',
-        vLineColor: () => '#E5E7EB',
+        hLineColor: () => palette.rule,
+        vLineColor: () => palette.rule,
       },
       margin: [0, 0, 0, 14],
     });
@@ -441,32 +489,36 @@ export async function generatePdfBlob(
         widths: ['*', 'auto'],
         body: [
           [
-            { text: copy.mutualDetail, fontSize: 14, color: '#374151' },
+            { text: reportText(copy.mutualDetail), fontSize: 11, color: palette.inkSecondary },
             {
-              text: `${counts.mutual.toLocaleString(locale)} ${copy.accounts} (${mutualPct}%)`,
-              fontSize: 14,
+              text: reportText(
+                `${counts.mutual.toLocaleString(locale)} ${copy.accounts} (${mutualPct}%)`,
+              ),
+              fontSize: 11,
               bold: true,
-              color: PDF_REPORT_COLORS.mutual,
+              color: palette.ok,
               alignment: 'right',
             },
           ],
           [
-            { text: copy.followBackRate, fontSize: 14, color: '#374151' },
+            { text: reportText(copy.followBackRate), fontSize: 11, color: palette.inkSecondary },
             {
-              text: `${followBackRate}%`,
-              fontSize: 14,
+              text: reportText(`${followBackRate}%`),
+              fontSize: 11,
               bold: true,
-              color: PDF_REPORT_COLORS.notFollowedBack.ink,
+              color: palette.cool,
               alignment: 'right',
             },
           ],
           [
-            { text: copy.netDifference, fontSize: 14, color: '#374151' },
+            { text: reportText(copy.netDifference), fontSize: 11, color: palette.inkSecondary },
             {
-              text: `${netDiff >= 0 ? '+' : ''}${netDiff.toLocaleString(locale)} ${copy.accounts}`,
-              fontSize: 14,
+              text: reportText(
+                `${netDiff >= 0 ? '+' : ''}${netDiff.toLocaleString(locale)} ${copy.accounts}`,
+              ),
+              fontSize: 11,
               bold: true,
-              color: '#111827',
+              color: palette.ink,
               alignment: 'right',
             },
           ],
@@ -475,7 +527,7 @@ export async function generatePdfBlob(
       layout: {
         hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 0.75 : 0.5),
         vLineWidth: () => 0,
-        hLineColor: () => '#E5E7EB',
+        hLineColor: () => palette.rule,
         paddingTop: () => 5,
         paddingBottom: () => 5,
       },
@@ -485,19 +537,16 @@ export async function generatePdfBlob(
 
   if (options.includeDiffSection && diff) {
     hasFrontContent = true;
+    const summary = getPdfComparisonSummary(diff, copy, locale);
+    const extraMissingCount = diff.recentUnfollowers.length - 30;
     const unfollowerPreview =
-      diff.recentUnfollowers.length > 0
-        ? diff.recentUnfollowers
-            .slice(0, 30)
-            .map((h) => `@${h}`)
-            .join(', ') +
-          (diff.recentUnfollowers.length > 30
-            ? t(
-                ` และอีก ${diff.recentUnfollowers.length - 30} บัญชี`,
-                ` and ${diff.recentUnfollowers.length - 30} more`,
-              )
-            : '')
-        : t('ไม่พบบัญชีที่เลิกติดตามเพิ่มจากรอบก่อน', 'No accounts are missing from the latest list.');
+      diff.recentUnfollowers
+        .slice(0, 30)
+        .map((handle) => `@${handle}`)
+        .join(', ') +
+      (extraMissingCount > 0
+        ? t(` และอีก ${extraMissingCount} บัญชี`, ` and ${extraMissingCount} more`)
+        : '');
 
     content.push({
       table: {
@@ -507,19 +556,26 @@ export async function generatePdfBlob(
             {
               stack: [
                 {
-                  text: `${t('การเปลี่ยนแปลงเทียบกับรอบก่อน', 'Changes since the previous export')} (${formatSnapshotDate(diff.previousDateLabel, locale)})`,
-                  fontSize: 14,
+                  text: reportText(copy.comparisonTitle),
+                  fontSize: 11,
                   bold: true,
-                  color: '#B45309',
+                  color: palette.accent,
                 },
                 {
-                  text: `${t('ผู้ติดตามเปลี่ยนแปลง', 'Follower change:')} ${diff.followersDelta >= 0 ? '+' : ''}${diff.followersDelta}  •  ${t('หายจากรายชื่อผู้ติดตาม', 'Missing from the follower list:')} ${diff.recentUnfollowers.length} ${copy.accounts}: ${unfollowerPreview}`,
-                  fontSize: 13,
-                  color: '#374151',
+                  text: reportText(summary.reference),
+                  fontSize: 10,
+                  color: palette.inkSecondary,
+                },
+                {
+                  text: reportText(
+                    `${summary.counts}${unfollowerPreview ? `\n${unfollowerPreview}` : ''}`,
+                  ),
+                  fontSize: 10.5,
+                  color: palette.inkSecondary,
                   margin: [0, 2, 0, 0],
                 },
               ],
-              fillColor: '#FFFBEB',
+              fillColor: palette.accentSoft,
               margin: [10, 8, 10, 8],
             },
           ],
@@ -528,8 +584,8 @@ export async function generatePdfBlob(
       layout: {
         hLineWidth: () => 0.75,
         vLineWidth: () => 0.75,
-        hLineColor: () => '#FDE68A',
-        vLineColor: () => '#FDE68A',
+        hLineColor: () => palette.rule,
+        vLineColor: () => palette.rule,
       },
       margin: [0, 0, 0, 14],
     });
@@ -541,26 +597,31 @@ export async function generatePdfBlob(
     title: string,
     dateColumnLabel: string,
     accentHex: string,
+    headerFill: string,
     entries: AnalysisResult['notFollowingBack'],
   ) => {
     tableSectionNumber += 1;
-    const shouldBreak = hasFrontContent || tableSectionNumber > 1;
-
-    content.push({
-      text: `${tableSectionNumber}. ${title} (${entries.length.toLocaleString(locale)} ${copy.accounts})`,
-      fontSize: 19,
-      bold: true,
-      color: accentHex,
-      pageBreak: shouldBreak ? 'before' : undefined,
-      margin: [0, shouldBreak ? 0 : 4, 0, 6],
-    });
+    const pushTitle = (start: number) => {
+      const shouldBreak = hasFrontContent || tableSectionNumber > 1 || start > 0;
+      const continued = start > 0 ? t(' — ต่อ', ' — continued') : '';
+      content.push({
+        text: reportText(
+          `${tableSectionNumber}. ${title} (${entries.length.toLocaleString(locale)} ${copy.accounts})${continued}`,
+        ),
+        fontSize: 15,
+        bold: true,
+        color: accentHex,
+        pageBreak: shouldBreak ? 'before' : undefined,
+        margin: [0, shouldBreak ? 0 : 4, 0, 6],
+      });
+    };
 
     if (entries.length === 0) {
+      pushTitle(0);
       content.push({
-        text: copy.empty,
-        fontSize: 13,
-        italics: true,
-        color: '#6B7280',
+        text: reportText(copy.empty),
+        fontSize: 10.5,
+        color: palette.muted,
         margin: [0, 0, 0, 12],
       });
       return;
@@ -569,57 +630,75 @@ export async function generatePdfBlob(
     const columnLabels = [copy.rank, copy.username];
     if (options.includeTimestamps) columnLabels.push(dateColumnLabel);
     columnLabels.push(copy.profileLink);
-    const headerRow: TableCell[] = columnLabels.map((text) => ({
-      text,
-      bold: true,
-      fontSize: 14,
-      fillColor: accentHex,
-      color: '#FFFFFF',
-    }));
+    const makeHeader = (): TableCell[] =>
+      columnLabels.map((text) => ({
+        text: reportText(text),
+        bold: true,
+        fontSize: 11,
+        fillColor: headerFill,
+        color: accentHex,
+      }));
 
-    const bodyRows: TableCell[][] = entries.map((acc, idx) => {
+    const makeRow = (acc: AnalysisResult['followers'][number], index: number): TableCell[] => {
       const dateText = acc.timestamp ? formatDate(new Date(acc.timestamp * 1000), locale) : '—';
-      const rowFill = idx % 2 === 1 ? '#F1F5F9' : undefined;
+      const rowFill = index % 2 === 1 ? palette.surface : undefined;
       const row: TableCell[] = [
-        { text: String(idx + 1), fontSize: 13, color: '#6B7280', fillColor: rowFill },
-        { text: `@${acc.handle}`, fontSize: 13, bold: true, color: '#111827', fillColor: rowFill },
+        { text: String(index + 1), fontSize: 9.5, color: palette.muted, fillColor: rowFill },
+        {
+          text: `@${acc.handle}`,
+          fontSize: 9.5,
+          bold: true,
+          color: palette.ink,
+          fillColor: rowFill,
+        },
       ];
       if (options.includeTimestamps) {
-        row.push({ text: dateText, fontSize: 13, color: '#4B5563', fillColor: rowFill });
+        row.push({
+          text: reportText(dateText),
+          fontSize: 9.5,
+          color: palette.inkSecondary,
+          fillColor: rowFill,
+        });
       }
       row.push({
         text: `instagram.com/${acc.handle}`,
-        fontSize: 13,
-        color: '#1D4ED8',
+        fontSize: 9.5,
+        color: palette.cool,
         fillColor: rowFill,
         link: acc.href,
       });
       return row;
-    });
+    };
 
-    content.push({
-      table: {
-        headerRows: 1,
-        dontBreakRows: true,
-        widths: options.includeTimestamps ? [38, '*', 95, 165] : [38, '*', 210],
-        body: [headerRow, ...bodyRows],
-      },
-      layout: {
-        hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length ? 0.75 : 0.4),
-        vLineWidth: () => 0,
-        hLineColor: (i) => (i === 1 ? '#D1D5DB' : '#E5E7EB'),
-        paddingTop: () => 4,
-        paddingBottom: () => 4,
-      },
-      margin: [0, 0, 0, 12],
-    });
+    for (let start = 0; start < entries.length; start += PDF_TABLE_ROWS_PER_PAGE) {
+      pushTitle(start);
+      const rows = entries.slice(start, start + PDF_TABLE_ROWS_PER_PAGE);
+      content.push({
+        table: {
+          headerRows: 1,
+          dontBreakRows: true,
+          widths: options.includeTimestamps ? [29, '*', 89, 180] : [29, '*', 210],
+          body: [makeHeader(), ...rows.map((account, index) => makeRow(account, start + index))],
+        },
+        layout: {
+          hLineWidth: (i, node) =>
+            i === 0 || i === 1 || i === node.table.body.length ? 0.75 : 0.4,
+          vLineWidth: () => 0,
+          hLineColor: () => palette.rule,
+          paddingTop: () => 3.5,
+          paddingBottom: () => 3.5,
+        },
+        margin: [0, 0, 0, 12],
+      });
+    }
   };
 
   if (options.includeNotFollowingBack) {
     pushAccountTable(
       copy.notFollowingBackList,
       copy.dateYouFollowed,
-      PDF_REPORT_COLORS.notFollowingBack.ink,
+      palette.accent,
+      palette.accentSoft,
       result.notFollowingBack,
     );
   }
@@ -627,7 +706,8 @@ export async function generatePdfBlob(
     pushAccountTable(
       copy.notFollowedBackList,
       copy.dateTheyFollowed,
-      PDF_REPORT_COLORS.notFollowedBack.ink,
+      palette.cool,
+      palette.coolSoft,
       result.notFollowedBack,
     );
   }
@@ -635,7 +715,8 @@ export async function generatePdfBlob(
     pushAccountTable(
       copy.followersList,
       copy.dateTheyFollowed,
-      PDF_REPORT_COLORS.followers.ink,
+      palette.ink,
+      palette.surface,
       result.followers,
     );
   }
@@ -643,27 +724,32 @@ export async function generatePdfBlob(
   const docDefinition: TDocumentDefinitions = {
     pageSize: 'A4',
     pageMargins: [40, 36, 40, 46],
+    background: (_page, size) => ({
+      canvas: [{ type: 'rect', x: 0, y: 0, w: size.width, h: size.height, color: palette.paper }],
+    }),
     defaultStyle: {
-      font: 'THSarabunNew',
-      fontSize: 14,
-      lineHeight: 1.25,
-      color: '#111827',
+      font: 'PlusJakartaSans',
+      fontSize: 11,
+      lineHeight: 1.15,
+      color: palette.ink,
     },
     content,
     footer(currentPage: number, pageCount: number) {
       return {
         columns: [
           {
-            text: `© 2026 IG Follow Analyzer  •  ${copy.affiliation}  •  ${copy.snapshotNotice}`,
-            fontSize: 11,
-            color: '#6B7280',
+            text: reportText(
+              `© 2026 IG Follow Analyzer  •  ${copy.affiliation}  •  ${copy.snapshotNotice}`,
+            ),
+            fontSize: 9,
+            color: palette.muted,
             width: '*',
           },
           {
-            text: `${copy.page} ${currentPage} / ${pageCount}`,
-            fontSize: 11,
+            text: reportText(`${copy.page} ${currentPage} / ${pageCount}`),
+            fontSize: 9,
             bold: true,
-            color: '#111827',
+            color: palette.ink,
             alignment: 'right',
             width: 60,
           },
@@ -674,7 +760,7 @@ export async function generatePdfBlob(
   };
 
   pdfMake.addVirtualFileSystem(vfs);
-  pdfMake.addFonts(fontConfig);
+  pdfMake.addFonts(reportFonts);
   const pdfDoc = pdfMake.createPdf(docDefinition);
   const blob = await pdfDoc.getBlob();
 

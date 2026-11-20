@@ -1,9 +1,10 @@
-import { ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { ExternalLink, FileArchive, GitCompareArrows, UserMinus, UserPlus } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { RelationshipMetrics } from '../components/RelationshipOverview';
 import { getRelationshipMetrics, type RelationshipKey } from '../data/relationshipMetrics';
-import { formatDate } from '../lib/dates';
-import { demoHref } from '../lib/routes';
+import { formatDate, formatSnapshotDate } from '../lib/dates';
+import { buildHandleSnapshot } from '../lib/historyStore';
+import { compareFollowerSnapshots } from '../lib/igParser';
 import type { AnalysisResult } from '../types/analyzer';
 import { useLanguage } from '../lib/language';
 import './landing-preview.css';
@@ -12,17 +13,46 @@ const PREVIEW_SIZE = 4;
 
 interface LandingPreviewProps {
   demo: AnalysisResult;
-  onOpen: () => void;
+  previousDemo: AnalysisResult;
 }
 
-export function LandingPreview({ demo, onOpen }: LandingPreviewProps) {
+export function LandingPreview({ demo, previousDemo }: LandingPreviewProps) {
   const { t, locale } = useLanguage();
   const formatAccountDate = (timestamp?: number) =>
     timestamp ? formatDate(new Date(timestamp * 1000), locale) : t('ไม่มีวันที่', 'No date');
+  const [comparing, setComparing] = useState(false);
   const [selected, setSelected] = useState<RelationshipKey>('notFollowingBack');
-  const rows = demo[selected].slice(0, PREVIEW_SIZE);
-  const isMutual = selected === 'mutual';
-  const isFollowing = selected === 'following' || selected === 'notFollowingBack';
+  const [selectedChange, setSelectedChange] = useState<'newFollowers' | 'recentUnfollowers'>(
+    'newFollowers',
+  );
+  const comparisonLists = useMemo(() => {
+    const diff = compareFollowerSnapshots(buildHandleSnapshot(previousDemo), demo);
+    const newHandles = new Set(diff.newFollowers);
+    const missingHandles = new Set(diff.recentUnfollowers);
+    return {
+      newFollowers: demo.followers.filter(({ handle }) => newHandles.has(handle)),
+      recentUnfollowers: previousDemo.followers.filter(({ handle }) => missingHandles.has(handle)),
+    };
+  }, [demo, previousDemo]);
+  const changeLabels = {
+    newFollowers: t('เริ่มติดตามคุณ', 'New followers'),
+    recentUnfollowers: t('หายจากรายชื่อ', 'Missing from the list'),
+  };
+  const comparisonCategories = [
+    { key: 'newFollowers', icon: UserPlus },
+    { key: 'recentUnfollowers', icon: UserMinus },
+  ] as const;
+  const entries = comparing ? comparisonLists[selectedChange] : demo[selected];
+  const rows = entries.slice(0, PREVIEW_SIZE);
+  const total = entries.length.toLocaleString(locale);
+  const isMutual = !comparing && selected === 'mutual';
+  const isFollowing = !comparing && (selected === 'following' || selected === 'notFollowingBack');
+  const isMissing = comparing && selectedChange === 'recentUnfollowers';
+  const previousDate = formatSnapshotDate(previousDemo.snapshotDateLabel, locale);
+  const currentDate = formatSnapshotDate(demo.snapshotDateLabel, locale);
+  const categoryLabel = comparing
+    ? changeLabels[selectedChange]
+    : getRelationshipMetrics(t)[selected].label;
 
   return (
     <section className="landing-preview" aria-labelledby="landing-preview-title">
@@ -31,15 +61,71 @@ export function LandingPreview({ demo, onOpen }: LandingPreviewProps) {
         <span>{t('ข้อมูลสมมติ', 'Sample data')}</span>
       </header>
 
-      <RelationshipMetrics
-        counts={demo.counts}
-        selected={selected}
-        onSelect={setSelected}
-        showDescriptions={false}
-      />
+      <div
+        className="landing-preview__mode"
+        role="group"
+        aria-label={t('เลือกแบบตัวอย่าง', 'Choose a preview mode')}
+      >
+        <button type="button" aria-pressed={!comparing} onClick={() => setComparing(false)}>
+          <FileArchive aria-hidden="true" />
+          {t('ไฟล์เดียว', 'One ZIP')}
+        </button>
+        <button type="button" aria-pressed={comparing} onClick={() => setComparing(true)}>
+          <GitCompareArrows aria-hidden="true" />
+          {t('เทียบ 2 รอบ', 'Compare two ZIPs')}
+        </button>
+      </div>
+      <p className="landing-preview__context" role="status">
+        {comparing
+          ? t(
+              `เทียบไฟล์ ${previousDate} กับ ${currentDate}`,
+              `Comparing ${previousDate} and ${currentDate}`,
+            )
+          : t(`ภาพรวมจากไฟล์ ${currentDate}`, `Overview from the ${currentDate} export`)}
+      </p>
+
+      {comparing ? (
+        <div
+          className="landing-preview__changes"
+          role="group"
+          aria-label={t('เลือกความเปลี่ยนแปลง', 'Choose a follower change')}
+        >
+          {comparisonCategories.map(({ key, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              className="relationship-metric"
+              data-change={key}
+              aria-pressed={selectedChange === key}
+              onClick={() => setSelectedChange(key)}
+            >
+              <span>
+                <Icon aria-hidden="true" />
+                {changeLabels[key]}
+              </span>
+              <strong>{comparisonLists[key].length.toLocaleString(locale)}</strong>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <RelationshipMetrics
+          counts={demo.counts}
+          selected={selected}
+          onSelect={setSelected}
+          showDescriptions={false}
+        />
+      )}
 
       <h3 id="landing-preview-category" className="landing-preview__category" aria-live="polite">
-        {getRelationshipMetrics(t)[selected].label}
+        {categoryLabel}
+        {isMissing && (
+          <small>
+            {t(
+              'มีชื่อในไฟล์ก่อน แต่ไม่พบในไฟล์ล่าสุด',
+              'Present in the earlier ZIP, absent from the latest ZIP',
+            )}
+          </small>
+        )}
       </h3>
 
       <table className="landing-preview__table" aria-labelledby="landing-preview-category">
@@ -57,9 +143,11 @@ export function LandingPreview({ demo, onOpen }: LandingPreviewProps) {
             </th>
             <th scope="col">{t('ชื่อบัญชี Instagram', 'Instagram username')}</th>
             <th scope="col">
-              {isFollowing
-                ? t('คุณติดตามเขาเมื่อ', 'You followed them on')
-                : t('เขาติดตามคุณเมื่อ', 'They followed you on')}
+              {isMissing
+                ? t('พบในไฟล์รอบก่อน', 'Found in earlier export')
+                : isFollowing
+                  ? t('คุณติดตามเขาเมื่อ', 'You followed them on')
+                  : t('เขาติดตามคุณเมื่อ', 'They followed you on')}
             </th>
             {isMutual && <th scope="col">{t('คุณติดตามเขาเมื่อ', 'You followed them on')}</th>}
           </tr>
@@ -86,7 +174,9 @@ export function LandingPreview({ demo, onOpen }: LandingPreviewProps) {
                 </a>
               </th>
               <td className="measured">
-                {formatAccountDate(isFollowing ? account.followedByUsAt : account.followedUsAt)}
+                {isMissing
+                  ? previousDate
+                  : formatAccountDate(isFollowing ? account.followedByUsAt : account.followedUsAt)}
               </td>
               {isMutual && (
                 <td className="measured">{formatAccountDate(account.followedByUsAt)}</td>
@@ -97,23 +187,7 @@ export function LandingPreview({ demo, onOpen }: LandingPreviewProps) {
       </table>
 
       <footer className="landing-preview__footer">
-        <span>
-          {t(
-            `${rows.length} จาก ${demo.counts[selected].toLocaleString(locale)} บัญชี`,
-            `${rows.length} of ${demo.counts[selected].toLocaleString(locale)} accounts`,
-          )}
-        </span>
-        <a
-          href={demoHref('results')}
-          onClick={(event) => {
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-            event.preventDefault();
-            onOpen();
-          }}
-          className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md px-2 font-semibold text-cool underline underline-offset-3 hover:text-ink"
-        >
-          {t('เปิดตัวอย่างเต็ม', 'Open full example')}
-        </a>
+        <span>{t(`${rows.length} จาก ${total} บัญชี`, `${rows.length} of ${total} accounts`)}</span>
       </footer>
     </section>
   );

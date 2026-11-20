@@ -1,35 +1,35 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AppShell, type PageId } from './components/AppShell';
 import { demoHref, pageHref } from './lib/routes';
-import { buildDemoAnalysisResult, buildDemoHistoryDiff } from './data/demoAnalysis';
+import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
 import { RELATIONSHIP_ORDER, type RelationshipKey } from './data/relationshipMetrics';
+import { getComparisonExports, getHistoryComparisonTargets } from './lib/comparison';
 import {
+  buildHandleSnapshot,
   clearAllHistory,
   DEFAULT_HISTORY_PREFERENCES,
   deleteHistoryRecord,
-  hasAnySavedSnapshot,
   listHistoryRecords,
   loadHistoryPreferences,
-  loadLatestHandleSnapshot,
   persistAnalysisIfConsented,
   saveHistoryPreferences,
   syncTier2SnapshotForRecord,
   updateHistoryRecordPdfStatus,
 } from './lib/historyStore';
-import { computeHistoryDiff } from './lib/igParser';
+import {
+  compareFollowerSnapshots,
+  computeHistoryDiff,
+  extractOwnerHandleFromFileName,
+} from './lib/igParser';
 import { LANGUAGE_STORAGE_KEY, LanguageContext, readLanguage, useLanguage } from './lib/language';
+import { DemoHistoryScreen } from './screens/DemoHistoryScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HowItWorksScreen } from './screens/HowItWorksScreen';
 import { LandingScreen } from './screens/LandingScreen';
 import { ResultsScreen } from './screens/ResultsScreen';
 import { AboutScreen, TermsAndFaqScreen } from './screens/TrustAndAboutScreen';
 import { UploadScreen } from './screens/UploadScreen';
-import type {
-  AnalysisResult,
-  HistoryDiff,
-  HistoryPreferences,
-  HistoryRecord,
-} from './types/analyzer';
+import type { AnalysisResult, HistoryPreferences, HistoryRecord } from './types/analyzer';
 
 const PAGE_IDS: PageId[] = [
   'landing',
@@ -43,21 +43,21 @@ const PAGE_IDS: PageId[] = [
 ];
 
 const demoAnalysis = buildDemoAnalysisResult();
-const demoDiff = buildDemoHistoryDiff(demoAnalysis);
 const PdfReportScreen = lazy(() =>
   import('./screens/PdfReportScreen').then(({ PdfReportScreen }) => ({ default: PdfReportScreen })),
 );
 
-function readHash(): { page: PageId; demo: boolean; category?: RelationshipKey } {
+function readHash(): { page: PageId; demo: boolean; category?: RelationshipKey; record?: string } {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [name, query = ''] = raw.split('?');
   const page = PAGE_IDS.find((id) => id === name) ?? 'landing';
   const params = new URLSearchParams(query);
-  const demo = (page === 'results' || page === 'pdf') && params.has('demo');
+  const demo = (page === 'results' || page === 'pdf' || page === 'history') && params.has('demo');
   const category = demo
     ? RELATIONSHIP_ORDER.find((key) => key === params.get('category'))
     : undefined;
-  return { page, demo, category };
+  const record = demo && page !== 'history' ? (params.get('record') ?? undefined) : undefined;
+  return { page, demo, category, record };
 }
 
 export function App() {
@@ -95,7 +95,9 @@ function AppContent() {
   const setActivePage = useCallback((id: PageId) => navigate(pageHref(id)), [navigate]);
   const navigateFromResult = (id: PageId) => {
     if (route.demo && (id === 'results' || id === 'pdf')) {
-      navigate(demoHref(id, route.category));
+      navigate(demoHref(id, route.category, route.record));
+    } else if (route.demo && id === 'history') {
+      navigate(demoHref('history'));
     } else {
       setActivePage(id);
     }
@@ -112,31 +114,29 @@ function AppContent() {
   }, []);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  const [diff, setDiff] = useState<HistoryDiff | null>(null);
+  const [comparisonSelection, setComparisonSelection] = useState<{
+    current: AnalysisResult;
+    previousId: string;
+  } | null>(null);
 
   const [historyPrefs, setHistoryPrefs] = useState<HistoryPreferences>({
     ...DEFAULT_HISTORY_PREFERENCES,
   });
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
-  const [hasSavedSnapshot, setHasSavedSnapshot] = useState(false);
 
   useEffect(() => {
+    if (route.demo) return;
     let active = true;
     void (async () => {
-      const [prefs, recs, hasSnap] = await Promise.all([
-        loadHistoryPreferences(),
-        listHistoryRecords(),
-        hasAnySavedSnapshot(),
-      ]);
+      const [prefs, recs] = await Promise.all([loadHistoryPreferences(), listHistoryRecords()]);
       if (!active) return;
       setHistoryPrefs(prefs);
       setHistoryRecords(recs);
-      setHasSavedSnapshot(hasSnap);
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [route.demo]);
 
   const handleAnalysisComplete = async (result: AnalysisResult) => {
     if (result.isDemoData) {
@@ -145,18 +145,12 @@ function AppContent() {
     }
 
     setAnalysis(result);
-    const matchingSnapshot = historyPrefs.tier2HandlesOptIn
-      ? await loadLatestHandleSnapshot(result.ownerHandle)
-      : null;
-    const computedDiff = computeHistoryDiff(matchingSnapshot, result);
-    setDiff(computedDiff);
+    setComparisonSelection(null);
 
     if (historyPrefs.tier1SummaryOptIn) {
       const saved = await persistAnalysisIfConsented(result, historyPrefs);
       setActiveRecordId(saved?.id ?? null);
-      const [recs, hasSnap] = await Promise.all([listHistoryRecords(), hasAnySavedSnapshot()]);
-      setHistoryRecords(recs);
-      setHasSavedSnapshot(hasSnap);
+      setHistoryRecords(await listHistoryRecords());
     } else {
       setActiveRecordId(null);
     }
@@ -166,7 +160,7 @@ function AppContent() {
 
   const handleUpdatePreferences = async (next: HistoryPreferences) => {
     setHistoryPrefs(next);
-    if (!next.tier2HandlesOptIn) setDiff(null);
+    if (!next.tier2HandlesOptIn) setComparisonSelection(null);
     await saveHistoryPreferences(next);
 
     // If user turns on opt-in while holding a REAL analysis result, save once (never save demo data)
@@ -179,9 +173,7 @@ function AppContent() {
       }
     }
 
-    const [recs, hasSnap] = await Promise.all([listHistoryRecords(), hasAnySavedSnapshot()]);
-    setHistoryRecords(recs);
-    setHasSavedSnapshot(hasSnap);
+    setHistoryRecords(await listHistoryRecords());
   };
 
   const handleDeleteRecord = async (id: string) => {
@@ -197,7 +189,7 @@ function AppContent() {
     if (!targetAnalysis) return;
     setAnalysis(targetAnalysis);
     setActiveRecordId(record.id);
-    setDiff(null);
+    setComparisonSelection(null);
     setActivePage('results');
   };
 
@@ -205,8 +197,7 @@ function AppContent() {
     await clearAllHistory();
     setHistoryPrefs({ ...DEFAULT_HISTORY_PREFERENCES });
     setHistoryRecords([]);
-    setHasSavedSnapshot(false);
-    setDiff(null);
+    setComparisonSelection(null);
     setActiveRecordId(null);
   };
 
@@ -218,18 +209,99 @@ function AppContent() {
     })();
   };
 
-  const activeAnalysis = route.demo ? demoAnalysis : analysis;
-  const activeDiff = route.demo ? null : diff;
-  const hasComparisonBaseline =
-    hasSavedSnapshot &&
-    historyRecords.some((record) => record.id === activeRecordId && record.savedAnalysis);
-  const resultKey = route.demo ? `demo-${route.category ?? ''}` : 'analysis';
+  const needsSamples = route.demo || activePage === 'landing';
+  const sampleAnalyses = useMemo(
+    () => (needsSamples ? buildDemoAnalyses(demoAnalysis) : []),
+    [needsSamples],
+  );
+  const sampleIndex = Math.max(
+    0,
+    sampleAnalyses.findIndex((sample) => sample.sourceFileName === route.record),
+  );
+  const sampleAnalysis = sampleAnalyses[sampleIndex] ?? demoAnalysis;
+  const activeAnalysis = route.demo ? sampleAnalysis : analysis;
+  const historyComparisonTargets = useMemo(
+    () =>
+      !route.demo && activePage === 'history' && historyPrefs.tier2HandlesOptIn
+        ? getHistoryComparisonTargets(historyRecords)
+        : null,
+    [activePage, route.demo, historyPrefs.tier2HandlesOptIn, historyRecords],
+  );
+  const openHistoryComparisonPdf = (previousId: string) => {
+    const latest = historyComparisonTargets?.get(previousId);
+    if (!latest) return;
+    const current = latest.analysis.ownerHandle
+      ? latest.analysis
+      : { ...latest.analysis, ownerHandle: latest.ownerHandle };
+    setAnalysis(current);
+    setActiveRecordId(latest.id);
+    setComparisonSelection({ current, previousId });
+    setActivePage('pdf');
+  };
+  const openDemoHistoryComparisonPdf = (previousId: string) => {
+    setComparisonSelection({ current: sampleAnalyses[0], previousId });
+    navigate(demoHref('pdf'));
+  };
+  const comparison = useMemo(() => {
+    if (!activeAnalysis || (!route.demo && !historyPrefs.tier2HandlesOptIn)) return null;
+    return getComparisonExports(activeAnalysis, historyRecords, sampleAnalyses);
+  }, [activeAnalysis, route.demo, historyPrefs.tier2HandlesOptIn, historyRecords, sampleAnalyses]);
+  const defaultPrevious = comparison?.earlier[0];
+  const previous =
+    (comparison?.isLatest && comparisonSelection?.current === activeAnalysis
+      ? comparison.earlier.find((file) => file.id === comparisonSelection.previousId)
+      : undefined) ?? defaultPrevious;
+  const comparisonFiles =
+    comparison && previous && defaultPrevious
+      ? {
+          isLatest: comparison.isLatest,
+          earlier: comparison.earlier,
+          previous,
+          automatic: previous.id === defaultPrevious.id,
+        }
+      : null;
+  const selectComparison = (previousId: string | null) => {
+    setComparisonSelection(
+      previousId && activeAnalysis ? { current: activeAnalysis, previousId } : null,
+    );
+  };
+  const diff = useMemo(() => {
+    if (!activeAnalysis || !previous) return null;
+    const snapshot = buildHandleSnapshot(previous.analysis, previous.ownerHandle);
+    return activeAnalysis.isDemoData
+      ? compareFollowerSnapshots(snapshot, activeAnalysis)
+      : computeHistoryDiff(snapshot, activeAnalysis);
+  }, [activeAnalysis, previous]);
+  const hasComparisonBaseline = historyRecords.some(
+    (record) => record.id === activeRecordId && record.savedAnalysis,
+  );
+  const hasSavedLists = historyRecords.some(
+    (record) => record.savedAnalysis && (record.savedAnalysis.ownerHandle ?? record.ownerHandle),
+  );
+  const hasKnownOwner =
+    activeAnalysis &&
+    (activeAnalysis.ownerHandle ?? extractOwnerHandleFromFileName(activeAnalysis.sourceFileName));
+  const comparisonStatus = !historyPrefs.tier2HandlesOptIn
+    ? 'off'
+    : !hasKnownOwner
+      ? 'unknown-owner'
+      : hasComparisonBaseline
+        ? 'ready'
+        : 'waiting';
+  const resultKey = route.demo
+    ? `demo-${sampleAnalysis.sourceFileName}-${route.category ?? ''}`
+    : 'analysis';
 
   return (
-    <AppShell activePage={activePage} onNavigate={setActivePage} hasAnalysis={Boolean(analysis)}>
+    <AppShell
+      activePage={activePage}
+      onNavigate={setActivePage}
+      hasAnalysis={!route.demo && Boolean(analysis)}
+    >
       {activePage === 'landing' && (
         <LandingScreen
           demo={demoAnalysis}
+          previousDemo={sampleAnalyses[1]}
           onNavigate={setActivePage}
           onOpenDemo={() => navigate(demoHref('results'))}
         />
@@ -246,10 +318,10 @@ function AppContent() {
           <ResultsScreen
             key={resultKey}
             result={activeAnalysis}
-            diff={route.demo ? demoDiff : activeDiff}
-            comparisonStatus={
-              historyPrefs.tier2HandlesOptIn ? (hasComparisonBaseline ? 'ready' : 'waiting') : 'off'
-            }
+            diff={diff}
+            comparison={comparisonFiles}
+            comparisonStatus={comparisonStatus}
+            onSelectComparison={selectComparison}
             initialCategory={route.category}
             onNavigate={navigateFromResult}
           />
@@ -271,7 +343,9 @@ function AppContent() {
             <PdfReportScreen
               key={resultKey}
               result={activeAnalysis}
-              diff={activeDiff}
+              diff={diff}
+              comparison={comparisonFiles}
+              onSelectComparison={selectComparison}
               onPdfSaved={handlePdfSaved}
               onNavigate={navigateFromResult}
             />
@@ -282,19 +356,28 @@ function AppContent() {
             onNavigate={setActivePage}
           />
         ))}
-      {activePage === 'history' && (
-        <HistoryScreen
-          preferences={historyPrefs}
-          records={historyRecords}
-          activeRecordId={activeRecordId}
-          hasActiveAnalysis={Boolean(analysis && !analysis.isDemoData)}
-          hasLatestSnapshot={hasSavedSnapshot}
-          onUpdatePreferences={handleUpdatePreferences}
-          onOpenRecord={handleOpenHistoryRecord}
-          onDeleteRecord={handleDeleteRecord}
-          onClearAll={handleClearAllHistory}
-        />
-      )}
+      {activePage === 'history' &&
+        (route.demo ? (
+          <DemoHistoryScreen
+            samples={sampleAnalyses}
+            onOpenResults={(record) => navigate(demoHref('results', undefined, record))}
+            onOpenComparisonPdf={openDemoHistoryComparisonPdf}
+          />
+        ) : (
+          <HistoryScreen
+            preferences={historyPrefs}
+            records={historyRecords}
+            activeRecordId={activeRecordId}
+            hasActiveAnalysis={Boolean(analysis && !analysis.isDemoData)}
+            hasLatestSnapshot={hasSavedLists}
+            onUpdatePreferences={handleUpdatePreferences}
+            onOpenRecord={handleOpenHistoryRecord}
+            canOpenComparisonPdf={(id) => historyComparisonTargets?.has(id) ?? false}
+            onOpenComparisonPdf={openHistoryComparisonPdf}
+            onDeleteRecord={handleDeleteRecord}
+            onClearAll={handleClearAllHistory}
+          />
+        ))}
       {activePage === 'terms' && <TermsAndFaqScreen onNavigate={setActivePage} />}
       {activePage === 'about' && <AboutScreen onNavigate={setActivePage} />}
     </AppShell>

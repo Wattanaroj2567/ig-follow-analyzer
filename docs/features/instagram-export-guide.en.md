@@ -10,7 +10,7 @@ An interactive in-app guide that walks users through requesting their official f
 
 - **Device-Specific Walkthroughs:**
   - **Mobile (Instagram App):** 16 illustrated steps from Profile → Accounts Center → select `Followers and following` → configure date range & format → download the `.zip` file.
-  - **Desktop (Web):** 11 illustrated steps for browser users.
+  - **Desktop (Web):** 11 illustrated steps for browser users, including how to choose or find the download folder and select the original ZIP without extracting it.
 - **Bilingual Device Mockups:** Dynamically switches mockup labels between Thai and English, highlights exact buttons to tap, uses fictitious handles (`@somchai.demo`), and omits Instagram/Meta trademarks.
 - **Downloaded File Finder:** Includes a collapsible guide on the Upload screen explaining where to locate the downloaded `.zip` archive on iOS, Android, and desktop.
 

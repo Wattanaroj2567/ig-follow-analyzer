@@ -1,9 +1,11 @@
-import { ChevronDown, FileText, History } from 'lucide-react';
+import { ChevronDown, ExternalLink, FileText, History, Star } from 'lucide-react';
 import { useState } from 'react';
 import type { PageId } from '../components/AppShell';
 import { FeedbackForm } from '../components/FeedbackForm';
 import { NormalButton } from '../components/NormalButton';
+import { ReviewForm } from '../components/ReviewForm';
 import { useLanguage } from '../lib/language';
+import { getReviewEndpoint } from '../lib/review';
 import { pageHref } from '../lib/routes';
 
 export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => void }) {
@@ -61,6 +63,13 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
           detail: t(
             'เมื่อส่งความคิดเห็นจากหน้าเกี่ยวกับเรา แบบฟอร์มจะส่งหมวดหมู่ ข้อความ ระบบปฏิบัติการ เบราว์เซอร์ และขนาดพื้นที่แสดงผลของหน้าเว็บ ไปยัง Google Forms',
             'When you submit feedback from the About page, the form sends your category, message, operating system, browser, and viewport size to Google Forms.',
+          ),
+        },
+        {
+          label: t('คะแนนและข้อความรีวิว', 'Ratings and review comments'),
+          detail: t(
+            'แบบฟอร์มส่งคะแนน ชื่อ และข้อความที่คุณกรอกไปยัง Google Forms เว็บไซต์ใช้รหัสสุ่มที่เก็บในเบราว์เซอร์และชีตส่วนตัวเพื่อกันคะแนนซ้ำจากเบราว์เซอร์เดิม หน้าแรกแสดงคะแนนเฉลี่ยและจำนวนคะแนน รวมถึงชื่อและข้อความที่ได้รับอนุญาตและผ่านการคัดกรองอัตโนมัติ',
+            'The form sends your rating, name, and any comment you enter to Google Forms. A random ID stored in your browser and a private spreadsheet helps prevent duplicate ratings from that browser. The homepage shows the average and number of ratings, plus comments and names that were authorized and pass automated screening.',
           ),
         },
       ],
@@ -129,8 +138,8 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
     {
       q: t('จะรู้ได้อย่างไรว่าใครเพิ่งเลิกติดตามเราไป?', 'How can I see who recently unfollowed me?'),
       a: t(
-        'ไปที่หน้า “ประวัติบนเครื่อง” แล้วเปิดสวิตช์ยินยอมทั้ง 2 ข้อไว้ จากนั้นอัปโหลดไฟล์ .zip รอบแรกเพื่อให้เบราว์เซอร์เครื่องนี้จำรายชื่อไว้ พอครั้งหน้า (เช่น สัปดาห์หน้าหรือเดือนหน้า) กลับมาอัปโหลดไฟล์ใหม่ของบัญชีเดิมในเบราว์เซอร์เดิม ระบบจะเทียบให้อัตโนมัติทันทีว่าใครเพิ่งเลิกติดตามและใครเพิ่งติดตามใหม่',
-        'Open the History page and turn on both opt-in toggles, then analyze your first .zip so this browser remembers the snapshot. Next time you upload a newer .zip for the same account in the same browser, the app automatically highlights recent unfollowers and new followers.',
+        'เปิดทั้งสองสวิตช์ในหน้า “ประวัติบนเครื่อง” แล้ววิเคราะห์ ZIP รอบแรกเพื่อบันทึกรายชื่อ เมื่ออัปโหลด ZIP ใหม่ของบัญชีเดิมในเบราว์เซอร์เดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติและแสดงชื่อ ZIP ทั้งคู่ ถ้ามีรายชื่อบันทึกไว้หลายรอบ ให้กด “เปลี่ยนไฟล์ย้อนหลัง” ในหน้าผลล่าสุด แล้วดูว่ามีใครติดตามใหม่หรือหายจากรายชื่อระหว่างสองไฟล์',
+        'Turn on both History settings and analyze your first ZIP to save its account lists. When you upload a newer ZIP for the same account in the same browser, the app compares it with the previous export and shows both filenames. If you have several earlier lists, select “Change previous export” in your latest results to see new and missing followers between the two exports.',
       ),
       link: { page: 'history', label: t('ไปที่หน้าประวัติบนเครื่อง', 'Open History settings') },
     },
@@ -262,6 +271,8 @@ export function TermsAndFaqScreen({ onNavigate }: { onNavigate: (id: PageId) => 
 
 export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }) {
   const { t } = useLanguage();
+  const reviewEndpoint = getReviewEndpoint();
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   return (
     <div className="product-wrap max-w-4xl py-9 lg:py-14">
@@ -275,6 +286,18 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
             'เวลายอดผู้ติดตามลดลง ตัวเลขบอกได้แค่ว่าลดไปเท่าไร การจะรู้ว่าบัญชีไหนหายไปต้องเทียบรายชื่อจากสองช่วงเวลา เราจึงสร้างเครื่องมือนี้เพื่อให้คุณเทียบรายชื่อจากไฟล์ที่ขอจาก Instagram ได้ง่ายขึ้น',
             'A drop in your follower count tells you how much it changed. To see which accounts are missing, you need to compare two follower lists. We built this tool to make that easier with the files you request from Instagram.',
           )}
+        </p>
+        <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
+          <span>{t('สร้างโดย', 'Created by')}</span>
+          <a
+            href="https://github.com/Wattanaroj2567"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-medium text-cool underline underline-offset-4 hover:text-ink"
+          >
+            Wattanaroj Butdee (GitHub)
+            <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+          </a>
         </p>
       </header>
 
@@ -307,8 +330,8 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-ink-2">
               {t(
-                'เราให้คุณเช็กครั้งเดียวได้โดยไม่ต้องเก็บประวัติ ถ้าอยากดูย้อนหลัง คุณเลือกเปิดเก็บสรุปบนเครื่องได้ ส่วนการเก็บรายชื่อไว้เทียบครั้งถัดไปต้องเปิดเพิ่มอีกขั้น คุณล้างประวัติทั้งหมดได้ทุกเมื่อ',
-                'History is off by default so you can check once without saving a record. You can choose to save summaries on this device and separately choose to keep account lists for your next comparison. You can clear your history at any time.',
+                'ประวัติปิดไว้ตั้งแต่แรก คุณเลือกบันทึกเฉพาะสรุป หรือเปิดเพิ่มเพื่อเก็บรายชื่อในเบราว์เซอร์นี้ไว้เปิดดูและเลือก ZIP เทียบย้อนหลังได้ คุณล้างประวัติได้ทุกเมื่อ',
+                'History is off by default. You can save summaries in this browser and separately opt in to keeping account lists so you can reopen results and choose an earlier ZIP to compare. You can clear your history at any time.',
               )}
             </p>
             <div className="mt-auto pt-4">
@@ -325,12 +348,57 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
               'IG Follow Analyzer is an independent tool with no affiliation with Instagram or Meta.',
             )}
           </p>
-          <NormalButton variant="secondary" onClick={() => onNavigate('terms')}>
+          <a
+            href={pageHref('terms')}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onNavigate('terms');
+            }}
+            className="inline-flex min-h-11 items-center text-sm font-medium text-cool underline underline-offset-4 hover:text-ink"
+          >
             {t('อ่านเงื่อนไขและความเป็นส่วนตัว', 'Read Terms and Privacy')}
-          </NormalButton>
+          </a>
         </div>
       </section>
 
+      <section
+        aria-labelledby="review-heading"
+        className="mt-8 rounded-[10px] border border-rule bg-paper-2"
+      >
+        <div className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+          <div className="flex items-start gap-3">
+            <Star className="mt-0.5 size-6 shrink-0 text-accent" aria-hidden="true" />
+            <div>
+              <h2 id="review-heading" className="text-xl text-ink">
+                {t('รีวิวการใช้งาน', 'Review your experience')}
+              </h2>
+              <p className="mt-1 max-w-[48ch] text-sm leading-relaxed text-muted">
+                {t(
+                  'ให้คะแนน 1–5 ดาวและกรอกชื่อแสดงผล เขียนข้อความเพิ่มเติมได้ตามสะดวก',
+                  'Give a rating from 1 to 5 stars and enter a display name. You can also leave a comment.',
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn--secondary shrink-0"
+            aria-expanded={reviewOpen}
+            aria-controls="review-form"
+            onClick={() => setReviewOpen((open) => !open)}
+          >
+            {reviewOpen ? t('ซ่อนแบบฟอร์ม', 'Hide review form') : t('เขียนรีวิว', 'Write a review')}
+            <ChevronDown
+              className={`size-4 shrink-0 ${reviewOpen ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+        <div id="review-form" hidden={!reviewOpen} className="border-t border-rule p-6 sm:p-8">
+          <ReviewForm endpoint={reviewEndpoint} />
+        </div>
+      </section>
       <FeedbackForm />
     </div>
   );

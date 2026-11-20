@@ -16,7 +16,175 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       setItem: (key: string, value: string) => store.set(key, value),
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('keeps a review draft when changing theme or hiding the form', async () => {
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    const openReview = await screen.findByRole('button', { name: 'เขียนรีวิว' });
+    expect(screen.queryByRole('form', { name: 'รีวิวการใช้งาน' })).not.toBeInTheDocument();
+    fireEvent.click(openReview);
+    const form = screen.getByRole('form', { name: 'รีวิวการใช้งาน' });
+    const comment = within(form).getByRole('textbox', { name: 'เล่าประสบการณ์สั้น ๆ' });
+    fireEvent.change(comment, { target: { value: 'เทียบไฟล์ได้ง่าย' } });
+    fireEvent.click(screen.getByRole('button', { name: 'สว่าง' }));
+    expect(document.documentElement.dataset.theme).toBe('light');
+    fireEvent.click(screen.getByRole('button', { name: 'มืด' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.location.hash).toBe('#/about');
+    fireEvent.click(screen.getByRole('button', { name: 'ซ่อนแบบฟอร์ม' }));
+    expect(form).not.toBeVisible();
+    fireEvent.click(openReview);
+    expect(comment).toBeVisible();
+    expect(comment).toHaveValue('เทียบไฟล์ได้ง่าย');
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByRole('textbox', { name: 'Tell us about your experience' })).toBe(comment);
+  });
+
+  it('clears the rating when the same star is selected again', async () => {
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'เขียนรีวิว' }));
+    const form = within(screen.getByRole('form', { name: 'รีวิวการใช้งาน' }));
+    const name = form.getByRole('textbox', { name: /ชื่อที่ต้องการให้แสดง/ });
+    const comment = form.getByRole('textbox', { name: 'เล่าประสบการณ์สั้น ๆ' });
+    const submit = form.getByRole('button', { name: 'ส่งรีวิว' });
+    const four = form.getByRole('radio', { name: '4 ดาว' });
+    const five = form.getByRole('radio', { name: '5 ดาว' });
+    fireEvent.change(name, { target: { value: 'ผู้ทดสอบ' } });
+    fireEvent.change(comment, { target: { value: 'เทียบไฟล์ได้ง่าย' } });
+
+    fireEvent.click(four);
+    expect(four).toBeChecked();
+    expect(submit).toBeEnabled();
+    fireEvent.click(four);
+    expect(form.queryByRole('radio', { checked: true })).toBeNull();
+    expect(submit).toBeDisabled();
+    expect(name).toHaveValue('ผู้ทดสอบ');
+    expect(comment).toHaveValue('เทียบไฟล์ได้ง่าย');
+
+    fireEvent.click(four);
+    fireEvent.click(five);
+    expect(five).toBeChecked();
+    expect(four).not.toBeChecked();
+    expect(submit).toBeEnabled();
+    fireEvent.keyDown(five, { key: ' ' });
+    expect(five).not.toBeChecked();
+    expect(submit).toBeDisabled();
+  });
+
+  it('preserves a review after a failed save and confirms only an acknowledged submission', async () => {
+    const endpoint = 'https://script.google.com/macros/s/test-review/exec';
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', endpoint);
+    const fetchReview = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: false }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          editUrl: 'https://docs.google.com/forms/d/e/example/viewform?edit2=example',
+        }),
+      });
+    vi.stubGlobal('fetch', fetchReview);
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    const review = within(await screen.findByRole('region', { name: 'รีวิวการใช้งาน' }));
+    fireEvent.click(review.getByRole('button', { name: 'เขียนรีวิว' }));
+    const submit = review.getByRole('button', { name: 'ส่งรีวิว' });
+    expect(submit).toBeDisabled();
+    fireEvent.click(review.getByRole('radio', { name: '4 ดาว' }));
+    const name = review.getByRole('textbox', { name: /ชื่อที่ต้องการให้แสดง/ });
+    expect(name).toBeRequired();
+    expect(submit).toBeDisabled();
+    fireEvent.change(name, { target: { value: '   ' } });
+    expect(submit).toBeDisabled();
+    fireEvent.change(name, { target: { value: ' ผู้ทดสอบ ' } });
+    expect(submit).toBeEnabled();
+    const comment = review.getByRole('textbox', { name: 'เล่าประสบการณ์สั้น ๆ' });
+    fireEvent.change(comment, { target: { value: 'เทียบไฟล์ได้ง่าย' } });
+    const consent = review.getByRole('checkbox');
+    expect(consent).not.toBeChecked();
+    fireEvent.click(submit);
+    expect(await review.findByRole('alert')).toBeVisible();
+    expect(comment).toHaveValue('เทียบไฟล์ได้ง่าย');
+    expect(fetchReview.mock.calls[0][0]).toBe(endpoint);
+    expect(Object.fromEntries(fetchReview.mock.calls[0][1].body)).toEqual({
+      rating: '4',
+      comment: 'เทียบไฟล์ได้ง่าย',
+      displayName: 'ผู้ทดสอบ',
+      mayPublish: 'false',
+      browserId: expect.stringMatching(/^[a-f0-9-]{36}$/),
+    });
+
+    fireEvent.click(consent);
+    fireEvent.click(submit);
+    expect(await review.findByRole('status')).toHaveTextContent('บันทึกรีวิวแล้ว');
+    expect(fetchReview.mock.calls[1][1].body.get('mayPublish')).toBe('true');
+    expect(fetchReview.mock.calls[1][1].body.get('browserId')).toBe(
+      fetchReview.mock.calls[0][1].body.get('browserId'),
+    );
+    expect(review.getByRole('link', { name: 'แก้รีวิวใน Google Forms' })).toHaveAttribute(
+      'href',
+      'https://docs.google.com/forms/d/e/example/viewform?edit2=example',
+    );
+    expect(review.queryByRole('form')).not.toBeInTheDocument();
+  });
+
+  it('shows the rating total and up to six public comments on the landing page', async () => {
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    const fetchReview = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scoreCount: 9,
+        average: 4.2,
+        reviews: Array.from({ length: 7 }, (_, index) => ({
+          displayName: 'แก้ว',
+          rating: 4,
+          comment: `ข้อความทดสอบ ${index + 1}`,
+        })),
+      }),
+    });
+    vi.stubGlobal('fetch', fetchReview);
+    render(<App />);
+
+    const summary = within(await screen.findByRole('region', { name: 'รีวิวจากผู้ใช้' }));
+    expect(summary.getByText('4.2 / 5')).toBeVisible();
+    expect(summary.getByText('จาก 9 คะแนน')).toBeVisible();
+    expect(summary.getAllByRole('listitem')).toHaveLength(6);
+    expect(summary.getAllByText('ก')).toHaveLength(6);
+    expect(summary.queryByText('ข้อความทดสอบ 7')).not.toBeInTheDocument();
+  });
+
+  it('keeps the review form on the About page while the receiver is unavailable', async () => {
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://example.com/exec');
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'เขียนรีวิว' }));
+    const review = within(screen.getByRole('region', { name: 'รีวิวการใช้งาน' }));
+    expect(review.queryByRole('link')).not.toBeInTheDocument();
+    fireEvent.click(review.getByRole('radio', { name: '4 ดาว' }));
+    fireEvent.change(review.getByRole('textbox', { name: /ชื่อที่ต้องการให้แสดง/ }), {
+      target: { value: 'ผู้ทดสอบ' },
+    });
+    expect(review.getByRole('button', { name: 'ส่งรีวิว' })).toBeDisabled();
+    expect(review.getByText('ยังไม่เปิดรับรีวิวในขณะนี้')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'แจ้งปัญหาหรือเสนอแนะฟีเจอร์' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    const termsLink = screen.getByRole('link', { name: 'Read Terms and Privacy' });
+    expect(termsLink).toHaveAttribute('href', '#/terms');
+    fireEvent.click(termsLink);
+    expect(await screen.findByText('Ratings and review comments')).toBeVisible();
+  });
 
   it('switches the current results in place and restores English after reopening the app', async () => {
     window.history.replaceState(null, '', '/#/results?demo');
@@ -31,6 +199,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(screen.getByRole('searchbox', { name: 'Search by username' })).toBe(search);
     expect(search).toHaveValue('bkk.cafe.hopper');
     expect(screen.getByText('19 Nov 2026')).toBeVisible();
+    expect(screen.getByText('Comparing the 19 Oct 2026 and 19 Nov 2026 exports')).toBeVisible();
     expect(window.location.hash).toBe('#/results?demo');
 
     app.unmount();
@@ -96,9 +265,16 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(illustrations()[3]).toHaveTextContent('accountscenter.instagram.com');
     expect(illustrations().at(-1)).toHaveTextContent('Available downloads');
     illustrations().forEach((figure) => expect(figure).not.toHaveTextContent(/[\u0e00-\u0e7f]/));
+    const finalDesktopStep = within(document.getElementById('w-11')!);
+    expect(finalDesktopStep.getByText('Save as', { selector: 'mark' })).toBeVisible();
+    expect(finalDesktopStep.getByText('Show in folder', { selector: 'mark' })).toBeVisible();
+    expect(finalDesktopStep.getByText(/select the original \.zip file/)).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'ไทย' }));
     expect(illustrations().at(-1)).toHaveTextContent('ไฟล์ที่พร้อมให้ดาวน์โหลด');
+    expect(finalDesktopStep.getByText('บันทึกเป็น', { selector: 'mark' })).toBeVisible();
+    expect(finalDesktopStep.getByText('แสดงในโฟลเดอร์', { selector: 'mark' })).toBeVisible();
+    expect(finalDesktopStep.getByText(/เลือกไฟล์ \.zip ที่เพิ่งดาวน์โหลดทั้งไฟล์/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'คอมพิวเตอร์ (Web)' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -158,11 +334,12 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
   it('shows the full local history workflow at once and links to setup', async () => {
     render(<App />);
     const preview = within(screen.getByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' }));
-    expect(preview.getByRole('heading', { name: 'เปิดประวัติ แล้วอัปโหลด ZIP' })).toBeVisible();
-    expect(preview.getByRole('heading', { name: 'อัปโหลด ZIP รอบใหม่' })).toBeVisible();
+    expect(preview.getByRole('heading', { name: 'เปิดประวัติ แล้วอัปโหลด ZIP 1 ไฟล์' })).toBeVisible();
+    expect(preview.getByRole('heading', { name: 'อัปโหลด ZIP ใหม่ 1 ไฟล์' })).toBeVisible();
+    expect(preview.getByRole('note')).toHaveTextContent('ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น');
     expect(preview.getByText('@demo_account_014')).toBeVisible();
     expect(preview.getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
-    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบตัวอย่าง' })).toHaveAttribute(
+    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบ 2 รอบ' })).toHaveAttribute(
       'href',
       '#/results?demo',
     );
@@ -172,6 +349,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       screen.getByRole('region', { name: 'See who recently unfollowed you' }),
     );
     expect(englishPreview.getByRole('heading', { name: 'Recently unfollowed' })).toBeVisible();
+    expect(englishPreview.getByRole('note')).toHaveTextContent(
+      'request a fresh ZIP the next day or later',
+    );
     fireEvent.click(englishPreview.getByRole('link', { name: 'Set up local history' }));
 
     expect(window.location.hash).toBe('#/history');
@@ -186,10 +366,14 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     await act(async () => {
       render(<App />);
     });
-    fireEvent.click(screen.getByRole('button', { name: /ติดตามใหม่/ }));
+    const newFollowers = screen.getByRole('button', { name: /ติดตามใหม่/ });
+    expect(newFollowers).toHaveAccessibleDescription('มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP ใหม่');
+    fireEvent.click(newFollowers);
     expect(screen.getByRole('heading', { name: 'ติดตามใหม่' })).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: /หายจากรายชื่อ/ }));
+    const missingFollowers = screen.getByRole('button', { name: /หายจากรายชื่อ/ });
+    expect(missingFollowers).toHaveAccessibleDescription('มีชื่อเป็นผู้ติดตามคุณเฉพาะในไฟล์ ZIP เก่า');
+    fireEvent.click(missingFollowers);
     const row = screen.getByText('@demo_account_014').closest('details');
     expect(row).not.toHaveAttribute('open');
     fireEvent.click(within(row!).getByText('ดูไทม์ไลน์'));
@@ -198,11 +382,128 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(within(row!).getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
   });
 
+  it('opens older sample results without accessing real history', async () => {
+    const openDatabase = vi.fn();
+    vi.stubGlobal('indexedDB', { open: openDatabase });
+    window.history.replaceState(null, '', '/#/results?demo');
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่าง' }));
+    expect(window.location.hash).toBe('#/history?demo');
+    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(2);
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+
+    const backToDashboard = screen.getByRole('link', { name: 'กลับไปแดชบอร์ดตัวอย่าง' });
+    expect(backToDashboard).toHaveAttribute('href', '#/results?demo');
+    fireEvent.click(backToDashboard);
+    expect(window.location.hash).toBe('#/results?demo');
+    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่าง' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่างทั้งหมด (6 รายการ)' }));
+    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(4);
+    fireEvent.click(screen.getByRole('button', { name: 'ถัดไป' }));
+    expect(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'ก่อนหน้า' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'เปิดผลวิเคราะห์' })[1]);
+
+    expect(window.location.hash).toBe('#/results?demo&record=instagram-demo-2026-10-19.zip');
+    const comparison = screen.getByRole('region', { name: 'ผู้ติดตามเปลี่ยนไปยังไง' });
+    expect(within(comparison).getByText('instagram-demo-2026-10-19.zip')).toBeVisible();
+    expect(within(comparison).getByText('ไฟล์ที่เปิดอยู่')).toBeVisible();
+    expect(within(comparison).queryByText('เปลี่ยนไฟล์ย้อนหลัง')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'สร้างรายงาน PDF ตัวอย่าง' }));
+    await screen.findByText(/ดาวน์โหลด PDF ลงเครื่อง/i);
+    expect(window.location.hash).toBe('#/pdf?demo&record=instagram-demo-2026-10-19.zip');
+    expect(openDatabase).not.toHaveBeenCalled();
+  });
+
+  it('opens a comparison PDF from the selected sample history entry', async () => {
+    const openDatabase = vi.fn();
+    vi.stubGlobal('indexedDB', { open: openDatabase });
+    window.history.replaceState(null, '', '/#/history?demo');
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ดูประวัติตัวอย่างทั้งหมด (6 รายการ)' }));
+    const baseline = 'instagram-demo-2026-09-19.zip';
+    const olderEntry = screen.getByText(baseline).closest('li')!;
+    fireEvent.click(within(olderEntry).getByRole('button', { name: 'สร้าง PDF เทียบกับไฟล์ล่าสุด' }));
+
+    const pdf = await screen.findByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' });
+    expect(within(pdf).getByText('instagram-demo-2026-11-19.zip')).toBeVisible();
+    expect(within(pdf).getByText(baseline, { selector: 'dd[aria-live] span' })).toBeVisible();
+    expect(within(pdf).getByText('เทียบกับ · เลือกเอง')).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: 'สรุปผลเทียบสองไฟล์' })).toBeChecked();
+
+    fireEvent.click(within(pdf).getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
+    expect(
+      within(pdf).getByText('instagram-demo-2026-10-19.zip', { selector: 'dd[aria-live] span' }),
+    ).toBeVisible();
+    expect(within(pdf).getByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' })).toHaveFocus();
+    expect(openDatabase).not.toHaveBeenCalled();
+  });
+
+  it('changes the sample comparison and timeline while keeping the latest ZIP fixed', async () => {
+    const openDatabase = vi.fn();
+    vi.stubGlobal('indexedDB', { open: openDatabase });
+    window.history.replaceState(null, '', '/#/results?demo');
+    render(<App />);
+
+    const comparison = within(await screen.findByRole('region', { name: 'ผู้ติดตามเปลี่ยนไปยังไง' }));
+    expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
+    expect(comparison.getByText('ไฟล์ล่าสุด')).toBeVisible();
+    fireEvent.click(comparison.getByText('เปลี่ยนไฟล์ย้อนหลัง'));
+    expect(
+      comparison.getByRole('radio', { name: /instagram-demo-2026-10-19.zip.*รอบก่อนหน้า/ }),
+    ).toBeChecked();
+    fireEvent.click(
+      comparison.getByRole('radio', { name: /instagram-demo-2026-09-19.zip.*รอบเก่ากว่า/ }),
+    );
+    expect(comparison.getByText('เทียบกับ · เลือกเอง')).toBeVisible();
+    expect(comparison.getByText('รอบเก่ากว่า', { selector: 'dt span' })).toBeVisible();
+    expect(
+      comparison.getByText('instagram-demo-2026-11-19.zip', { selector: 'dd span' }),
+    ).toBeVisible();
+    expect(await screen.findByText('เทียบไฟล์ 19 ก.ย. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+
+    fireEvent.click(comparison.getByRole('button', { name: /หายจากรายชื่อ/ }));
+    fireEvent.click(screen.getByText('@demo_account_014', { exact: true }));
+    expect(screen.getByText('พบในรายชื่อไฟล์ที่เลือกเทียบ')).toBeVisible();
+    fireEvent.click(comparison.getByRole('radio', { name: /instagram-demo-2026-08-19.zip/ }));
+    expect(comparison.getByRole('button', { name: /หายจากรายชื่อ 0/ })).toBeVisible();
+    expect(screen.queryByText('@demo_account_014', { exact: true })).not.toBeInTheDocument();
+
+    fireEvent.click(comparison.getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
+    expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
+    expect(screen.getByText('เทียบไฟล์ 19 ต.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+
+    fireEvent.click(comparison.getByRole('radio', { name: /instagram-demo-2026-09-19.zip/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'สร้างรายงาน PDF ตัวอย่าง' }));
+    const pdfTitle = await screen.findByRole('heading', {
+      name: 'รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram',
+    });
+    const sheet = pdfTitle.closest('[lang]');
+    expect(sheet).toHaveTextContent('เทียบกับ instagram-demo-2026-09-19.zip');
+    const pdfComparison = within(screen.getByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' }));
+    fireEvent.click(pdfComparison.getByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' }));
+    fireEvent.click(pdfComparison.getByRole('radio', { name: /instagram-demo-2026-08-19.zip/ }));
+    expect(sheet).toHaveTextContent('เทียบกับ instagram-demo-2026-08-19.zip');
+    expect(sheet).toHaveTextContent('หายจากรายชื่อ 0');
+    const includeComparison = screen.getByRole('checkbox', { name: 'สรุปผลเทียบสองไฟล์' });
+    expect(includeComparison).toBeChecked();
+    fireEvent.click(includeComparison);
+    expect(sheet).not.toHaveTextContent('ความเปลี่ยนแปลงระหว่างสองไฟล์');
+    fireEvent.click(screen.getByRole('button', { name: 'กลับไปหน้าผลวิเคราะห์' }));
+    expect(screen.getByText('เทียบไฟล์ 19 ส.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+    expect(openDatabase).not.toHaveBeenCalled();
+  });
+
   it('shows the export menu locations for mobile and desktop', async () => {
     await act(async () => {
       render(<App />);
     });
-    fireEvent.click(screen.getAllByRole('link', { name: /ดูวิธีขอไฟล์พร้อมภาพ/i })[0]);
+    fireEvent.click(screen.getByRole('link', { name: 'ดูวิธีขอไฟล์' }));
 
     expect(screen.getByText(/วิธีขอไฟล์ ZIP จาก Instagram/i)).toBeInTheDocument();
     expect(screen.getAllByText(/ผู้ติดตามและคนที่คุณติดตาม/i).length).toBeGreaterThan(0);
@@ -268,6 +569,32 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(await screen.findByText(/ดาวน์โหลด PDF ลงเครื่อง/i)).toBeInTheDocument();
   });
 
+  it('distinguishes one-ZIP relationships from changes between two sample exports', async () => {
+    await act(async () => {
+      render(<App />);
+    });
+    const preview = within(screen.getByRole('region', { name: 'ตัวอย่างแดชบอร์ด' }));
+    const single = preview.getByRole('button', { name: 'ไฟล์เดียว' });
+    const compare = preview.getByRole('button', { name: 'เทียบ 2 รอบ' });
+    expect(single).toHaveAttribute('aria-pressed', 'true');
+    expect(preview.getByRole('heading', { name: 'ไม่ติดตามคุณกลับ' })).toBeVisible();
+    expect(preview.queryByRole('button', { name: /เริ่มติดตามคุณ|หายจากรายชื่อ/ })).toBeNull();
+
+    fireEvent.click(compare);
+    expect(compare).toHaveAttribute('aria-pressed', 'true');
+    expect(preview.getByRole('status')).toHaveTextContent('เทียบไฟล์ 19 ต.ค. 2569 กับ 19 พ.ย. 2569');
+    expect(preview.getByRole('heading', { name: 'เริ่มติดตามคุณ' })).toBeVisible();
+    expect(preview.getAllByRole('row')).toHaveLength(5);
+    expect(preview.queryByRole('button', { name: /ไม่ติดตามคุณกลับ/ })).toBeNull();
+
+    fireEvent.click(preview.getByRole('button', { name: /หายจากรายชื่อ/ }));
+    expect(preview.getByText('@demo_account_014')).toBeVisible();
+    expect(preview.getByRole('columnheader', { name: 'พบในไฟล์รอบก่อน' })).toBeVisible();
+    fireEvent.click(single);
+    expect(preview.getByRole('heading', { name: 'ไม่ติดตามคุณกลับ' })).toBeVisible();
+    expect(preview.queryByText('@demo_account_014')).toBeNull();
+  });
+
   it('opens the full sample overview and waits for a dashboard card selection', async () => {
     await act(async () => {
       render(<App />);
@@ -276,7 +603,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(within(preview).getByRole('button', { name: /ติดตามกันทั้งสองฝ่าย/ }));
     expect(within(preview).getByRole('heading', { name: 'ติดตามกันทั้งสองฝ่าย' })).toBeVisible();
 
-    const trigger = within(preview).getByRole('link', { name: 'เปิดตัวอย่างเต็ม' });
+    const trigger = within(screen.getByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' })).getByRole(
+      'link',
+      { name: 'ลองดูผลเทียบ 2 รอบ' },
+    );
+    expect(
+      screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '#/results?demo'),
+    ).toEqual([trigger]);
     expect(trigger).toHaveAttribute('href', '#/results?demo');
     expect(trigger).not.toHaveAttribute('target');
     fireEvent.click(trigger);
@@ -284,8 +617,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(
       await screen.findByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', level: 1 }),
     ).toBeVisible();
+    expect(screen.getByText('เทียบไฟล์ 19 ต.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
     expect(screen.queryByRole('region', { name: 'ตัวอย่างแดชบอร์ด' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'ภาพรวมบัญชี' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /หายจากรายชื่อ/ })).toBeVisible();
     expect(screen.queryByRole('searchbox', { name: 'ค้นหาชื่อบัญชี' })).not.toBeInTheDocument();
     expect(window.location.hash).toBe('#/results?demo');
 
@@ -356,6 +691,8 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
         hasLatestSnapshot={false}
         onUpdatePreferences={vi.fn()}
         onOpenRecord={vi.fn()}
+        canOpenComparisonPdf={() => false}
+        onOpenComparisonPdf={vi.fn()}
         onDeleteRecord={onDeleteRecord}
         onClearAll={onClearAll}
       />,
@@ -444,8 +781,11 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const themes = within(within(drawer).getByRole('group', { name: 'เลือกธีมสี' }));
     expect(within(drawer).getByRole('link', { name: 'วิธีขอไฟล์' })).toBeVisible();
     expect(within(drawer).getByRole('group', { name: 'ภาษา' })).toBeVisible();
-    expect(themes.getByRole('button', { name: 'ตามระบบ', pressed: true })).toBeVisible();
-    expect(themes.getByRole('button', { name: 'มืด' })).toBeVisible();
+    expect(themes.getAllByRole('button')).toEqual([
+      themes.getByRole('button', { name: 'ตามระบบ', pressed: true }),
+      themes.getByRole('button', { name: 'สว่าง' }),
+      themes.getByRole('button', { name: 'มืด' }),
+    ]);
 
     fireEvent.click(themes.getByRole('button', { name: 'สว่าง' }));
     expect(themes.getByRole('button', { name: 'สว่าง', pressed: true })).toBeVisible();

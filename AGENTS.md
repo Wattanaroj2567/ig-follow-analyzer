@@ -9,7 +9,7 @@ This file defines the project-specific rules and workflow for `ig-follow-analyze
 - **Code map (inspect only what the task touches):**
   - App shell & routes: `src/App.tsx`, `src/lib/routes.ts`, `src/components/AppShell.tsx`
   - ZIP parsing & set engine: `src/workers/zipParser.worker.ts`, `src/lib/igParser.ts`, `src/data/relationshipMetrics.ts`
-  - Export & local history: `src/lib/pdfGenerator.ts` (`TH Sarabun New` in `public/fonts/`), `src/lib/historyStore.ts` (`IndexedDB`)
+  - Export & local history: `src/lib/pdfGenerator.ts` (report fonts in `public/fonts/`), `src/lib/historyStore.ts` (`IndexedDB`)
   - Language, theme & tokens: `src/lib/language.ts`, `src/lib/theme.ts`, `src/index.css`
 - **Feature docs (read on demand):** Start with `docs/README.md` (`docs/README.en.md`) and the matching bilingual file in `docs/features/`. Document unresolved assumptions instead of silently inventing behavior.
 
@@ -18,7 +18,7 @@ This file defines the project-specific rules and workflow for `ig-follow-analyze
 - **100% client-side processing:** Parse Instagram `.zip` archives (JSON/HTML) locally inside `src/workers/zipParser.worker.ts` (`fflate`). Never transmit user archives or follower lists to any server.
 - **Prohibited features:** Never add website sign-up/login, user accounts, Instagram OAuth, credential/password/cookie/token collection, or automated follow/unfollow actions.
 - **Opt-in local history:** Browser-local history (`IndexedDB`, Model B) must remain OFF by default, require explicit 2-tier consent, and support 1-click full clear.
-- **Direct local PDF export:** Generate A4 PDF reports locally (`pdfmake` + `TH Sarabun New`) and trigger direct device downloads without external OAuth or cloud APIs.
+- **Direct local PDF export:** Generate A4 PDF reports locally with `pdfmake`, the active site colors, and the site's `Plus Jakarta Sans` and `IBM Plex Sans Thai` fonts. Trigger direct device downloads without external OAuth or cloud APIs.
 - **Set-derived metrics:** Compute all counts via set operations rather than hardcoding numbers. Use only fictitious handles and sample data in previews and guides.
 
 ## 3. UI, Branding & Copy Rules

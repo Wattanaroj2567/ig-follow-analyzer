@@ -53,6 +53,9 @@ const STEP_HIGHLIGHT_PATTERNS = [
   'ไฟล์ที่พร้อมให้ดาวน์โหลด',
   'ดาวน์โหลดไฟล์ของคุณ',
   'บันทึกไปยัง แอปไฟล์',
+  'ดาวน์โหลด \\(Downloads\\)',
+  'แสดงในโฟลเดอร์',
+  'บันทึกเป็น',
   'ส่งออกไปยังอุปกรณ์',
   'ส่งออกข้อมูลของคุณ',
   'ตลอดเวลา \\(All time\\)',
@@ -106,6 +109,8 @@ const STEP_HIGHLIGHT_PATTERNS = [
   'All time',
   'Last year',
   'Downloads',
+  'Show in folder',
+  'Save as',
   'Settings',
   'Open in…',
   'Download',
@@ -528,8 +533,8 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
   {
     id: 'w-11',
     title: t(
-      'รอแจ้งเตือน แล้วกลับมาคลิก ดาวน์โหลด ในแท็บ กิจกรรมปัจจุบัน',
-      'Download the ZIP from Current activity',
+      'ดาวน์โหลด ZIP แล้วเลือกไฟล์ที่บันทึกไว้บนคอมพิวเตอร์',
+      'Download the ZIP and select it from your computer',
     ),
     summary: [
       t(
@@ -537,8 +542,16 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
         'When Instagram notifies you that the export is ready, return to Export your information → Current activity.',
       ),
       t(
-        'ใต้หัวข้อ ไฟล์ที่พร้อมให้ดาวน์โหลด คลิกปุ่ม ดาวน์โหลด ภายใน 4 วัน เพื่อบันทึกไฟล์ .zip ลงเครื่อง',
-        'Under Available downloads, click Download within four days to save the ZIP to your computer.',
+        'ใต้หัวข้อ ไฟล์ที่พร้อมให้ดาวน์โหลด คลิก ดาวน์โหลด ภายใน 4 วัน หากเปิดหน้า ดาวน์โหลดไฟล์ของคุณ ให้คลิก ดาวน์โหลด ข้างไฟล์ .zip อีกครั้ง',
+        'Under Available downloads, click Download within four days. If the Download your files page opens, click Download next to the .zip file.',
+      ),
+      t(
+        'ถ้ามีหน้าต่าง บันทึกเป็น ให้เลือกโฟลเดอร์ที่หาเจอ เช่น ดาวน์โหลด (Downloads) แล้วกด บันทึก ถ้าไฟล์ถูกดาวน์โหลดอัตโนมัติ ให้ดูในโฟลเดอร์ดาวน์โหลด หรือเปิดรายการดาวน์โหลดแล้วเลือก แสดงในโฟลเดอร์',
+        'If a Save as dialog opens, choose a folder you can find again, such as Downloads, and click Save. If your browser saves automatically, check Downloads or choose Show in folder in your browser’s download list.',
+      ),
+      t(
+        'กลับมาที่หน้า วิเคราะห์ไฟล์ ของ IG Follow Analyzer แล้วคลิก เลือกไฟล์ .ZIP จากเครื่อง เปิดโฟลเดอร์ที่บันทึกไว้ แล้วเลือกไฟล์ .zip ที่เพิ่งดาวน์โหลดทั้งไฟล์ โดยไม่ต้องเปิดหรือแตกไฟล์ก่อน',
+        'In IG Follow Analyzer, go to Analyze ZIP and click Choose a ZIP from your device. Open the folder where you saved it and select the original .zip file without opening or extracting it.',
       ),
     ],
     tip: t(

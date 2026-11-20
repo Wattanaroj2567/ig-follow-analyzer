@@ -41,7 +41,10 @@ function getSnapshotKey(ownerHandle?: string): string {
   return ownerHandle ? `account:${ownerHandle}` : 'latest';
 }
 
-function buildHandleSnapshot(result: AnalysisResult, ownerHandle?: string): LatestHandleSnapshot {
+export function buildHandleSnapshot(
+  result: AnalysisResult,
+  ownerHandle?: string,
+): LatestHandleSnapshot {
   const followerTimestamps: [string, number][] = [];
   for (const entry of result.followers) {
     const timestamp = entry.followedUsAt ?? entry.timestamp;
@@ -52,35 +55,15 @@ function buildHandleSnapshot(result: AnalysisResult, ownerHandle?: string): Late
     ownerHandle,
     analyzedAtIso: result.analyzedAtIso,
     snapshotDateLabel: result.snapshotDateLabel,
+    sourceFileName: result.sourceFileName,
     counts: result.counts,
     followerHandles: result.followers.map((entry) => entry.handle),
     followerTimestamps: Object.fromEntries(followerTimestamps),
   };
 }
 
-function restoreSnapshotDates(
-  snapshot: LatestHandleSnapshot,
-  records: HistoryRecord[],
-): LatestHandleSnapshot {
-  const record = records.find(
-    (record) =>
-      record.analyzedAtIso === snapshot.analyzedAtIso &&
-      (record.ownerHandle ?? extractOwnerHandleFromFileName(record.sourceFileName)) ===
-        snapshot.ownerHandle &&
-      record.savedAnalysis &&
-      !isLegacyDemoRecord(record),
-  );
-  if (!record?.savedAnalysis) return snapshot;
-  const { followerTimestamps } = buildHandleSnapshot(record.savedAnalysis, snapshot.ownerHandle);
-  return { ...snapshot, followerTimestamps };
-}
-
 function isLegacyDemoRecord(rec: HistoryRecord): boolean {
   return Boolean(rec.savedAnalysis?.isDemoData || rec.sourceFileName === LEGACY_DEMO_FILENAME);
-}
-
-function isLegacyDemoSnapshot(snap: LatestHandleSnapshot): boolean {
-  return snap.followerHandles.includes('mutual_friend_0001');
 }
 
 function getDb(): Promise<IDBPDatabase<AnalyzerDbSchema>> {
@@ -173,66 +156,6 @@ export async function listHistoryRecords(): Promise<HistoryRecord[]> {
       .sort((a, b) => b.analyzedAtIso.localeCompare(a.analyzedAtIso));
   } catch {
     return [];
-  }
-}
-
-export async function loadLatestHandleSnapshot(
-  ownerHandle?: string,
-): Promise<LatestHandleSnapshot | null> {
-  if (!isIndexedDbSupported()) return null;
-  try {
-    const db = await getDb();
-    const key = getSnapshotKey(ownerHandle);
-    const exact = await db.get('snapshots', key);
-    if (exact) {
-      if (isLegacyDemoSnapshot(exact)) {
-        await db.delete('snapshots', key);
-        return null;
-      }
-      return exact.followerTimestamps
-        ? exact
-        : restoreSnapshotDates(exact, await db.getAll('records'));
-    }
-
-    // Fallback to legacy 'latest' key only if it has no conflicting ownerHandle
-    if (key !== 'latest') {
-      const legacy = await db.get('snapshots', 'latest');
-      if (legacy) {
-        if (isLegacyDemoSnapshot(legacy)) {
-          await db.delete('snapshots', 'latest');
-          return null;
-        }
-        if (!legacy.ownerHandle || legacy.ownerHandle === ownerHandle) {
-          return legacy.followerTimestamps
-            ? legacy
-            : restoreSnapshotDates(legacy, await db.getAll('records'));
-        }
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export async function hasAnySavedSnapshot(): Promise<boolean> {
-  if (!isIndexedDbSupported()) return false;
-  try {
-    const db = await getDb();
-    const allKeys = await db.getAllKeys('snapshots');
-    let hasValid = false;
-    for (const key of allKeys) {
-      const snap = await db.get('snapshots', key);
-      if (!snap) continue;
-      if (isLegacyDemoSnapshot(snap)) {
-        await db.delete('snapshots', key);
-      } else {
-        hasValid = true;
-      }
-    }
-    return hasValid;
-  } catch {
-    return false;
   }
 }
 

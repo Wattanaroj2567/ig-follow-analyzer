@@ -1,8 +1,5 @@
-import {
-  buildSafeProfileHref,
-  compareFollowerSnapshots,
-  computeFollowRelationshipSets,
-} from '../lib/igParser';
+import { formatDate } from '../lib/dates';
+import { buildSafeProfileHref, computeFollowRelationshipSets } from '../lib/igParser';
 import type { AccountEntry, AnalysisResult } from '../types/analyzer';
 
 export const DEMO_MISSING_FOLLOWER = 'demo_account_014';
@@ -10,29 +7,29 @@ export const DEMO_PREVIOUS_EXPORT = '19 ต.ค. 2569';
 export const DEMO_CURRENT_EXPORT = '19 พ.ย. 2569';
 export const DEMO_FOLLOW_TIMESTAMP = Date.UTC(2026, 8, 12, 12) / 1000;
 
-export function buildDemoHistoryDiff(current: AnalysisResult) {
-  const previousAt = '2026-10-19T12:00:00Z';
-  const removedFollower = {
-    handle: DEMO_MISSING_FOLLOWER,
-    href: buildSafeProfileHref(DEMO_MISSING_FOLLOWER),
-    timestamp: DEMO_FOLLOW_TIMESTAMP,
-  };
-  const previousFollowers = current.followers.filter(
-    (entry) => (entry.timestamp ?? 0) * 1000 <= Date.parse(previousAt),
-  );
-  previousFollowers.push(removedFollower);
-  const { counts } = computeFollowRelationshipSets(previousFollowers, current.following);
-  return compareFollowerSnapshots(
-    {
-      id: 'demo',
-      analyzedAtIso: previousAt,
-      snapshotDateLabel: DEMO_PREVIOUS_EXPORT,
-      counts,
-      followerHandles: previousFollowers.map((entry) => entry.handle),
-      followerTimestamps: { [DEMO_MISSING_FOLLOWER]: DEMO_FOLLOW_TIMESTAMP },
-    },
-    current,
-  );
+export function buildDemoAnalyses(current: AnalysisResult): AnalysisResult[] {
+  const earlierAnalyses = Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 9 - index, 19, 12));
+    const cutoff = date.getTime() / 1000;
+    const followers = current.followers.filter((entry) => (entry.timestamp ?? 0) <= cutoff);
+    if (DEMO_FOLLOW_TIMESTAMP <= cutoff) {
+      followers.push({
+        handle: DEMO_MISSING_FOLLOWER,
+        href: buildSafeProfileHref(DEMO_MISSING_FOLLOWER),
+        timestamp: DEMO_FOLLOW_TIMESTAMP,
+      });
+    }
+    const following = current.following.filter((entry) => (entry.timestamp ?? 0) <= cutoff);
+    const analyzedAtIso = date.toISOString();
+    return {
+      ...current,
+      ...computeFollowRelationshipSets(followers, following),
+      analyzedAtIso,
+      snapshotDateLabel: formatDate(date, 'th-TH'),
+      sourceFileName: `instagram-demo-${analyzedAtIso.slice(0, 10)}.zip`,
+    };
+  });
+  return [current, ...earlierAnalyses];
 }
 
 const NAMED_NOT_FOLLOWING_BACK = [
@@ -113,7 +110,7 @@ export function buildDemoAnalysisResult(): AnalysisResult {
     sourceFileName: 'instagram-demo-2026-11-19.zip',
     sourceFileSize: 145_408,
     ownerHandle: 'somchai.demo',
-    analyzedAtIso: new Date().toISOString(),
+    analyzedAtIso: '2026-11-19T12:00:00Z',
     snapshotDateLabel: DEMO_CURRENT_EXPORT,
     isDemoData: true,
     detectedFiles: {

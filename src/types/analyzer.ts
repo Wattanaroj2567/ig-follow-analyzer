@@ -61,6 +61,7 @@ export interface LatestHandleSnapshot {
   ownerHandle?: string;
   analyzedAtIso: string;
   snapshotDateLabel: string;
+  sourceFileName?: string;
   counts: FollowCounts;
   followerHandles: string[];
   followerTimestamps?: Record<string, number>;
@@ -68,6 +69,7 @@ export interface LatestHandleSnapshot {
 
 export interface HistoryDiff {
   previousDateLabel: string;
+  previousSourceFileName?: string;
   followersDelta: number;
   followingDelta: number;
   notFollowingBackDelta: number;

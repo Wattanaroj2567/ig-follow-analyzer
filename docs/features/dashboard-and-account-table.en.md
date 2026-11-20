@@ -18,10 +18,13 @@ Presents the complete follower relationship breakdown on one screen with summary
 - **Account Table:**
   - Instant search by `@username`
   - Filter across all 5 relationship categories. When a comparison is available, open **New followers** or **Missing from the list** and expand any account to see its export timeline.
+  - Each comparison card explains which ZIP contains the account in its follower list. Under **Missing from the list**, a note explains that the ZIPs show the interval, with the exact date and reason unknown.
+  - The comparison lists both ZIP filenames. On the **Compared with** side, use **Change previous export** to choose an earlier ZIP with saved lists for the same account or reset to the automatically selected export.
   - Sort by newest follow date or alphabetically (`A–Z` / `Z–A`) with 25-row pagination
   - Sanitized external links to open each profile directly on Instagram
   - Two-sided follow dates for mutual follows (JSON exports) and a clear notice when timestamps are absent (HTML exports)
-- **Sample Data Mode (Demo):** Landing page preview cards, local history comparison example, and a full interactive sample dashboard powered by the real set engine.
+- **Sample Data Mode (Demo):** The landing preview starts with the five relationship categories from one ZIP. **Compare two ZIPs** shows both export dates and lets visitors switch between new followers and accounts missing from the latest list. Select **Try comparing two sample ZIPs** in **See who recently unfollowed you** to open the full dashboard, choose an earlier ZIP, and expand account timelines.
+- **First real analysis:** Shows an overview of the current export and explains how to turn on history and save account lists to compare the next ZIP.
 
 ## Related Source Files
 

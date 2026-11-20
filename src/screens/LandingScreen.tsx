@@ -1,6 +1,15 @@
-import { ChevronDown, FileText, ListChecks, ShieldCheck, Upload, UserMinus } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronDown,
+  FileText,
+  ListChecks,
+  ShieldCheck,
+  Upload,
+  UserMinus,
+} from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AddToHomeGuide } from '../components/AddToHomeGuide';
+import { LandingReviews } from '../components/LandingReviews';
 import type { PageId } from '../components/AppShell';
 import { pageHref } from '../lib/routes';
 import type { AnalysisResult } from '../types/analyzer';
@@ -10,6 +19,7 @@ import { LocalHistoryPreview } from './LocalHistoryPreview';
 
 interface LandingScreenProps {
   demo: AnalysisResult;
+  previousDemo: AnalysisResult;
   onNavigate: (id: PageId) => void;
   onOpenDemo: () => void;
 }
@@ -100,7 +110,7 @@ const getLandingFaqs = (t: Translator) => [
   {
     q: t('ทำไมไม่แสดงรูปโปรไฟล์ของแต่ละบัญชี?', 'Why are profile pictures missing?'),
     a: t(
-      'ไฟล์ .zip ที่ส่งออกจาก Instagram มีเฉพาะชื่อบัญชีและวันที่ติดตาม ไม่มีรูปโปรไฟล์ของคนอื่นติดมาด้วย และเว็บนี้ไม่ยิงคำขอไปดึงรูปจากภายนอกเพื่อรักษาความเป็นส่วนตัว 100% บนเครื่องคุณ แต่สามารถกดลิงก์ในตารางเพื่อเปิดดูหน้าโปรไฟล์จริงของแต่ละคนบน Instagram ได้ทันทีครับ',
+      'ไฟล์ ZIP ที่ส่งออกจาก Instagram มีชื่อบัญชีและอาจมีวันที่ติดตาม เว็บนี้วิเคราะห์ไฟล์บนเครื่องคุณและไม่เรียกดึงรูปโปรไฟล์จากภายนอก คุณกดชื่อบัญชีในตารางเพื่อเปิดโปรไฟล์บน Instagram ได้',
       'The export contains usernames and may include follow dates. It does not include other accounts’ profile pictures, and this app does not fetch them. You can open an account’s Instagram profile from the table.',
     ),
   },
@@ -130,7 +140,7 @@ const getLandingFaqs = (t: Translator) => [
   },
 ];
 
-export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenProps) {
+export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: LandingScreenProps) {
   const { t } = useLanguage();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const useCasesReveal = useRevealOnScroll<HTMLUListElement>();
@@ -252,7 +262,7 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
                   href={pageHref('how-it-works')}
                   onClick={go('how-it-works')}
                 >
-                  {t('ดูวิธีขอไฟล์พร้อมภาพ', 'View the illustrated guide')}
+                  {t('ดูวิธีขอไฟล์', 'View export guide')}
                 </a>
               </div>
 
@@ -276,7 +286,7 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
               </aside>
             </div>
 
-            <LandingPreview demo={demo} onOpen={onOpenDemo} />
+            <LandingPreview demo={demo} previousDemo={previousDemo} />
           </div>
         </div>
       </section>
@@ -286,12 +296,15 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
         <div className="product-wrap">
           <div className="landing-section__head">
             <h2 id="use-cases-h">
-              {t('เคยสงสัยเรื่องพวกนี้บน Instagram ไหม?', 'Ever wondered about your Instagram list?')}
+              {t(
+                'เคยสงสัยเรื่องผู้ติดตามในโปรไฟล์ Instagram ของคุณไหม?',
+                'Ever wondered about the followers on your Instagram profile?',
+              )}
             </h2>
             <p>
               {t(
-                'เครื่องมือนี้ช่วยจัดระเบียบและดูภาพรวมการติดตามของคุณให้ชัดขึ้น โดยไม่ต้องเสี่ยงใช้แอปที่ขอรหัสผ่าน',
-                'See the full picture of your follower relationships clearly, without risking third-party login apps.',
+                'เริ่มจาก ZIP ไฟล์เดียวเพื่อดูว่าใครติดตามใคร แล้วใช้ไฟล์รอบถัดไปดูว่ารายชื่อเปลี่ยนไปอย่างไร',
+                'Start with one ZIP to see who follows whom, then use your next export to see what changed.',
               )}
             </p>
           </div>
@@ -302,42 +315,45 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
           >
             {[
               {
-                icon: UserMinus,
-                tone: 'text-bad',
-                title: t('ยอดผู้ติดตามลด แต่ไม่รู้ว่าใครหายไป', 'Follower count dropped, but who left?'),
+                icon: ListChecks,
+                tone: 'text-accent',
+                title: t('ใครไม่ติดตามคุณกลับ?', 'Who doesn’t follow you back?'),
                 body: t(
-                  'เมื่อเปิดประวัติบนเครื่องไว้ แล้วกลับมาอัปโหลดไฟล์รอบใหม่ ระบบจะเทียบกับรอบก่อนและชี้ชื่อบัญชีที่เพิ่งเลิกติดตามให้ทันที',
-                  'Turn on local history and compare your next export to spot who unfollowed you since last time.',
+                  'แยกได้ว่าใครไม่ติดตามคุณกลับ ใครที่คุณยังไม่ติดตามกลับ และใครติดตามกันทั้งสองฝ่าย ค้นหาชื่อแล้วเปิดโปรไฟล์จากตารางได้เลย',
+                  'See who doesn’t follow you back, whom you don’t follow back, and which follows are mutual. Search by username and open profiles from the table.',
                 ),
               },
               {
-                icon: ListChecks,
-                tone: 'text-accent',
-                title: t('อยากเคลียร์รายชื่อคนที่กำลังติดตาม', 'Want to tidy up who you follow'),
+                icon: UserMinus,
+                tone: 'text-bad',
+                title: t(
+                  'ใครเริ่มติดตามคุณ หรือหายจากรายชื่อ?',
+                  'Who started following you or disappeared from the list?',
+                ),
                 body: t(
-                  'แยกให้เห็นชัดว่าใครไม่ติดตามคุณกลับ ใครติดตามกันทั้งสองฝ่าย พร้อมวันที่เริ่มติดตาม และกดเปิดโปรไฟล์บน IG ไปจัดการเองได้ทันที',
-                  'Separate accounts that don’t follow back from mutual follows, check follow dates, and jump straight to each profile.',
+                  'เปิดบันทึกประวัติและจำรายชื่อไว้ เมื่อวิเคราะห์ ZIP รอบใหม่ของบัญชีเดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติ คุณเลือกไฟล์ย้อนหลังและเปิดดูไทม์ไลน์รายบัญชีได้ด้วย',
+                  'Turn on history and save account lists. When you analyze a new ZIP for the same account, the app compares it with the previous export. You can also pick an older ZIP and open a timeline for each changed account.',
                 ),
               },
               {
                 icon: ShieldCheck,
                 tone: 'text-cool',
                 title: t(
-                  'อยากเช็ก แต่กลัวโดนแบนจากแอปล็อกอิน',
-                  'Want to check without risking your account',
+                  'ต้องเชื่อมบัญชีเพื่อวิเคราะห์ไหม?',
+                  'Do you have to connect your Instagram account?',
                 ),
                 body: t(
-                  'ใช้เพียงไฟล์ .zip ทางการที่คุณขอจากศูนย์บัญชี Instagram เอง ไม่ต้องกรอกรหัสผ่าน ไม่ใช้ Instagram API และไฟล์ไม่ออกจากเครื่องคุณ',
-                  'Works strictly from your official Instagram ZIP export—no password, no Instagram API, and nothing leaves your browser.',
+                  'ใช้ ZIP ที่คุณขอจากศูนย์บัญชี Instagram ได้เลย เบราว์เซอร์อ่านไฟล์และวิเคราะห์รายชื่อบนเครื่องคุณ โดยไม่ต้องเชื่อมบัญชีหรือกรอกรหัสผ่าน',
+                  'Use the ZIP you request from Instagram Accounts Center. Your browser reads it and analyzes the account lists on your device, without a connected account or password.',
                 ),
               },
               {
                 icon: FileText,
                 tone: 'text-ok',
-                title: t('อยากเก็บภาพรวมไว้ดูย้อนหลังหรือส่งต่อ', 'Keep a clean snapshot for later'),
+                title: t('อยากเก็บผลไว้ดูทีหลังหรือส่งต่อ?', 'Want to save or share your results?'),
                 body: t(
-                  'สร้างรายงาน PDF (ไทย / อังกฤษ) พร้อมกราฟสัดส่วนและตารางรายชื่อ ดาวน์โหลดเก็บลงเครื่องได้ทันทีในคลิกเดียว',
-                  'Export a structured A4 PDF report with summary charts and account tables directly to your device.',
+                  'เลือกรวมหัวข้อสรุปพร้อมกราฟและหมวดรายชื่อที่ต้องการ แล้วดาวน์โหลด PDF ขนาด A4 ลงเครื่องได้ทั้งภาษาไทยและอังกฤษ โดยใช้สีและฟอนต์เดียวกับเว็บ',
+                  'Choose whether to include the summary chart and which account lists to show. Download an A4 PDF in Thai or English with the website’s colors and fonts.',
                 ),
               },
             ].map((item) => {
@@ -372,7 +388,7 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
           <div className="landing-section__head">
             <h2 id="diff-h">{t('ดูว่าใครเพิ่งเลิกติดตาม', 'See who recently unfollowed you')}</h2>
           </div>
-          <LocalHistoryPreview onOpenHistory={go('history')} />
+          <LocalHistoryPreview onOpenDemo={onOpenDemo} onOpenHistory={go('history')} />
         </div>
       </section>
 
@@ -390,11 +406,12 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
               </p>
             </div>
             <a
-              className="btn btn--secondary shrink-0"
+              className="btn btn--secondary max-w-full shrink-0 self-start whitespace-normal! sm:self-end"
               href={pageHref('how-it-works')}
               onClick={go('how-it-works')}
             >
-              {t('ดูคู่มือภาพทีละขั้นตอน', 'View the step-by-step guide')}
+              <span>{t('ดูคู่มือภาพทีละขั้นตอน', 'View the step-by-step guide')}</span>
+              <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
             </a>
           </div>
 
@@ -463,8 +480,8 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
               </div>
               <p className="text-sm text-muted md:col-span-5">
                 {t(
-                  'เห็นชัดว่าใครไม่ติดตามกลับ ค้นหาชื่อ กดเปิดโปรไฟล์ IG หรือบันทึกรายงาน PDF (ไทย / อังกฤษ) เก็บไว้ดูง่ายๆ',
-                  'See who doesn’t follow you back, search for usernames, open Instagram profiles, or save a Thai or English PDF report.',
+                  'ดูว่าใครไม่ติดตามกลับ ถ้าบันทึกรายชื่อไว้จากรอบก่อน ก็เทียบ ZIP ย้อนหลังได้จากหน้าผลล่าสุด แล้วดาวน์โหลดรายงาน PDF ภาษาไทยหรืออังกฤษได้',
+                  'See who doesn’t follow you back. If you have saved lists, compare an earlier ZIP from your latest results. You can also download a report in Thai or English.',
                 )}
               </p>
             </li>
@@ -654,6 +671,8 @@ export function LandingScreen({ demo, onNavigate, onOpenDemo }: LandingScreenPro
           </div>
         </div>
       </section>
+
+      <LandingReviews />
     </>
   );
 }

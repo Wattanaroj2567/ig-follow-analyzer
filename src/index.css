@@ -65,6 +65,7 @@
   --radius-chip: 6px;
   --rule-hair: 1px;
   --control-height: 44px;
+  --nav-bar-height: 68px;
   --container-max: 1240px;
   --gutter: clamp(16px, 4vw, 48px);
 }
@@ -106,7 +107,46 @@
   --color-ig-dark-rule: #dfe3e8;
   --color-ig-dark-ink: #111318;
   --color-ig-dark-muted: #5b616e;
-  scrollbar-color: var(--color-rule-2) var(--color-paper);
+}
+
+@media (min-width: 64rem) and (hover: hover) and (pointer: fine) and (forced-colors: none) {
+  :root {
+    scrollbar-color: var(--color-muted) transparent;
+    scrollbar-width: thin;
+  }
+
+  @supports selector(html::-webkit-scrollbar) {
+    :root {
+      scrollbar-color: auto;
+      scrollbar-width: auto;
+    }
+
+    html::-webkit-scrollbar {
+      width: 15px;
+      background-color: var(--color-paper);
+    }
+
+    html::-webkit-scrollbar-track {
+      margin-top: calc(var(--nav-bar-height) + 9px);
+      margin-bottom: 8px;
+    }
+
+    html::-webkit-scrollbar-thumb {
+      min-height: 36px;
+      border: 4px solid transparent;
+      border-radius: 999px;
+      background-color: color-mix(in oklab, var(--color-muted) 80%, var(--color-paper));
+      background-clip: padding-box;
+    }
+
+    html::-webkit-scrollbar-thumb:hover {
+      background-color: var(--color-ink-2);
+    }
+
+    html::-webkit-scrollbar-thumb:active {
+      background-color: var(--color-accent);
+    }
+  }
 }
 
 @layer base {
@@ -217,7 +257,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 68px;
+  min-height: var(--nav-bar-height);
 }
 
 .skip-link {
@@ -295,6 +335,10 @@
   background-color: var(--color-paper-2);
 }
 
+:root[data-theme='light'] .nav__link:not([aria-current='page']):hover {
+  background-color: var(--color-paper-3);
+}
+
 @media (min-width: 72rem) {
   .nav__link {
     padding-inline: 12px;
@@ -306,6 +350,10 @@
   background-color: var(--color-paper-2);
   box-shadow: inset 0 -2px 0 var(--color-accent);
   border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+}
+
+:root[data-theme='light'] .nav__link[aria-current='page'] {
+  background-color: color-mix(in oklab, var(--color-paper-3) 65%, var(--color-rule));
 }
 
 .nav__actions {
@@ -417,6 +465,55 @@
 }
 
 /* ---------------------------------------------------------------- Controls */
+
+@media (forced-colors: none) {
+  .feedback-details {
+    --scrollbar-track: var(--color-paper-2);
+  }
+
+  :is(.feedback-details, .comparison-export-list) {
+    scrollbar-color: var(--color-muted) var(--scrollbar-track, transparent);
+    scrollbar-width: thin;
+  }
+
+  @supports selector(::-webkit-scrollbar) {
+    :is(.feedback-details, .comparison-export-list) {
+      scrollbar-color: auto;
+      scrollbar-width: auto;
+    }
+
+    :is(.feedback-details, .comparison-export-list)::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    .comparison-export-list::-webkit-scrollbar-button {
+      display: none;
+    }
+
+    :is(.feedback-details, .comparison-export-list)::-webkit-scrollbar-track {
+      margin-top: 4px;
+      margin-bottom: 4px;
+      border-radius: 999px;
+      background-color: var(--scrollbar-track, transparent);
+    }
+
+    :is(.feedback-details, .comparison-export-list)::-webkit-scrollbar-thumb {
+      min-height: 24px;
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background-color: var(--color-muted);
+      background-clip: padding-box;
+    }
+
+    :is(.feedback-details, .comparison-export-list)::-webkit-scrollbar-thumb:hover {
+      background-color: var(--color-ink-2);
+    }
+
+    .comparison-export-list::-webkit-scrollbar-thumb:active {
+      background-color: var(--color-accent);
+    }
+  }
+}
 
 .btn {
   display: inline-flex;

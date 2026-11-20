@@ -9,6 +9,7 @@ const GOOGLE_FORM_ACTION =
 const ENTRY_CATEGORY = 'entry.1729969809';
 const ENTRY_DETAILS = 'entry.1974617888';
 const ENTRY_DEVICE = 'entry.2106459818';
+const DETAILS_LIMIT = 500;
 
 type FeedbackCategory = 'แจ้งปัญหา' | 'เสนอฟีเจอร์' | 'อื่นๆ';
 
@@ -47,6 +48,7 @@ export function FeedbackForm() {
   const [category, setCategory] = useState<FeedbackCategory>('แจ้งปัญหา');
   const [details, setDetails] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const canSubmit = details.trim().length > 0 && details.length <= DETAILS_LIMIT;
 
   const categories: { value: FeedbackCategory; label: string }[] = [
     { value: 'แจ้งปัญหา', label: t('แจ้งปัญหา', 'Report a bug') },
@@ -56,8 +58,7 @@ export function FeedbackForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const trimmed = details.trim();
-    if (!trimmed) return;
+    if (!canSubmit) return;
 
     setStatus('submitting');
     try {
@@ -68,7 +69,7 @@ export function FeedbackForm() {
 
       const body = new URLSearchParams();
       body.append(ENTRY_CATEGORY, category);
-      body.append(ENTRY_DETAILS, trimmed);
+      body.append(ENTRY_DETAILS, details.trim());
       body.append(ENTRY_DEVICE, devicePayload);
 
       await fetch(GOOGLE_FORM_ACTION, {
@@ -146,9 +147,10 @@ export function FeedbackForm() {
           </label>
           <textarea
             id="feedback-details"
-            rows={4}
+            rows={3}
             required
-            maxLength={2000}
+            maxLength={DETAILS_LIMIT}
+            aria-describedby="feedback-privacy feedback-character-count"
             value={details}
             onChange={(e) => {
               setDetails(e.target.value);
@@ -158,21 +160,26 @@ export function FeedbackForm() {
               'อธิบายปัญหาที่เจอหรือฟีเจอร์ที่อยากให้เพิ่ม เช่น ขั้นตอนที่ติดขัด หรือสิ่งที่อยากให้ปรับ…',
               'Describe the issue or feature idea…',
             )}
-            className="mt-2 w-full rounded-md border border-rule-2 bg-paper-3 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+            className="feedback-details mt-2 min-h-20 max-h-40 w-full field-sizing-content resize-none overflow-y-auto rounded-md border border-rule-2 bg-paper-3 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
           />
-          <p className="mt-1.5 text-xs text-muted">
-            {t(
-              'กรุณาไม่ใส่รหัสผ่านหรือข้อมูลส่วนตัวในข้อความนี้',
-              'Please don’t include passwords or personal data in this message.',
-            )}
-          </p>
+          <div className="mt-1.5 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted">
+            <p id="feedback-privacy">
+              {t(
+                'กรุณาไม่ใส่รหัสผ่านหรือข้อมูลส่วนตัวในข้อความนี้',
+                'Please don’t include passwords or personal data in this message.',
+              )}
+            </p>
+            <p id="feedback-character-count" className="ml-auto tabular-nums">
+              {details.length} / {DETAILS_LIMIT} {t('ตัวอักษร', 'characters')}
+            </p>
+          </div>
         </div>
 
         <div>
           <NormalButton
             type="submit"
             variant="primary"
-            disabled={status === 'submitting' || details.trim().length === 0}
+            disabled={status === 'submitting' || !canSubmit}
           >
             {status === 'submitting' ? (
               <>

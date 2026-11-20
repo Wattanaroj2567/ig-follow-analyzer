@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Info,
   Trash2,
   User,
@@ -24,6 +25,8 @@ interface HistoryScreenProps {
   hasLatestSnapshot: boolean;
   onUpdatePreferences: (next: HistoryPreferences) => Promise<void>;
   onOpenRecord: (record: HistoryRecord) => void;
+  canOpenComparisonPdf: (id: string) => boolean;
+  onOpenComparisonPdf: (id: string) => void;
   onDeleteRecord: (id: string) => Promise<void>;
   onClearAll: () => Promise<void>;
 }
@@ -50,6 +53,8 @@ export function HistoryScreen({
   hasLatestSnapshot,
   onUpdatePreferences,
   onOpenRecord,
+  canOpenComparisonPdf,
+  onOpenComparisonPdf,
   onDeleteRecord,
   onClearAll,
 }: HistoryScreenProps) {
@@ -61,12 +66,12 @@ export function HistoryScreen({
       'History is off. Future analyses won’t be saved.',
     ),
     accountsOn: t(
-      'เปิดจำรายชื่อรอบล่าสุดบนเบราว์เซอร์เครื่องนี้แล้ว เพื่อเทียบคนเพิ่งเลิกติดตามในรอบถัดไป',
-      'Saved follower lists are on. The app can compare your next export with this one.',
+      'เปิดบันทึกรายชื่อในเบราว์เซอร์นี้แล้ว คุณเลือกไฟล์ที่มีรายชื่อบันทึกไว้มาเทียบย้อนหลังได้',
+      'Follower list storage is on. You can compare your latest export with an earlier one that has saved lists.',
     ),
     accountsOff: t(
-      'ปิดและลบชุดรายชื่อรอบล่าสุดออกจากเบราว์เซอร์เครื่องนี้เรียบร้อยแล้ว',
-      'Saved follower lists are off. The most recent snapshot was removed.',
+      'ปิดการจำรายชื่อและลบรายชื่อที่บันทึกไว้จากเบราว์เซอร์นี้แล้ว',
+      'Follower list storage is off. Saved lists were removed from this browser.',
     ),
     cleared: t(
       'ล้างประวัติและปิดสวิตช์บันทึกข้อมูลทั้งหมดในเบราว์เซอร์เครื่องนี้เรียบร้อยแล้ว',
@@ -199,8 +204,8 @@ export function HistoryScreen({
               </p>
               <p className="mt-1">
                 {t(
-                  'เมื่อเปิดทั้งสองสวิตช์ เบราว์เซอร์จะเก็บรายชื่อไว้เทียบกับ ZIP รอบใหม่ของบัญชีเดิม',
-                  'With both options on, this browser saves account lists for comparison with a newer ZIP from the same account.',
+                  'เมื่อเปิดทั้งสองสวิตช์ เบราว์เซอร์จะเก็บรายชื่อแต่ละรอบไว้ให้เลือกเทียบกับ ZIP ล่าสุดของบัญชีเดียวกัน',
+                  'With both options on, this browser saves lists from each export so you can choose an earlier ZIP to compare with the latest one for the same account.',
                 )}
               </p>
             </div>
@@ -252,14 +257,14 @@ export function HistoryScreen({
               <div>
                 <p className="text-sm font-medium text-ink">
                   {t(
-                    '2. จำรายชื่อไว้ดูย้อนหลังและเทียบว่าใครเพิ่งเลิกติดตาม',
-                    '2. Save account lists and compare unfollowers',
+                    '2. จำรายชื่อไว้เปิดดูและเทียบย้อนหลัง',
+                    '2. Save account lists to reopen and compare',
                   )}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-muted">
                   {t(
-                    'เก็บรายชื่อผู้ติดตามในเบราว์เซอร์เครื่องนี้ เพื่อกดเปิดดูรายชื่อย้อนหลังและชี้คนที่หายไปในการอัปโหลดรอบถัดไป',
-                    'Keeps follower lists in this browser so you can reopen them and see who is missing after your next export.',
+                    'เปิดดูรายชื่อเดิมจากประวัติ หรือเลือกไฟล์ย้อนหลังจากหน้าผลล่าสุดเพื่อดูว่าใครติดตามใหม่และใครหายจากรายชื่อ',
+                    'Reopen a saved list from history, or choose an earlier ZIP from the latest results to see new and missing followers.',
                   )}
                 </p>
               </div>
@@ -269,7 +274,7 @@ export function HistoryScreen({
                 disabled={!preferences.tier1SummaryOptIn}
                 aria-checked={preferences.tier2HandlesOptIn}
                 aria-label={t(
-                  'เปิดหรือปิดการจำรายชื่อรอบล่าสุดเพื่อเทียบคนเพิ่งเลิกติดตาม',
+                  'เปิดหรือปิดการจำรายชื่อเพื่อเทียบย้อนหลัง',
                   'Save account lists for comparison',
                 )}
                 onClick={() => void handleToggleTier2()}
@@ -638,14 +643,26 @@ export function HistoryScreen({
                         </button>
 
                         {canOpenFull ? (
-                          <NormalButton
-                            variant="primary"
-                            onClick={() => onOpenRecord(rec)}
-                            className="min-h-[36px] px-3.5 py-1.5 text-xs"
-                          >
-                            <span>{t('เปิดดูรายชื่อ', 'Open account lists')}</span>
-                            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                          </NormalButton>
+                          <div className="ml-auto flex flex-wrap justify-end gap-2">
+                            {canOpenComparisonPdf(rec.id) && (
+                              <NormalButton
+                                variant="secondary"
+                                onClick={() => onOpenComparisonPdf(rec.id)}
+                                className="text-xs!"
+                              >
+                                <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+                                {t('สร้าง PDF เทียบกับไฟล์ล่าสุด', 'Compare with latest in PDF')}
+                              </NormalButton>
+                            )}
+                            <NormalButton
+                              variant="primary"
+                              onClick={() => onOpenRecord(rec)}
+                              className="min-h-[36px] px-3.5 py-1.5 text-xs"
+                            >
+                              <span>{t('เปิดดูรายชื่อ', 'Open account lists')}</span>
+                              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </NormalButton>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted">
                             {t('เก็บเฉพาะตัวเลขสรุป', 'Summary only')}

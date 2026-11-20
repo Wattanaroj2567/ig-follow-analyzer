@@ -7,12 +7,26 @@ export function formatDate(date: Date, locale: string): string {
   return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function formatSnapshotDate(savedThaiDate: string, locale: string): string {
-  if (locale === 'th-TH') return savedThaiDate;
+export function formatAnalysisTime(iso: string, locale: string, showMilliseconds = false): string {
+  return new Date(iso).toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: showMilliseconds ? 3 : undefined,
+    hour12: false,
+  });
+}
 
+export function parseSnapshotDate(savedThaiDate: string): Date | undefined {
   // Existing histories store Thai date labels, including the Buddhist Era year.
   const [day, month, year] = savedThaiDate.trim().split(/\s+/);
   const monthIndex = thaiMonths.indexOf(month);
-  if (monthIndex < 0 || !/^\d{1,2}$/.test(day) || !/^\d{4}$/.test(year)) return savedThaiDate;
-  return formatDate(new Date(Number(year) - 543, monthIndex, Number(day)), locale);
+  if (monthIndex < 0 || !/^\d{1,2}$/.test(day) || !/^\d{4}$/.test(year)) return;
+  return new Date(Number(year) - 543, monthIndex, Number(day));
+}
+
+export function formatSnapshotDate(savedThaiDate: string, locale: string): string {
+  if (locale === 'th-TH') return savedThaiDate;
+  const date = parseSnapshotDate(savedThaiDate);
+  return date ? formatDate(date, locale) : savedThaiDate;
 }

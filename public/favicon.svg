@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <rect x="2" y="2" width="36" height="36" rx="10" fill="#14161D" stroke="#2D323E" stroke-width="2" />
+  <!-- Top right-pointing follow arrow (Amber) -->
+  <path
+    d="M11 15.5H27.5M23.5 11.5L28 15.5L23.5 19.5"
+    stroke="#F2B94B"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Bottom left-pointing follow-back arrow (Cool Blue) -->
+  <path
+    d="M29 24.5H12.5M16.5 20.5L12 24.5L16.5 28.5"
+    stroke="#63B3F9"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

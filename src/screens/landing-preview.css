@@ -1,0 +1,212 @@
+/* Hallmark · component: dashboard preview · genre: modern-minimal · theme: Console Graphite · v2.0.0 */
+/* Critique · Keep the real dashboard's categories and dates legible inside the narrower landing frame. */
+/* Hallmark · waive 39b · five dashboard controls, each with a label and count · The landing preview mirrors the dashboard's stacked labels and counts across narrow containers. */
+/* Hallmark · answered F19 · The preview inherits the landing page's existing four-weight type scale. */
+/* Hallmark · finish-review: subagent · Increased compact counts to 19px bold for light-mode contrast. */
+
+.landing-preview {
+  container-type: inline-size;
+  min-width: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+
+.landing-preview__header,
+.landing-preview__footer {
+  padding-inline: 16px;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+.landing-preview__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-height: 46px;
+  padding-block: 8px;
+}
+
+.landing-preview__header h2,
+.landing-preview__category {
+  font-family: var(--font-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+.landing-preview .relationship-metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  padding-block: 1px;
+  background: var(--color-rule);
+}
+
+.landing-preview .relationship-metric {
+  grid-column: span 2;
+  grid-template-rows: 1fr auto;
+  min-height: 70px;
+  padding: 8px clamp(8px, 2cqi, 12px);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+
+.landing-preview .relationship-metrics .relationship-metric:nth-child(n + 4) {
+  grid-column: span 3;
+}
+
+.landing-preview .relationship-metric[aria-pressed='true'] {
+  box-shadow: inset 0 -2px 0 var(--card-tone, var(--color-accent));
+}
+
+.landing-preview .relationship-metric:hover {
+  background-color: var(--card-soft, var(--color-paper-2));
+}
+
+.landing-preview .relationship-metric:focus-visible {
+  outline-offset: -3px;
+}
+
+.landing-preview .relationship-metric:active {
+  box-shadow: inset 0 -2px 0 var(--card-tone, var(--color-accent));
+}
+
+.landing-preview .relationship-metric span {
+  font-size: 0.75rem;
+}
+
+.landing-preview .relationship-metric strong {
+  font-size: clamp(1.1875rem, 4cqi, 1.375rem);
+}
+
+.landing-preview .relationship-arrow {
+  display: none;
+}
+
+.landing-preview__category {
+  min-height: 42px;
+  padding: 8px 16px;
+}
+
+.landing-preview__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.landing-preview__account {
+  width: 45%;
+}
+
+.landing-preview__rank {
+  display: none;
+}
+
+.landing-preview__table tr {
+  height: 2.625rem;
+  border-block-start: 1px solid var(--color-rule);
+}
+
+.landing-preview__table thead,
+.landing-preview__table tbody tr:nth-child(even) {
+  background: var(--color-paper-3);
+}
+
+.landing-preview__table th,
+.landing-preview__table td {
+  padding: 4px clamp(8px, 2cqi, 16px);
+  overflow-wrap: anywhere;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+.landing-preview__table thead th,
+.landing-preview__table td {
+  color: var(--color-ink-2);
+  font-size: 0.75rem;
+}
+
+.landing-preview__table tbody th {
+  font-weight: 500;
+}
+
+.landing-preview__profile {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  color: var(--color-cool);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.landing-preview__profile:hover {
+  color: var(--color-ink);
+}
+
+.landing-preview__profile svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.landing-preview__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 8px;
+  border-block-start: 1px solid var(--color-rule);
+  padding-block: 2px;
+}
+
+@container (max-width: 23rem) {
+  .landing-preview__account {
+    width: 52%;
+  }
+
+  .landing-preview__table th,
+  .landing-preview__table td {
+    padding-inline: 4px;
+  }
+
+  .landing-preview__table tbody th {
+    font-size: 0.75rem;
+  }
+
+  .landing-preview__profile svg {
+    display: none;
+  }
+}
+
+@container (min-width: 28rem) {
+  .landing-preview__rank {
+    display: table-cell;
+    width: 3.25rem;
+  }
+
+  col.landing-preview__rank {
+    display: table-column;
+  }
+
+  .landing-preview__account {
+    width: 42%;
+  }
+}
+
+@container (min-width: 36rem) {
+  .landing-preview .relationship-metrics {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .landing-preview .relationship-metrics .relationship-metric:nth-child(n) {
+    grid-column: auto;
+  }
+}

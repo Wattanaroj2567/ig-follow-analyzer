@@ -176,9 +176,11 @@ export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children
               </button>
             )}
 
-            <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
-              <span>IG Follow Analyzer</span>
-            </a>
+            {activePage === 'landing' && (
+              <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
+                <span>IG Follow Analyzer</span>
+              </a>
+            )}
           </div>
 
           <nav id="main-nav" className="nav__links" aria-label={t('เมนูหลัก', 'Main navigation')}>

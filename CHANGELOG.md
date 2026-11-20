@@ -6,6 +6,7 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ### Added
 
+- Add a mobile back control in the top bar on every page except the home page. It returns to the previous page when there is in-app history and falls back to the parent page on a direct visit.
 - Open a comparison PDF from an earlier entry in local or sample history, using the latest ZIP and the chosen history entry.
 - Added the ZIP comparison picker and optional follower-change summary to sample PDF reports, with the selected pair shared between the dashboard and PDF screen.
 - Added a creator credit on the About page with a link to the creator’s GitHub profile.

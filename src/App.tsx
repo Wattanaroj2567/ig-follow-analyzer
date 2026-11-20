@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell, type PageId } from './components/AppShell';
 import { demoHref, pageHref } from './lib/routes';
 import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
@@ -85,16 +85,38 @@ export function App() {
   );
 }
 
+const BACK_TARGETS: Partial<Record<PageId, PageId>> = {
+  'how-it-works': 'landing',
+  'export-comparison': 'landing',
+  upload: 'landing',
+  results: 'upload',
+  pdf: 'results',
+  history: 'landing',
+  terms: 'landing',
+  about: 'landing',
+};
+
 function AppContent() {
   const { t } = useLanguage();
   const [route, setRoute] = useState(readHash);
   const activePage = route.page;
+  const inAppSteps = useRef(0);
   const navigate = useCallback((next: string) => {
-    if (window.location.hash !== next) window.history.pushState(null, '', next);
+    if (window.location.hash !== next) {
+      window.history.pushState(null, '', next);
+      inAppSteps.current += 1;
+    }
     setRoute(readHash());
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
   const setActivePage = useCallback((id: PageId) => navigate(pageHref(id)), [navigate]);
+  const goBack = useCallback(() => {
+    if (inAppSteps.current > 0) {
+      window.history.back();
+      return;
+    }
+    setActivePage(BACK_TARGETS[activePage] ?? 'landing');
+  }, [activePage, setActivePage]);
   const navigateFromResult = (id: PageId) => {
     if (route.demo && (id === 'results' || id === 'pdf')) {
       navigate(demoHref(id, route.category, route.record));
@@ -107,10 +129,14 @@ function AppContent() {
 
   useEffect(() => {
     const onHash = () => setRoute(readHash());
-    window.addEventListener('popstate', onHash);
+    const onPop = () => {
+      inAppSteps.current = Math.max(0, inAppSteps.current - 1);
+      setRoute(readHash());
+    };
+    window.addEventListener('popstate', onPop);
     window.addEventListener('hashchange', onHash);
     return () => {
-      window.removeEventListener('popstate', onHash);
+      window.removeEventListener('popstate', onPop);
       window.removeEventListener('hashchange', onHash);
     };
   }, []);
@@ -298,6 +324,7 @@ function AppContent() {
     <AppShell
       activePage={activePage}
       onNavigate={setActivePage}
+      onBack={goBack}
       hasAnalysis={!route.demo && Boolean(analysis)}
     >
       {activePage === 'landing' && (

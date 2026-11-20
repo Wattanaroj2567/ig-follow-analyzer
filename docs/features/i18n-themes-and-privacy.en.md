@@ -65,6 +65,6 @@ The edit link appears after the first successful submission. Respondents should 
 
 - [`src/lib/language.ts`](../../src/lib/language.ts) — Language context and translator helpers (`useLanguage`, `readLanguage`)
 - [`src/lib/theme.ts`](../../src/lib/theme.ts) — `useThemePreference` hook
-- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — Top navigation, language/theme switchers, mobile drawer, back-to-top button, and footer
+- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — Top navigation, mobile back control, language/theme switchers, mobile drawer, back-to-top button, and footer
 - [`src/screens/TrustAndAboutScreen.tsx`](../../src/screens/TrustAndAboutScreen.tsx) — Terms/Privacy, FAQ, and About screens
 - [`src/index.css`](../../src/index.css) — Tailwind CSS v4 theme tokens for Dark/Light modes

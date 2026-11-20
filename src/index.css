@@ -302,6 +302,39 @@
   white-space: nowrap;
 }
 
+.nav__back {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: var(--control-height);
+  min-height: var(--control-height);
+  margin-inline-start: -6px;
+  padding-inline: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.nav__back:hover {
+  color: var(--color-ink);
+  background-color: var(--color-paper-2);
+}
+
+@media (min-width: 64rem) {
+  .nav__back {
+    display: none;
+  }
+}
+
 .nav__links {
   display: none;
   align-items: center;

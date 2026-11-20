@@ -1,4 +1,4 @@
-import { ArrowUp, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
 import { type MouseEvent, type ReactNode, useEffect, useState } from 'react';
 import { type Translator, useLanguage } from '../lib/language';
 import { pageHref } from '../lib/routes';
@@ -18,6 +18,7 @@ export type PageId =
 interface AppShellProps {
   activePage: PageId;
   onNavigate: (id: PageId) => void;
+  onBack: () => void;
   hasAnalysis: boolean;
   children: ReactNode;
 }
@@ -100,7 +101,7 @@ function LanguageSwitcher() {
   );
 }
 
-export function AppShell({ activePage, onNavigate, hasAnalysis, children }: AppShellProps) {
+export function AppShell({ activePage, onNavigate, onBack, hasAnalysis, children }: AppShellProps) {
   const { t } = useLanguage();
   const navItems = getNavItems(t);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -162,9 +163,23 @@ export function AppShell({ activePage, onNavigate, hasAnalysis, children }: AppS
             {t('ข้ามไปที่เนื้อหาหลัก', 'Skip to main content')}
           </a>
 
-          <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
-            <span>IG Follow Analyzer</span>
-          </a>
+          <div className="flex min-w-0 items-center gap-1">
+            {activePage !== 'landing' && (
+              <button
+                type="button"
+                className="nav__back"
+                onClick={onBack}
+                aria-label={t('ย้อนกลับ', 'Back')}
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="hidden min-[380px]:inline">{t('ย้อนกลับ', 'Back')}</span>
+              </button>
+            )}
+
+            <a className="nav__logo" href={pageHref('landing')} onClick={link('landing')}>
+              <span>IG Follow Analyzer</span>
+            </a>
+          </div>
 
           <nav id="main-nav" className="nav__links" aria-label={t('เมนูหลัก', 'Main navigation')}>
             {navItems.map((item) => (

@@ -519,6 +519,20 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(screen.getByRole('heading', { name: 'ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP' })).toBeVisible();
   });
 
+  it('shows a mobile back control outside the home page', async () => {
+    const home = render(<App />);
+    expect(screen.queryByRole('button', { name: 'ย้อนกลับ' })).not.toBeInTheDocument();
+    home.unmount();
+
+    window.history.replaceState(null, '', '/#/upload');
+    await act(async () => {
+      render(<App />);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }));
+    expect(window.location.hash).toBe('#/');
+  });
+
   it('shows the export menu locations for mobile and desktop', async () => {
     await act(async () => {
       render(<App />);

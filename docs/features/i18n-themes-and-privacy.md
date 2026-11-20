@@ -65,6 +65,6 @@
 
 - [`src/lib/language.ts`](../../src/lib/language.ts) — Context และตัวช่วยแปลภาษา (`useLanguage`, `readLanguage`)
 - [`src/lib/theme.ts`](../../src/lib/theme.ts) — Hook จัดการธีม `useThemePreference`
-- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — แถบนำทาง ปุ่มสลับภาษา/ธีม เมนูมือถือ และส่วนท้าย
+- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — แถบนำทาง ปุ่มย้อนกลับบนมือถือ ปุ่มสลับภาษา/ธีม เมนูมือถือ และส่วนท้าย
 - [`src/screens/TrustAndAboutScreen.tsx`](../../src/screens/TrustAndAboutScreen.tsx) — หน้า FAQ, เงื่อนไข/ความเป็นส่วนตัว และหน้าเกี่ยวกับเรา
 - [`src/index.css`](../../src/index.css) — Tailwind CSS v4 tokens สำหรับธีม Dark/Light

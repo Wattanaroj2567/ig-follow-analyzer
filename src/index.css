@@ -708,7 +708,7 @@
 .landing-hero__ig-wave-runner {
   fill: none;
   stroke: var(--color-accent);
-  stroke-width: 5;
+  stroke-width: 7;
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 0;

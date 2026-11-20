@@ -499,6 +499,26 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(openDatabase).not.toHaveBeenCalled();
   });
 
+  it('opens the ZIP comparison and export steps on separate pages', async () => {
+    await act(async () => {
+      render(<App />);
+    });
+    const comparison = screen.getByRole('link', { name: 'ทำไมต้องใช้ไฟล์ ZIP?' });
+    expect(comparison).toHaveAttribute('href', '#/export-comparison');
+    expect(screen.queryByRole('table', { name: /ล็อกอิน Instagram/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(comparison);
+    expect(window.location.hash).toBe('#/export-comparison');
+    expect(screen.getByRole('table', { name: /ล็อกอิน Instagram/ })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ดูวิธีขอไฟล์ ZIP' }));
+    expect(window.location.hash).toBe('#/how-it-works');
+    expect(screen.getByRole('heading', { name: 'ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP' })).toBeVisible();
+  });
+
   it('shows the export menu locations for mobile and desktop', async () => {
     await act(async () => {
       render(<App />);

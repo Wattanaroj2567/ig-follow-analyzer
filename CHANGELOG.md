@@ -14,7 +14,7 @@ Notable changes to IG Follow Analyzer are documented here.
 - Added a separate sample history linked from the landing page and sample dashboard. Users can browse fictitious ZIP exports and reopen each sample result without accessing real history.
 - Added follower comparison cards and expandable per-account timelines, with a bilingual sample users can try before uploading an export.
 
-- Full client-side web application (`Vite + React + TypeScript` + `Tailwind CSS v4`) across 8 pages (`Landing`, `HowItWorks`, `Upload`, `Results`, `PdfReport`, `History`, `TermsAndFaq`, `About`) with crisp 2D `lucide-react` icons, `Plus Jakarta Sans` + `IBM Plex Sans Thai` typography, and `© 2026 IG Follow Analyzer` footer notice.
+- Full client-side web application (`Vite + React + TypeScript` + `Tailwind CSS v4`) across 9 pages (`Landing`, `HowItWorks`, `ExportComparison`, `Upload`, `Results`, `PdfReport`, `History`, `TermsAndFaq`, `About`) with crisp 2D `lucide-react` icons, `Plus Jakarta Sans` + `IBM Plex Sans Thai` typography, and `© 2026 IG Follow Analyzer` footer notice.
 - Web Worker ZIP parser (`fflate`) supporting multi-part `followers_*.json`, Meta 2025–2026 `following.json` (`title` / `/_u/` fallback), safe HTML fallback, two-sided follow date tracking (`followedUsAt` & `followedByUsAt`), owner `@username` extraction from official Instagram ZIP filenames, partial `"Last year"` export detection, and Zip Bomb / Path Traversal guards.
 - Interactive step-by-step Instagram Accounts Center export guide covering 16 Mobile steps and 11 Desktop steps with bulleted multi-step instructions, highlighted menu/action labels, localized device mockups, an upload-page file finder guide, and a non-intrusive multi-browser Add to Home Screen / desktop pin guide (`AddToHomeGuide.tsx` + `manifest.webmanifest`).
 - Set-math Dashboard and searchable, filterable, sortable, 25-row paginated Account List, plus a dedicated interactive sample results mode accessible from the landing preview.
@@ -26,6 +26,10 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ### Changed
 
+- Keep the ZIP requirement brief on the landing page and link to a dedicated comparison of the official Instagram Login API and ZIP analysis, then show the request, status check, and file selection steps at the top of the export guide. Highlight the export settings, how to check Instagram’s download status without email, and how to select the original ZIP from the downloads folder.
+- Explain that PDF reports are optional and can be kept on the device. Show the benefit of enabling local history and account list storage near the top of real analysis results.
+- Give the landing headline’s amber underline a crayon texture.
+- Align the About page with the shared content gutter.
 - Display the year for both ZIP dates in the sample comparison heading, including when the years match.
 - Label the latest, previous, and older exports in the dashboard and PDF comparison picker, with the reset action aligned to the left below the list.
 - Show a two-way arrow between the ZIP files in the dashboard and PDF comparison panels.

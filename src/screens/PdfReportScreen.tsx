@@ -677,8 +677,8 @@ export function PdfReportScreen({
                   'Choose sections and report language, preview the sample report, then download it.',
                 )
               : t(
-                  'เลือกหัวข้อและภาษาของรายงาน (ไทยหรืออังกฤษ) ดูตัวอย่างแล้วกดดาวน์โหลดได้ทันที',
-                  'Choose sections and report language (Thai or English), preview the report, then download it.',
+                  'เก็บรายงานไว้เปิดอ่านหรือพิมพ์ภายหลังได้ เลือกหัวข้อและภาษา ดูตัวอย่าง แล้วดาวน์โหลด PDF ลงเครื่องได้แม้ปิดประวัติอยู่',
+                  'Keep a report to read or print later. Choose sections and language, preview the report, then download it to your device even if history is off.',
                 )}
           </p>
         </div>

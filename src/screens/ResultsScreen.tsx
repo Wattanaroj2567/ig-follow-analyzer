@@ -257,6 +257,14 @@ export function ResultsScreen({
                 )}
               </p>
             )}
+            {!result.isDemoData && (
+              <p className="mt-1.5 max-w-[62ch] text-sm text-ink-2">
+                {t(
+                  'ดูผลด้านล่างได้เลย หากอยากเก็บรายงานรอบนี้ไว้อ่านหรือพิมพ์ภายหลัง เลือกสร้าง PDF แล้วดาวน์โหลดลงเครื่องได้',
+                  'View your results below. To keep a copy to read or print later, create a PDF report and download it to your device.',
+                )}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
@@ -275,7 +283,7 @@ export function ResultsScreen({
               {t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
             </NormalButton>
             <NormalButton
-              variant="primary"
+              variant={result.isDemoData ? 'primary' : 'secondary'}
               onClick={() => onNavigate('pdf')}
               className="w-full sm:w-auto"
             >
@@ -330,6 +338,42 @@ export function ResultsScreen({
           </div>
         </dl>
       </header>
+
+      {!diff && !result.isDemoData && (
+        <section className="mt-4 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3 text-sm text-ink-2">
+            <History className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+            <span>
+              {comparisonStatus === 'unknown-owner'
+                ? t(
+                    'ใช้ชื่อไฟล์ ZIP เดิมจาก Instagram เพื่อให้ระบบรู้ว่าเป็นไฟล์ของบัญชีเดียวกัน',
+                    'Use the original Instagram ZIP filename so we can identify exports from the same account.',
+                  )
+                : comparisonStatus === 'ready'
+                  ? t(
+                      'บันทึกรายชื่อไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูความเปลี่ยนแปลง',
+                      'Your follower list is saved. Upload a newer ZIP for the same account to see changes.',
+                    )
+                  : comparisonStatus === 'waiting'
+                    ? t(
+                        'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP รอบแรกเพื่อเก็บรายชื่อไว้เทียบ',
+                        'Account list storage is on. Upload a first ZIP to save a list for comparison.',
+                      )
+                    : t(
+                        'ประวัติปิดเป็นค่าเริ่มต้น ถ้าอยากรู้ว่าใครติดตามใหม่หรือหายจากรายชื่อ ให้เปิดทั้งบันทึกประวัติและจำรายชื่อ แล้วนำ ZIP รอบถัดไปของบัญชีเดิมมาเทียบในเบราว์เซอร์นี้',
+                        'History is off by default. To see who followed you or dropped off the list, turn on history and account list storage, then bring your next ZIP for the same account to this browser.',
+                      )}
+            </span>
+          </div>
+          <NormalButton
+            variant="secondary"
+            onClick={() => onNavigate('history')}
+            className="shrink-0 text-xs"
+          >
+            {t('ตั้งค่าประวัติบนเครื่อง', 'Manage local history')}
+          </NormalButton>
+        </section>
+      )}
 
       {likelyLastYearPartialExport && (
         <section
@@ -868,42 +912,6 @@ export function ResultsScreen({
             </section>
           );
         })()}
-
-      {!diff && !result.isDemoData && (
-        <section className="mt-7 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3 text-sm text-ink-2">
-            <History className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
-            <span>
-              {comparisonStatus === 'unknown-owner'
-                ? t(
-                    'ใช้ชื่อไฟล์ ZIP เดิมจาก Instagram เพื่อให้ระบบรู้ว่าเป็นไฟล์ของบัญชีเดียวกัน',
-                    'Use the original Instagram ZIP filename so we can identify exports from the same account.',
-                  )
-                : comparisonStatus === 'ready'
-                  ? t(
-                      'บันทึกรายชื่อไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูความเปลี่ยนแปลง',
-                      'Your follower list is saved. Upload a newer ZIP for the same account to see changes.',
-                    )
-                  : comparisonStatus === 'waiting'
-                    ? t(
-                        'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP รอบแรกเพื่อเก็บรายชื่อไว้เทียบ',
-                        'Account list storage is on. Upload a first ZIP to save a list for comparison.',
-                      )
-                    : t(
-                        'เปิดบันทึกประวัติและจำรายชื่อไว้ เพื่อเทียบกับ ZIP รอบถัดไป',
-                        'Turn on history and save account lists to compare your next ZIP.',
-                      )}
-            </span>
-          </div>
-          <NormalButton
-            variant="secondary"
-            onClick={() => onNavigate('history')}
-            className="shrink-0 text-xs"
-          >
-            {t('ตั้งค่าประวัติบนเครื่อง', 'Manage local history')}
-          </NormalButton>
-        </section>
-      )}
     </div>
   );
 }

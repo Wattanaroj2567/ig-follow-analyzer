@@ -254,8 +254,8 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                 </p>
                 <p className="mt-1.5 text-sm text-muted">
                   {t(
-                    'ไฟล์ขนาดไม่เกิน 200 MB และไม่ต้องแตกไฟล์ก่อน',
-                    'Up to 200 MB. Keep the file zipped.',
+                    'เลือกไฟล์ .zip เดิมจากโฟลเดอร์ดาวน์โหลดหรือตำแหน่งที่บันทึกไว้ ไม่ต้องแตกไฟล์ ขนาดสูงสุด 200 MB',
+                    'Choose the original .zip from Downloads or wherever you saved it. Keep it zipped. Maximum size 200 MB.',
                   )}
                 </p>
 

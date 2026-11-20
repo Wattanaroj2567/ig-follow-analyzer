@@ -23,6 +23,7 @@ import {
 } from './lib/igParser';
 import { LANGUAGE_STORAGE_KEY, LanguageContext, readLanguage, useLanguage } from './lib/language';
 import { DemoHistoryScreen } from './screens/DemoHistoryScreen';
+import { ExportComparisonScreen } from './screens/ExportComparisonScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HowItWorksScreen } from './screens/HowItWorksScreen';
 import { LandingScreen } from './screens/LandingScreen';
@@ -34,6 +35,7 @@ import type { AnalysisResult, HistoryPreferences, HistoryRecord } from './types/
 const PAGE_IDS: PageId[] = [
   'landing',
   'how-it-works',
+  'export-comparison',
   'upload',
   'results',
   'pdf',
@@ -307,6 +309,7 @@ function AppContent() {
         />
       )}
       {activePage === 'how-it-works' && <HowItWorksScreen onNavigate={setActivePage} />}
+      {activePage === 'export-comparison' && <ExportComparisonScreen onNavigate={setActivePage} />}
       {activePage === 'upload' && (
         <UploadScreen
           onAnalysisComplete={(res) => void handleAnalysisComplete(res)}

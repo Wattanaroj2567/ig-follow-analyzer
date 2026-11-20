@@ -153,6 +153,12 @@ function highlightStepText(text: string, variant: 'summary' | 'tip' = 'summary')
   );
 }
 
+const getExportWaitTip = (t: Translator) =>
+  t(
+    'ถ้าเข้าอีเมลเดิมไม่ได้หรือยังไม่ได้รับแจ้งเตือน ลองกลับมาเช็ก กิจกรรมปัจจุบัน อีกครั้งใน 2–5 นาที ถ้ายังเตรียมไฟล์อยู่ ให้กลับมาเช็กภายหลัง Instagram อาจใช้เวลานานกว่านี้',
+    'If you can’t access your email or haven’t received a notification, try checking Current activity again in 2–5 minutes. If it’s still pending, come back later. Instagram may take longer to prepare the file.',
+  );
+
 const getMobileSteps = (t: Translator): GuideStep[] => [
   {
     id: 'm-1',
@@ -302,7 +308,10 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
   },
   {
     id: 'm-12',
-    title: t('เช็กสถานะ ส่งคำขอแล้ว', 'Check for Request submitted'),
+    title: t(
+      'เช็กว่า ส่งคำขอแล้ว แล้วรอ Instagram เตรียมไฟล์',
+      'Check for Request submitted, then wait for Instagram',
+    ),
     summary: [
       t(
         'หลังแตะ เริ่มส่งออก ให้ดูแท็บ กิจกรรมปัจจุบัน ในหน้า ส่งออกข้อมูลของคุณ',
@@ -313,10 +322,7 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
         'Request submitted means Instagram is preparing your file. Return here to check its status.',
       ),
     ],
-    tip: t(
-      'ระยะเวลารอขึ้นอยู่กับคิวของระบบ Meta อาจใช้เวลาตั้งแต่ไม่กี่นาทีไปจนถึงหลายชั่วโมง (แม้เลือกเฉพาะรายชื่อผู้ติดตามแล้ว) ระหว่างรอสามารถปิดแอปไปใช้งานอย่างอื่นก่อนได้',
-      'Instagram may take a few minutes or several hours to prepare the file. You can close the app while you wait.',
-    ),
+    tip: getExportWaitTip(t),
     mockup: <MobileExportMockup state="pending" />,
   },
   {
@@ -327,7 +333,7 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
     ),
     summary: [
       t(
-        'เมื่อเห็นแจ้งเตือนว่าไฟล์พร้อมแล้ว ให้เข้าแอป Instagram ไปที่ ศูนย์บัญชี → ข้อมูลและสิทธิ์การอนุญาตของคุณ → ส่งออกข้อมูลของคุณ',
+        'กลับเข้าแอป Instagram ไปที่ ศูนย์บัญชี → ข้อมูลและสิทธิ์การอนุญาตของคุณ → ส่งออกข้อมูลของคุณ',
         'In Instagram, go to Accounts Center → Your information and permissions → Export your information.',
       ),
       t(
@@ -385,8 +391,8 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
         'In Files, choose Downloads or another folder you can find again, then tap Save at the top right (on Android, look in the Downloads folder).',
       ),
       t(
-        'กลับมาเลือกไฟล์ .zip ใน IG Follow Analyzer ได้เลยโดยไม่ต้องแตกไฟล์',
-        'Return to IG Follow Analyzer and select the ZIP as downloaded.',
+        'กลับมาที่หน้า วิเคราะห์ไฟล์ ใน IG Follow Analyzer แตะ เลือกไฟล์ .ZIP จากเครื่อง ไปที่โฟลเดอร์ที่บันทึกไว้ แล้วแตะไฟล์ .zip ที่เพิ่งดาวน์โหลดทั้งไฟล์',
+        'In IG Follow Analyzer, open Analyze ZIP and tap Choose a ZIP from your device. Go to the folder where you saved it and select the original .zip file.',
       ),
     ],
     mockup: <MobileSaveDestinationMockup />,
@@ -533,13 +539,13 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
   {
     id: 'w-11',
     title: t(
-      'ดาวน์โหลด ZIP แล้วเลือกไฟล์ที่บันทึกไว้บนคอมพิวเตอร์',
-      'Download the ZIP and select it from your computer',
+      'เช็กสถานะ แล้วดาวน์โหลดและเลือกไฟล์ ZIP',
+      'Check the export status, then download and select the ZIP',
     ),
     summary: [
       t(
-        'เมื่อได้รับแจ้งเตือนว่าไฟล์พร้อมแล้ว ให้กลับมาที่หน้า ส่งออกข้อมูลของคุณ แท็บ กิจกรรมปัจจุบัน',
-        'When Instagram notifies you that the export is ready, return to Export your information → Current activity.',
+        'หลังคลิก เริ่มส่งออก ให้กลับมาที่หน้า ส่งออกข้อมูลของคุณ → กิจกรรมปัจจุบัน ถ้าขึ้น ส่งคำขอแล้ว แสดงว่า Instagram ยังเตรียมไฟล์อยู่',
+        'After clicking Start export, return to Export your information → Current activity. Request submitted means Instagram is still preparing your file.',
       ),
       t(
         'ใต้หัวข้อ ไฟล์ที่พร้อมให้ดาวน์โหลด คลิก ดาวน์โหลด ภายใน 4 วัน หากเปิดหน้า ดาวน์โหลดไฟล์ของคุณ ให้คลิก ดาวน์โหลด ข้างไฟล์ .zip อีกครั้ง',
@@ -554,10 +560,7 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
         'In IG Follow Analyzer, go to Analyze ZIP and click Choose a ZIP from your device. Open the folder where you saved it and select the original .zip file without opening or extracting it.',
       ),
     ],
-    tip: t(
-      'ระยะเวลารอขึ้นอยู่กับคิวของระบบ Meta อาจใช้เวลาตั้งแต่ไม่กี่นาทีจนถึงหลายชั่วโมง ระหว่างรอสามารถปิดหน้าต่างไปทำอย่างอื่นก่อนได้เลย',
-      'Instagram may take a few minutes or several hours to prepare the file. You can close the window while you wait.',
-    ),
+    tip: getExportWaitTip(t),
     mockup: <DesktopDownloadReadyMockup />,
   },
 ];
@@ -634,10 +637,84 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
             {t(' ขั้นตอน', ' steps')}
           </span>
         </p>
-        <p className="text-xs text-muted">
-          {t('ทำตามภาพทีละขั้น', 'Follow the illustrated steps in order.')}
-        </p>
+        <button
+          type="button"
+          className="min-h-[44px] cursor-pointer font-semibold text-cool underline underline-offset-4"
+          onClick={() => {
+            const waitStep = document.getElementById(device === 'mobile' ? 'm-12' : 'w-11');
+            waitStep?.focus({ preventScroll: true });
+            waitStep?.scrollIntoView({ block: 'start' });
+          }}
+        >
+          {t('ขอไฟล์แล้ว? ดูวิธีเช็กและดาวน์โหลด', 'Already requested? Check and download your export')}
+        </button>
       </div>
+
+      <section className="pb-6" aria-labelledby="export-overview">
+        <h2 id="export-overview" className="mt-6 text-xl text-ink sm:text-2xl">
+          {t('ขอไฟล์ เช็กสถานะ แล้วเลือก ZIP', 'Request, check, and select your ZIP')}
+        </h2>
+        <ol className="panels mt-7 md:grid-cols-3" role="list">
+          <li className="p-5">
+            <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 1', 'Step 1')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">
+              {t('ตั้งค่าก่อนกดเริ่มส่งออก', 'Check your export settings')}
+            </h3>
+            <p className="mt-2 text-sm text-ink-2">
+              {t(
+                'ในศูนย์บัญชี Instagram เลือกส่งออกไปยังอุปกรณ์ แล้วตรวจ 3 อย่างนี้',
+                'In Instagram Accounts Center, choose Export to device and check these three settings.',
+              )}
+            </p>
+            <ul className="mt-2 list-disc space-y-1 ps-5 text-sm font-semibold text-cool">
+              <li>{t('เลือกเฉพาะ ผู้ติดตามและคนที่คุณติดตาม', 'Select only Followers and following')}</li>
+              <li>{t('ช่วงวันที่ ตั้งแต่ต้น (All time)', 'Date range All time')}</li>
+              <li>{t('รูปแบบ JSON', 'Format JSON')}</li>
+            </ul>
+            <p className="mt-2 text-sm text-ink-2">
+              {t('บันทึกการตั้งค่า แล้วกด เริ่มส่งออก', 'Save your settings, then tap Start export.')}
+            </p>
+          </li>
+
+          <li className="p-5">
+            <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 2', 'Step 2')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">
+              {t('รอแล้วกลับมาเช็กใน Instagram', 'Wait and check back in Instagram')}
+            </h3>
+            <p className="mt-2 text-sm text-ink-2">
+              {t(
+                'ส่งคำขอแล้ว หมายถึง Instagram กำลังเตรียมไฟล์ แม้ไม่มีอีเมลแจ้งเตือน ก็กลับไปที่ ส่งออกข้อมูลของคุณ → กิจกรรมปัจจุบัน ได้',
+                'Request submitted means Instagram is preparing your file. Even without an email, you can return to Export your information → Current activity.',
+              )}
+            </p>
+            <p className="mt-2 text-sm text-ink-2">
+              {t(
+                'ลองเช็กอีกครั้งใน 2–5 นาที ถ้ายังไม่พร้อม ค่อยกลับมาเช็กภายหลัง เมื่อเห็น ไฟล์ที่พร้อมให้ดาวน์โหลด ให้กด ดาวน์โหลด',
+                'Try again in 2–5 minutes. If it’s still pending, come back later. When the file appears under Available downloads, select Download.',
+              )}
+            </p>
+          </li>
+
+          <li className="p-5">
+            <p className="measured text-xs font-semibold text-accent">{t('ขั้นที่ 3', 'Step 3')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">
+              {t('เลือก ZIP ต้นฉบับในเว็บนี้', 'Select the original ZIP here')}
+            </h3>
+            <p className="mt-2 text-sm text-ink-2">
+              {t(
+                'กด เลือกไฟล์ .ZIP จากเครื่อง แล้วเปิดโฟลเดอร์ดาวน์โหลดหรือโฟลเดอร์ที่บันทึกไว้ เลือกไฟล์ .zip ที่เพิ่งโหลดทั้งไฟล์โดยไม่ต้องแตกไฟล์',
+                'Click Choose a ZIP from your device, open Downloads or the folder where you saved it, and select the .zip you just downloaded. Keep it zipped.',
+              )}
+            </p>
+            <p className="mt-2 text-sm text-ink-2">
+              {t(
+                'ดูผลได้ทันทีหลังวิเคราะห์เสร็จ การดาวน์โหลด PDF และการเปิดประวัติเป็นทางเลือก',
+                'View results as soon as analysis finishes. Downloading a PDF and enabling history are optional.',
+              )}
+            </p>
+          </li>
+        </ol>
+      </section>
 
       {/* Steps List */}
       <ol id="export-steps" className="divide-y divide-rule" role="list">
@@ -645,7 +722,8 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
           <li
             key={step.id}
             id={step.id}
-            className="grid grid-cols-1 gap-8 py-9 lg:grid-cols-12 lg:items-center"
+            tabIndex={step.id === 'm-12' || step.id === 'w-11' ? -1 : undefined}
+            className="grid scroll-mt-(--nav-bar-height) grid-cols-1 gap-8 py-9 lg:grid-cols-12 lg:items-center"
           >
             <div className="lg:col-span-6">
               <div className="flex items-baseline gap-3">
@@ -704,8 +782,8 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               {t(
-                'ขั้นตอนทั้งหมดอ้างอิงจากศูนย์ช่วยเหลือทางการของ Instagram (Download a copy of your information on Instagram ผ่าน Meta Accounts Center) โดยระบบจะแจ้งเตือนทางอีเมลเมื่อไฟล์พร้อม และลิงก์ดาวน์โหลดจะมีอายุจำกัด 4 วันเพื่อความปลอดภัยของบัญชี',
-                'The steps follow Instagram’s Accounts Center export guide. Instagram emails you when the export is ready. The download is available for four days.',
+                'ขั้นตอนอิงจากศูนย์ช่วยเหลือของ Instagram เมื่อไฟล์พร้อม คุณดาวน์โหลดได้จากแท็บ กิจกรรมปัจจุบัน ภายใน 4 วัน',
+                'The steps follow Instagram’s Accounts Center export guide. When your file is ready, you can download it from Current activity within four days.',
               )}
             </p>
           </div>

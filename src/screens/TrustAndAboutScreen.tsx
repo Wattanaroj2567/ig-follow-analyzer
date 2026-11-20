@@ -275,7 +275,7 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
   const [reviewOpen, setReviewOpen] = useState(false);
 
   return (
-    <div className="product-wrap max-w-4xl py-9 lg:py-14">
+    <div className="product-wrap py-9 lg:py-14">
       <header className="border-b border-rule pb-8">
         <h1 className="max-w-[26ch] text-3xl leading-[1.2] text-ink sm:text-5xl">
           {t('ทำไมเราถึงสร้าง', 'Why we built')}{' '}

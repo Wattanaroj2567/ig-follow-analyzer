@@ -23,9 +23,9 @@
 ## Features
 
 - **100% Browser-Local Processing:** Extracts and analyzes Instagram `.zip` archives (JSON and HTML) inside a Web Worker without uploading follower data to any server.
-- **Step-by-Step Export Guide:** Visual walkthrough for requesting your data from Instagram Accounts Center on both mobile and desktop.
+- **Step-by-Step Export Guide:** Visual walkthrough for requesting your data on mobile and desktop, with a separate comparison explaining why analysis uses a ZIP.
 - **Dashboard & Account Table:** Summarizes Followers, Following, Mutuals, Not Following Back, and Not Followed Back with interactive charts, search, filters, sorting, and pagination.
-- **Report Export:** Preview and download A4 PDFs (Thai & English) directly to your device. Start a comparison report from the dashboard or history when account lists are available for both exports.
+- **Report Export:** Optionally download an A4 PDF (Thai or English) to read or print later. Create a comparison report when account lists are available for both exports.
 - **Opt-In Local History:** Automatically compare the latest ZIP with the preceding export, or choose an older export for the same account. See new and missing followers plus account timelines. History stays in the browser (`IndexedDB`), is off by default, and can be cleared after confirmation.
 - **Sample Mode:** Preview a single ZIP or compare two fictitious exports, then browse sample history and reopen past results before uploading your own file.
 - **Bilingual & Themed UI:** Supports Thai and English, plus System (default), Dark, and Light themes.
@@ -74,8 +74,8 @@ npm run dev
 
 ## Usage
 
-1. Request your Instagram follower archive (`.zip`) using the built-in export guide.
-2. Drag and drop or select the `.zip` file on the Upload page, or open the interactive sample dataset from the home page.
+1. Follow the built-in guide to request your follower data in Instagram Accounts Center. Check **Current activity** to download it when it’s ready.
+2. Drag and drop or select the original `.zip` file on the Analyze ZIP page, or open the interactive sample dataset from the home page.
 3. Inspect the relationship breakdown, search or filter accounts, and download your A4 PDF report directly to your device (or save it to Files/Drive via your device's native save sheet).
 
 ## Development

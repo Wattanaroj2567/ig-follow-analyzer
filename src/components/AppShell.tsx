@@ -5,7 +5,15 @@ import { pageHref } from '../lib/routes';
 import { type ThemePreference, useThemePreference } from '../lib/theme';
 
 export type PageId =
-  'landing' | 'how-it-works' | 'upload' | 'results' | 'pdf' | 'history' | 'terms' | 'about';
+  | 'landing'
+  | 'how-it-works'
+  | 'export-comparison'
+  | 'upload'
+  | 'results'
+  | 'pdf'
+  | 'history'
+  | 'terms'
+  | 'about';
 
 interface AppShellProps {
   activePage: PageId;

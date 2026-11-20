@@ -132,10 +132,10 @@ const getLandingFaqs = (t: Translator) => [
     ),
   },
   {
-    q: t('ทำไมการขอไฟล์ดูยุ่งยากและต้องรอนาน?', 'Why does the export take time?'),
+    q: t('ทำไมต้องขอไฟล์เองและรอให้พร้อม?', 'Why do I need to request an export and wait?'),
     a: t(
-      'เพราะเป็นวิธีทางการของ Instagram ที่ไม่ต้องขอรหัสผ่านและไม่เสี่ยงโดนระงับบัญชีครับ ระยะเวลารอขึ้นอยู่กับคิวของระบบ Meta (ตั้งแต่ไม่กี่นาทีไปจนถึงหลายชั่วโมง) การเลือกเฉพาะหมวด ผู้ติดตามและกำลังติดตาม + ช่วงวันที่ ตลอดเวลา + รูปแบบ JSON จะช่วยให้ไฟล์เล็กที่สุดและเสร็จไวขึ้นครับ',
-      'Instagram builds the export for you. It can take anywhere from a few minutes to several hours. To keep it small, select only Followers and following, set the date range to All time, and choose JSON.',
+      'Instagram ต้องเตรียมไฟล์ให้หลังจากที่คุณขอในศูนย์บัญชี คุณกลับไปดูความคืบหน้าได้ที่แท็บกิจกรรมปัจจุบัน',
+      'Once you request an export in Accounts Center, Instagram prepares the file. You can check its progress under Current activity.',
     ),
   },
 ];
@@ -144,7 +144,6 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
   const { t } = useLanguage();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const useCasesReveal = useRevealOnScroll<HTMLUListElement>();
-  const stepsReveal = useRevealOnScroll<HTMLOListElement>();
   const statsReveal = useRevealOnScroll<HTMLDivElement>();
   const closingReveal = useRevealOnScroll<HTMLDivElement>();
 
@@ -237,8 +236,42 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                     preserveAspectRatio="none"
                     aria-hidden="true"
                   >
+                    <defs>
+                      <filter
+                        id="hero-crayon"
+                        filterUnits="userSpaceOnUse"
+                        x="-3"
+                        y="-3"
+                        width="366"
+                        height="20"
+                      >
+                        <feTurbulence
+                          type="fractalNoise"
+                          baseFrequency="0.72 0.86"
+                          numOctaves={2}
+                          seed={9}
+                          result="paperGrain"
+                        />
+                        <feDisplacementMap
+                          in="SourceGraphic"
+                          in2="paperGrain"
+                          scale={4}
+                          xChannelSelector="R"
+                          yChannelSelector="G"
+                          result="roughStroke"
+                        />
+                        <feColorMatrix
+                          in="paperGrain"
+                          type="matrix"
+                          values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  5 0 0 0 -1.8"
+                          result="grainOpacity"
+                        />
+                        <feComposite in="roughStroke" in2="grainOpacity" operator="in" />
+                      </filter>
+                    </defs>
                     <path
                       className="landing-hero__ig-wave-runner"
+                      filter="url(#hero-crayon)"
                       d="M 4 8 C 46 2, 88 13, 134 7 C 180 1, 224 13, 270 7 C 304 3, 332 9, 356 6"
                       pathLength={100}
                     />
@@ -251,6 +284,32 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                   'Use your Instagram ZIP export to compare your followers with the accounts you follow.',
                 )}
               </p>
+
+              <aside className="landing-hero__proof" aria-labelledby="hero-export-h">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-cool" aria-hidden="true" />
+                <div>
+                  <h2 id="hero-export-h">
+                    {t(
+                      'ก่อนเริ่ม ต้องขอไฟล์จาก Instagram',
+                      'Before you start, request your Instagram export',
+                    )}
+                  </h2>
+                  <p>
+                    {t(
+                      'ขอ ZIP จากศูนย์บัญชี แล้วรอให้ Instagram เตรียมไฟล์',
+                      'Request a ZIP in Accounts Center and wait for Instagram to prepare it.',
+                    )}
+                  </p>
+                  <a
+                    href={pageHref('export-comparison')}
+                    onClick={go('export-comparison')}
+                    className="mt-2 inline-flex min-h-[24px] items-center gap-1 font-semibold text-cool underline underline-offset-4"
+                  >
+                    {t('ทำไมต้องใช้ไฟล์ ZIP?', 'Why use a ZIP?')}
+                    <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+                  </a>
+                </div>
+              </aside>
 
               <div className="landing-hero__actions">
                 <a className="btn btn--primary" href={pageHref('upload')} onClick={go('upload')}>
@@ -265,25 +324,6 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                   {t('ดูวิธีขอไฟล์', 'View export guide')}
                 </a>
               </div>
-
-              <aside className="landing-hero__proof" aria-labelledby="hero-privacy-h">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-cool" aria-hidden="true" />
-                <div>
-                  <h2 id="hero-privacy-h">{t('วิเคราะห์บนเครื่องคุณ', 'Analysis on your device')}</h2>
-                  <p>
-                    {t(
-                      'อ่านไฟล์ในเบราว์เซอร์โดยไม่ส่งไฟล์ขึ้นเซิร์ฟเวอร์',
-                      'Your browser reads the file locally. It never goes to a server.',
-                    )}
-                  </p>
-                  <p>
-                    {t(
-                      'ไม่ต้องล็อกอินหรือให้รหัสผ่าน และไม่ใช้ Instagram API',
-                      'No login, password, or Instagram API access required.',
-                    )}
-                  </p>
-                </div>
-              </aside>
             </div>
 
             <LandingPreview demo={demo} previousDemo={previousDemo} />
@@ -392,104 +432,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
         </div>
       </section>
 
-      {/* 3. Three-Step Workflow Strip */}
-      <section className="landing-section" aria-labelledby="steps-h">
-        <div className="product-wrap">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div className="landing-section__head">
-              <h2 id="steps-h">{t('ขั้นตอนทำงานตั้งแต่ขอไฟล์จนได้รายงาน', 'From export to report')}</h2>
-              <p>
-                {t(
-                  'ทำตามขั้นตอนจริงจากศูนย์บัญชี Instagram ทั้งบนมือถือและคอมพิวเตอร์ โดยไม่ต้องใช้รหัสผ่าน',
-                  'Follow the Instagram Accounts Center steps on mobile or desktop to request your export.',
-                )}
-              </p>
-            </div>
-            <a
-              className="btn btn--secondary max-w-full shrink-0 self-start whitespace-normal! sm:self-end"
-              href={pageHref('how-it-works')}
-              onClick={go('how-it-works')}
-            >
-              <span>{t('ดูคู่มือภาพทีละขั้นตอน', 'View the step-by-step guide')}</span>
-              <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-            </a>
-          </div>
-
-          <ol
-            ref={stepsReveal.ref}
-            className={`panels mt-7 scroll-reveal ${stepsReveal.visible ? 'scroll-reveal--in' : ''}`}
-            role="list"
-          >
-            <li className="grid grid-cols-1 gap-3 px-5 py-5 md:grid-cols-12 md:items-center">
-              <div className="md:col-span-3">
-                <span className="measured text-xs font-medium text-accent">
-                  {t('ขั้นที่ 01', 'STEP 01')}
-                </span>
-                <p className="mt-0.5 text-sm font-semibold text-ink">
-                  {t('ขอไฟล์จากศูนย์บัญชี Instagram', 'Request your Instagram export')}
-                </p>
-              </div>
-              <div className="md:col-span-4">
-                <span className="text-xs font-medium text-cool">
-                  {t('เฉพาะหมวดผู้ติดตามและกำลังติดตาม', 'Followers and following only')}
-                </span>
-              </div>
-              <p className="text-sm text-muted md:col-span-5">
-                {t(
-                  'เลือกเฉพาะผู้ติดตามและกำลังติดตาม ตั้งช่วงวันที่ ตลอดเวลา (All time) และรูปแบบ JSON แล้วดาวน์โหลดไฟล์ .zip',
-                  'Select Followers and following, set the date range to All time, and choose JSON. Download the ZIP when it’s ready.',
-                )}
-              </p>
-            </li>
-
-            <li className="grid grid-cols-1 gap-3 px-5 py-5 md:grid-cols-12 md:items-center">
-              <div className="md:col-span-3">
-                <span className="measured text-xs font-medium text-accent">
-                  {t('ขั้นที่ 02', 'STEP 02')}
-                </span>
-                <p className="mt-0.5 text-sm font-semibold text-ink">
-                  {t('อัปโหลดไฟล์ .zip เข้าเว็บไซต์', 'Choose the ZIP you downloaded')}
-                </p>
-              </div>
-              <div className="md:col-span-4">
-                <span className="text-xs font-medium text-cool">
-                  {t('ประมวลผลในเบราว์เซอร์ 100%', 'Processed in your browser')}
-                </span>
-              </div>
-              <p className="text-sm text-muted md:col-span-5">
-                {t(
-                  'เลือกไฟล์ .zip ที่โหลดมาได้เลยโดยไม่ต้องแตกไฟล์ เว็บจะอ่านและคำนวณให้บนเครื่องของคุณทันที',
-                  'Select the ZIP as downloaded. Your browser reads the lists and compares them on your device.',
-                )}
-              </p>
-            </li>
-
-            <li className="grid grid-cols-1 gap-3 px-5 py-5 md:grid-cols-12 md:items-center">
-              <div className="md:col-span-3">
-                <span className="measured text-xs font-medium text-accent">
-                  {t('ขั้นที่ 03', 'STEP 03')}
-                </span>
-                <p className="mt-0.5 text-sm font-semibold text-ink">
-                  {t('ดูรายชื่อและส่งออกรายงาน PDF', 'Explore the results and export a PDF')}
-                </p>
-              </div>
-              <div className="md:col-span-4">
-                <span className="text-xs font-medium text-cool">
-                  {t('ดูผลทันทีหรือโหลดเก็บเป็น PDF', 'View results or save a PDF')}
-                </span>
-              </div>
-              <p className="text-sm text-muted md:col-span-5">
-                {t(
-                  'ดูว่าใครไม่ติดตามกลับ ถ้าบันทึกรายชื่อไว้จากรอบก่อน ก็เทียบ ZIP ย้อนหลังได้จากหน้าผลล่าสุด แล้วดาวน์โหลดรายงาน PDF ภาษาไทยหรืออังกฤษได้',
-                  'See who doesn’t follow you back. If you have saved lists, compare an earlier ZIP from your latest results. You can also download a report in Thai or English.',
-                )}
-              </p>
-            </li>
-          </ol>
-        </div>
-      </section>
-
-      {/* 4. Measured Readings + Privacy Table + FAQ */}
+      {/* 4. Measured Readings + FAQ */}
       <section className="landing-section landing-section--step" aria-labelledby="readings-h">
         <div className="product-wrap">
           <div className="landing-section__head">
@@ -550,88 +493,37 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
-            <div className="panels lg:col-span-7">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-rule bg-paper-3 text-xs font-medium text-muted">
-                    <th className="px-4 py-3">{t('เปรียบเทียบการทำงาน', 'How it works')}</th>
-                    <th className="px-4 py-3">
-                      {t('แอปที่ขอรหัสผ่าน IG', 'Apps that ask for your IG password')}
-                    </th>
-                    <th className="px-4 py-3 text-accent">IG Follow Analyzer</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rule bg-paper-2">
-                  <tr>
-                    <th scope="row" className="px-4 py-3 font-medium text-ink">
-                      {t('การเข้าถึงบัญชี', 'Account access')}
-                    </th>
-                    <td className="px-4 py-3 text-bad">
-                      {t('ขอรหัสผ่านหรือ Cookie', 'Ask for a password or cookie')}
-                    </td>
-                    <td className="px-4 py-3 text-ok">
-                      {t('ใช้ไฟล์ ZIP ทางการเท่านั้น', 'Uses the official ZIP export')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row" className="px-4 py-3 font-medium text-ink">
-                      {t('ประวัติย้อนหลัง', 'History')}
-                    </th>
-                    <td className="px-4 py-3 text-muted">
-                      {t('เก็บไว้บนเซิร์ฟเวอร์ผู้พัฒนา', 'Stored on the developer’s server')}
-                    </td>
-                    <td className="px-4 py-3 text-ink-2">
-                      {t('ปิดเป็นค่าเริ่มต้น (เลือกเก็บในเครื่องได้)', 'Optional and stored on this device')}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row" className="px-4 py-3 font-medium text-ink">
-                      {t('การสั่งอันฟอลอัตโนมัติ', 'Automatic unfollowing')}
-                    </th>
-                    <td className="px-4 py-3 text-bad">
-                      {t('เสี่ยงถูกจำกัดสิทธิ์หรือระงับบัญชี', 'May lead to account restrictions')}
-                    </td>
-                    <td className="px-4 py-3 text-ok">
-                      {t('ไม่มีระบบกดแทนผู้ใช้', 'You manage follows on Instagram')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <div className="panels mt-8">
+            <div className="bg-paper-3 px-5 py-3">
+              <h3 className="text-base font-semibold text-ink">
+                {t('คำถามที่พบบ่อย', 'Frequently asked questions')}
+              </h3>
             </div>
-
-            <div className="panels lg:col-span-5">
-              <div className="bg-paper-3 px-5 py-3">
-                <h3 className="text-base font-semibold text-ink">
-                  {t('คำถามที่พบบ่อย', 'Frequently asked questions')}
-                </h3>
-              </div>
-              <div className="divide-y divide-rule bg-paper-2 px-5">
-                {getLandingFaqs(t).map((item, idx) => {
-                  const expanded = openFaq === idx;
-                  return (
-                    <div key={item.q} className="py-1">
-                      <button
-                        type="button"
-                        aria-expanded={expanded}
-                        onClick={() => setOpenFaq(expanded ? null : idx)}
-                        className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 py-2 text-left text-sm font-medium text-ink"
-                      >
-                        <span>{item.q}</span>
-                        <ChevronDown
-                          className={`h-4 w-4 shrink-0 text-muted transition-transform ${
-                            expanded ? 'rotate-180 text-accent' : ''
-                          }`}
-                          aria-hidden="true"
-                        />
-                      </button>
-                      {expanded && (
-                        <p className="pb-3 text-sm leading-relaxed text-muted">{item.a}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="divide-y divide-rule bg-paper-2 px-5">
+              {getLandingFaqs(t).map((item, idx) => {
+                const expanded = openFaq === idx;
+                return (
+                  <div key={item.q} className="py-1">
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      onClick={() => setOpenFaq(expanded ? null : idx)}
+                      className="flex min-h-[44px] w-full cursor-pointer items-center justify-between gap-3 py-2 text-left text-sm font-medium text-ink"
+                    >
+                      <span>{item.q}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-muted transition-transform ${
+                          expanded ? 'rotate-180 text-accent' : ''
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {expanded && (
+                      <p className="pb-3 text-sm leading-relaxed text-muted">{item.a}</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

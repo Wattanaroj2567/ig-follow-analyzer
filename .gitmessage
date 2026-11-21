@@ -1,23 +1,31 @@
-# Conventional Commits template for IG Follow Analyzer
-# Format: <type>(<scope>): <subject>
+
+
+# <type>[optional (<scope>)]: <subject>
 #
-# <type>  : feat | fix | docs | chore | refactor | test | style | perf | ci | build
-# <scope> : optional, e.g. upload, parser, pdf, history, ui, i18n
-# <subject>: imperative, lowercase, no trailing period, <= 72 chars
+# Types:
+#   feat     : new user-facing feature
+#   fix      : bug fix
+#   refactor : code change without behavior change
+#   perf     : performance improvement
+#   docs     : README, feature docs, CHANGELOG
+#   test     : add or update tests
+#   style    : formatting/whitespace only (not UI/CSS)
+#   build    : Vite, bundler, or build config
+#   ci       : CI/CD or deployment workflows
+#   chore    : deps, tooling, git, maintenance
+#   revert   : revert a previous commit
 #
-# Body (optional): explain WHY, not WHAT. Wrap at 72 chars.
-# Footer (optional): BREAKING CHANGE: ... or Closes #123
+# Scopes (optional):
+#   upload, parser, pdf, history, ui, i18n, theme, guide, a11y, docs, deps, config
+#
+# Rules:
+#   - Subject: English, imperative, lowercase, no trailing period (aim <= 50 chars, max 72)
+#   - Body   : optional, explain WHY not WHAT, wrap at 72 chars
+#   - Footer : optional, e.g. BREAKING CHANGE: ... or Closes #123
+#   - Update CHANGELOG.md ([Unreleased]) for notable user-facing changes
 #
 # Examples:
 #   feat(upload): add drag-and-drop ZIP support
 #   fix(parser): handle nested folder paths in Instagram export
 #   docs(readme): clarify local history consent flow
 #   chore(deps): bump fflate to 0.8.4
-#
-# --- delete below this line before committing ---
-
-type(scope): subject
-
-body (optional)
-
-footer (optional)

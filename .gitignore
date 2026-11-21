@@ -3,6 +3,7 @@ dist/
 logs/
 .env
 .env.*
+!.env.example
 *.local
 .taste-skill/
 .hallmark/

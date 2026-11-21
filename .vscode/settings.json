@@ -1,0 +1,6 @@
+{
+  "python.languageServer": "None",
+  "files.associations": {
+    ".gitmessage": "git-commit"
+  }
+}

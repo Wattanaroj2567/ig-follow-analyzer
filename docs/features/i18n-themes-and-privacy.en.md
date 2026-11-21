@@ -20,6 +20,7 @@ Covers the cross-cutting bilingual system, appearance themes, Add to Home Screen
 - Persists preference in `localStorage` (`ig-follow-analyzer-theme`) and automatically updates `data-theme` and `<meta name="theme-color">` when OS appearance changes under `System`.
 - Built on Tailwind CSS v4 tokens in `src/index.css` with `Plus Jakarta Sans` + `IBM Plex Sans Thai` typography and `prefers-reduced-motion` support.
 - The landing page uses neutral surfaces for the feature summary, FAQ, and reviews, a cool tint for history comparison, and a warm tint for the closing analysis prompt. Each tint adapts to the active theme.
+- The background stays fixed while scrolling. Light pairs pale gold with rose, and Dark pairs blue with soft rose.
 - On mobile, the navigation bar and fullscreen PDF preview toolbar share the same height, theme surface, and control size.
 
 ## Add to Home Screen & Desktop Pinning
@@ -32,6 +33,7 @@ Covers the cross-cutting bilingual system, appearance themes, Add to Home Screen
 - **No User Accounts:** No sign-up, login, Instagram OAuth, password/cookie/token collection, or automated follow/unfollow actions.
 - **Cookies and sessions:** The site sets no cookies, creates no login sessions, and does not track users. Language and theme preferences use `localStorage`; history uses `IndexedDB` only after explicit opt-in.
 - **Terms, Privacy, and FAQ:** Covers the tool’s scope, local file processing, the two levels of history consent, and its independence from Instagram and Meta. Each FAQ answer opens and closes independently. Some answers link to the export guide and the History page for managing saved data.
+  - The landing page and Terms FAQs cover using one ZIP, comparing a newer export, uploading a duplicate, and a fictitious example where follower names change while the total stays the same.
 - **About page:** Explains why IG Follow Analyzer was built, why it analyzes Instagram exports on the user’s device, and why users choose whether to enable history and what to keep.
 - **Bug reports and feature suggestions:** On the About page, select **Open feedback form** to start writing. Hiding and reopening the form keeps the draft and selected topic. The details field accepts up to 500 characters and scrolls when needed. The link below the submit button opens **Bug reports and feature suggestions** in the privacy notice. On submission, Google Forms receives the topic, message, operating system name, browser name, and viewport size. ZIP files and account lists from the analysis stay on the user's device. The form opens the Google Forms response in a new tab so you can check whether it was accepted. Your draft stays in the original tab.
 - **User reviews:** The About page’s review form follows the site theme and preserves the draft when switching themes. The link below the submit button opens **Ratings and review comments** in the privacy notice. On submission, Google Apps Script receives the review fields and a random ID that helps prevent duplicate ratings. Answers are saved in Google Forms. A restricted Google Sheet is used to manage reviews and record the same random ID stored in the browser. ZIP files and account lists from the analysis stay on the user's device.
@@ -44,11 +46,11 @@ Once ratings exist, the homepage shows their average and count above the footer.
 
 ### First-time setup
 
-1. Open the existing form as its owner, or run `createReviewForm` from the [form setup script](../examples/create-review-form.gs) and use the edit link in the execution log. The receiver expects one five-star rating, paragraph, short text, and checkbox question. Keep the configured consent option and make that question optional.
+1. Open your existing review form. If you need a new form, create it in Google Forms with exactly one of each question type: **Rating** with five stars, **Paragraph** for the optional comment, **Short answer** for the display name, and **Checkboxes** for optional permission to publish. The consent choice must begin with `อนุญาตให้นำข้อความรีวิวและชื่อที่กรอกไว้` so the receiver can recognize it.
 2. Under **Settings → Responses**, turn off email collection and limiting to one response, and turn on **Allow response editing**. Under **Presentation**, keep the response summary off. Publish for anyone with the link and verify the responder link opens in a private window without signing in. [Google Forms settings](https://support.google.com/docs/answer/2839588)
-3. In the form select **Responses → Link to Sheets**, and create or select a spreadsheet with sharing set to **Restricted**. Paste the [review receiver and summary script](../examples/receive-review.gs) into Apps Script. Set the `REVIEW_FORM_ID` script property to the ID in `/forms/d/<id>/edit` and `REVIEW_SHEET_ID` to the ID in `/spreadsheets/d/<id>/edit`. [Link a form to a spreadsheet](https://support.google.com/docs/answer/139706)
+3. In the form select **Responses → Link to Sheets**, and create or select a spreadsheet with sharing set to **Restricted**. Add the [review receiver and summary script](../examples/receive-review.gs) to your Apps Script project. Set the `REVIEW_FORM_ID` script property to the ID in `/forms/d/<id>/edit` and `REVIEW_SHEET_ID` to the ID in `/spreadsheets/d/<id>/edit`. [Link a form to a spreadsheet](https://support.google.com/docs/answer/139706)
 4. Select `setupReviewLedger` in Apps Script, click **Run**, and grant permissions as the owner. This creates the **Review controls** tab.
-5. Deploy as a **Web app**. Set **Execute as** to **Me** and **Who has access** to **Anyone**. For an existing deployment, use **Deploy → Manage deployments → Edit → New version** to keep its URL. Set the website's `VITE_REVIEW_ENDPOINT` to the URL ending in `/exec` at build time, then publish the rebuilt site. [Deploy an Apps Script web app](https://developers.google.com/apps-script/guides/web)
+5. Deploy this Apps Script project as one **Web app** deployment. Set **Execute as** to **Me** and **Who has access** to **Anyone**. For an existing deployment, use **Deploy → Manage deployments → Edit → New version** to keep its URL. Set the website's `VITE_REVIEW_ENDPOINT` to the URL ending in `/exec` at build time, then publish the rebuilt site. [Deploy an Apps Script web app](https://developers.google.com/apps-script/guides/web)
 
 ### View and manage reviews
 
@@ -60,6 +62,8 @@ Once ratings exist, the homepage shows their average and count above the footer.
 3. Reload the homepage. These reversible controls preserve the original answer. For permanent deletion, remove the answer in Forms and any copy in the linked response tab and remove the identifying data from **Review controls** as needed. Set visibility to `exclude` first.
 
 ### Pause new reviews
+
+The About page shows **Write a review** once it confirms that reviews are open. If the check fails, reload the page. Visitors can open the feedback form while the check runs.
 
 In the review spreadsheet, add an **Accept new reviews** checkbox and name that cell `ReviewIntakeOpen` under **Data → Named ranges**. In the project spreadsheet, the checkbox is **เปิดรับรีวิว** in the **คู่มือจัดการรีวิว** tab. Keep it checked to accept reviews while the Google Form is accepting responses. Clear it to stop new submissions. After the updated Apps Script and site have been deployed, the About page shows the paused message when opened or reloaded. The homepage still displays previously screened reviews, and feedback can still be submitted. To resume, check the box again and reopen the About page.
 

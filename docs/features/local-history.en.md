@@ -6,13 +6,17 @@
 
 Stores analysis history locally inside the user's browser (`IndexedDB`) to track follower changes across exports, following a strict privacy-first opt-in design (Model B).
 
-The landing page explains how to turn on history and account list storage, analyze one ZIP per run, and return with a newer ZIP for the same account in the same browser. It recommends requesting a fresh ZIP the next day or later because same-day exports may contain the same list. You can choose an earlier export from the latest results.
+Expanded history cards show how many of the accounts you follow also follow you back, with both counts and the percentage to one decimal place.
 
-The results page shows **New followers** and **Missing from the list** cards. Select a card to open its account list, then expand an account to see whether it appeared in each export. The timeline includes a follow date when the file provides one and shows when membership changed between exports. The landing page links to a comparison with fictitious sample data.
+The landing page explains how to turn on history and account list storage, analyze one ZIP per run, and return with a newer ZIP for the same account in the same browser. You can choose an earlier export from the latest results.
 
-Latest results show both ZIP names, export dates, and analysis times. The app automatically compares the latest export with the preceding export for the same account that has saved lists. If several earlier exports are available, choose **Change previous export** to update the counts and timelines, or **Reset to previous export** to restore the automatic pairing. Exports from the same day are ordered by analysis time.
+The landing page tip suggests noting the follower count on your Instagram profile when saving the first ZIP. If the count looks lower later or you don’t remember the earlier count, compare a fresh ZIP with the saved one to see which accounts are missing. Request a fresh ZIP the next day or later because same-day exports may contain the same list.
 
-The top of the results page labels the dates **Earlier ZIP** and **ZIP you’re viewing**. Below the comparison cards, the app shows both totals and the calculation for the net change in followers and accounts that do not follow back. The calculation subtracts the earlier ZIP’s total from the total in the ZIP you’re viewing. **Not following you back** counts accounts you follow that don’t follow you.
+The results page shows **New followers** and **Missing from the list** cards. Select a card to open its account list, then expand an account to see whether it appeared in each export. The timeline includes a follow date when the file provides one and shows when membership changed between exports. Each account has an **Open Instagram profile** link beside or below the timeline. The landing page links to a comparison with fictitious sample data.
+
+The comparison shows each ZIP’s export date and filename, and shows analysis times if the dates match. The app automatically compares the latest export with the preceding export for the same account that has saved lists. If several earlier exports are available, choose **Change previous export** to update the counts and timelines, or **Reset to previous export** to restore the automatic pairing. Exports from the same day are ordered by analysis time.
+
+The comparison labels the **ZIP you’re viewing** and the **Comparison ZIP** above the new and missing follower counts.
 
 If the open ZIP has at least 30% fewer followers and the drop is at least 10 accounts, the results show a warning above the comparison totals. The drop may reflect an incomplete list or a real change. Request a new ZIP with **All time** as the date range before drawing conclusions about unfollows.
 

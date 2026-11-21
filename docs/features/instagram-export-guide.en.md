@@ -6,6 +6,8 @@
 
 An interactive in-app guide that walks users through requesting their official follower `.zip` export from Instagram Accounts Center—highlighting the three key settings: `Followers and following` only, `All time` date range, and `JSON` format.
 
+The **How to select All time** link in results warnings opens the guide directly at the date range step.
+
 ## Key Capabilities
 
 - **Device-Specific Walkthroughs:**

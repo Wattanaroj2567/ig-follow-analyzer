@@ -40,5 +40,5 @@ This file defines the project-specific rules and workflow for `ig-follow-analyze
    - `npm run test`
    - `npm run build`
 3. **Sync documentation:**
-   - Update `README.md` (Thai) and `README.en.md` (English) together when user-facing features, setup, or deployment change. Keep READMEs high-level; do not append micro-UI patch notes.
+   - Update `README.md` (English) and `README.th.md` (Thai) together when user-facing features, setup, or deployment change. Keep READMEs high-level; do not append micro-UI patch notes.
    - Record notable user-facing, setup, or bug-fix changes under `## [Unreleased]` in `CHANGELOG.md`.

@@ -4,109 +4,102 @@
   <img src="public/favicon.svg" alt="IG Follow Analyzer logo" width="112" />
 </p>
 
-<p align="center"><strong>วิเคราะห์ความสัมพันธ์ผู้ติดตาม Instagram แบบประมวลผลบนเครื่อง 100%</strong></p>
-
 <p align="center">
-  ตรวจสอบว่าใครไม่ติดตามกลับ เทียบคนเพิ่งเลิกติดตามจากประวัติบนเครื่อง และส่งออกรายงาน PDF A4 (ไทย / อังกฤษ) ได้ทันทีจากไฟล์ <code>.zip</code> ที่คุณส่งออกเอง โดยไม่ต้องเข้าสู่ระบบและไม่ต้องกรอกรหัสผ่าน Instagram
+  See who follows you back on Instagram, compare two exports, and download an A4 PDF report. The app analyzes ZIP files in your browser and keeps follower lists on your device.
 </p>
 
 <p align="center">
-  <a href="https://follow-analyzer.tawandev.site/">เปิดใช้งานเว็บ</a> ·
-  <a href="docs/README.md">เอกสารฟีเจอร์</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <strong><a href="https://follow-analyzer.tawandev.site/">Open the web app</a></strong>
 </p>
 
-<p align="center"><strong>ภาษาไทย</strong> · <a href="README.en.md">English</a></p>
+<p align="center">
+  <a href="docs/features/instagram-export-guide.en.md">Export guide</a> ·
+  <a href="docs/README.en.md">Feature docs</a>
+</p>
+
+<p align="center">
+  <strong>English</strong> · <a href="README.th.md">ภาษาไทย</a>
+</p>
 
 ---
 
-## ฟีเจอร์หลัก
+## Features
 
-- **วิเคราะห์ ZIP ในเบราว์เซอร์ 100%:** อ่านและคำนวณไฟล์ `.zip` (JSON และ HTML) ใน Web Worker โดยไม่อัปโหลดข้อมูลผู้ติดตามไปยังเซิร์ฟเวอร์
-- **คู่มือขอไฟล์จาก Instagram:** ขั้นตอนพร้อมภาพจำลองสำหรับมือถือและคอมพิวเตอร์ พร้อมหน้าอธิบายแยกว่าทำไมการวิเคราะห์จึงใช้ ZIP
-- **แดชบอร์ดและตารางรายชื่อ:** สรุปยอดผู้ติดตาม กำลังติดตาม ติดตามกันและกัน และบัญชีที่ไม่ติดตามกลับ พร้อมกราฟ ค้นหา กรอง เรียงลำดับ และแบ่งหน้า
-- **ส่งออกรายงาน:** เลือกดาวน์โหลด PDF A4 (ไทย / อังกฤษ) ลงเครื่องเพื่อเก็บไว้อ่านหรือพิมพ์ภายหลัง สร้างรายงานเทียบสองรอบได้เมื่อมีรายชื่อครบทั้งสองไฟล์
-- **ประวัติย้อนหลังบนเครื่อง:** เทียบ ZIP ล่าสุดกับรอบก่อนโดยอัตโนมัติ หรือเลือกไฟล์ย้อนหลังของบัญชีเดียวกันเพื่อดูผู้ติดตามใหม่ บัญชีที่หายจากรายชื่อ และไทม์ไลน์ ประวัติอยู่ในเบราว์เซอร์ (`IndexedDB`) ปิดเป็นค่าเริ่มต้น และล้างข้อมูลได้หลังยืนยัน
-- **โหมดตัวอย่าง:** ลองดูภาพรวมไฟล์เดียวและเทียบผลจากไฟล์ ZIP สมมติ 2 รอบ เลือก ZIP ย้อนหลังในหน้าผลตัวอย่างได้ก่อนอัปโหลดไฟล์จริง
-- **ภาษาและธีม:** รองรับภาษาไทย/อังกฤษ และธีมตามระบบ (ค่าเริ่มต้น) มืด หรือสว่าง
-- **ความคิดเห็นและรีวิว:** แจ้งปัญหา เสนอฟีเจอร์ หรือให้คะแนนจากหน้าเกี่ยวกับเรา เมื่อคุณกดส่งรีวิว Google Apps Script จะรับข้อมูลรีวิวเพื่อบันทึกใน Google Forms และจัดการใน Google Sheets
+- **Follower dashboard.** See who follows you, who you follow, who follows you back, and who does not follow back on either side. Search, filter, and sort the lists.
+- **Relationship percentages.** See how each percentage is calculated from your results.
+- **ZIP analysis in your browser.** Open Instagram exports in JSON or HTML. Your ZIP stays on your device.
+- **Compare exports.** See which followers are new or missing between two ZIPs from the same account. History is off by default and can be cleared anytime.
+- **A4 PDF reports.** Download your results in Thai or English.
+- **Sample data and export guide.** Try the dashboard with fictitious accounts, then follow the guide to request your own ZIP.
+- **Comparison Q&A.** Find what to do with your first ZIP, a newer export, or a duplicate.
+- **Language and themes.** Use the app in Thai or English with System, Dark, or Light themes.
 
-> ไม่รองรับการเข้าสู่ระบบเว็บไซต์, Instagram OAuth, การจัดการบัญชีผู้ใช้ หรือการติดตาม/เลิกติดตามบัญชีโดยอัตโนมัติ
+## How to use
 
-## แผนผังการทำงาน
+Try the sample data on the home page, or follow these steps with your own export.
 
-```mermaid
-flowchart LR
-    IG["ไฟล์ส่งออกจาก Instagram (.zip)"] --> Upload["อัปโหลดไฟล์ ZIP"]
+1. **Request your ZIP.** In Instagram Accounts Center, select **Followers and following**, **All time**, and **JSON**. Download the ZIP when it is ready.
+2. **Analyze your ZIP.** If you plan to compare exports later, enable local history and account-list saving first. Then select your ZIP in the app.
+3. **Download the report.** On the results page, select **Create PDF report** and download it to your device.
 
-    subgraph Browser["เบราว์เซอร์ (ประมวลผลบนเครื่อง 100%)"]
-        Upload --> Worker["Web Worker (fflate)"]
-        Worker --> Engine["Set Engine (คำนวณความสัมพันธ์)"]
-        Engine --> Dashboard["แดชบอร์ดและตารางรายชื่อ"]
-        Dashboard --> Export["ส่งออก PDF A4"]
-        Dashboard -. "เลือกเปิดเอง (ปิดเป็นค่าเริ่มต้น)" .-> History["ประวัติย้อนหลัง (IndexedDB)"]
-    end
-```
+### Compare exports (optional)
 
-## Tech Stack
+Return to the same browser with a newer ZIP for the same account. The results show who appeared or disappeared since the earlier saved export. [Local history guide](docs/features/local-history.en.md)
 
-- **Frontend:** `Vite`, `React 19`, `TypeScript`, `Tailwind CSS v4`, `lucide-react`
-- **Client-Side Processing:** `fflate` (Web Worker), `pdfmake` (A4 PDF), `idb` (`IndexedDB`)
-- **Quality & Testing:** `Vitest`, Testing Library, `ESLint`, `Prettier`
+## How it works
 
-## เริ่มต้นใช้งาน
+`Instagram ZIP → Web Worker → Dashboard → A4 PDF`
 
-### ความต้องการของระบบ
+| Component           | Role                                   |
+| ------------------- | -------------------------------------- |
+| Web app             | Displays analysis results.             |
+| Web Worker · fflate | Reads ZIPs and computes relationships. |
+| PDF · pdfmake       | Builds the A4 report.                  |
+| History · IndexedDB | Stores opted-in data in the browser.   |
 
-- Node.js (CI ใช้ Node.js 24) และ `npm`
+The web app uses React, TypeScript, Vite, and Tailwind CSS.
 
-### การติดตั้ง
+ZIP analysis and PDF export run entirely on your device. The app works without an account or Instagram credentials. [Privacy and scope](docs/features/i18n-themes-and-privacy.en.md#privacy--explicit-non-goals)
 
-```bash
-npm install
-```
+## Run locally
 
-### การรันใช้งาน
+Use Node.js 24 and npm. Run these commands from the repository root and open the local URL printed by Vite.
 
 ```bash
+npm ci
 npm run dev
 ```
 
-## วิธีใช้งาน
+### Enable reviews (optional)
 
-1. ขอไฟล์ข้อมูลผู้ติดตามจากศูนย์บัญชี Instagram ตามคู่มือในแอป แล้วเช็ก **กิจกรรมปัจจุบัน** เพื่อดาวน์โหลดเมื่อไฟล์พร้อม
-2. ลากหรือเลือกไฟล์ `.zip` ที่ดาวน์โหลดมาทั้งไฟล์ในหน้าวิเคราะห์ หรือเปิดดูผลตัวอย่างจากหน้าแรก
-3. ตรวจสอบผลวิเคราะห์ ค้นหาหรือกรองรายชื่อ และดาวน์โหลดรายงาน PDF A4 ลงเครื่อง (บนมือถือสามารถเลือกบันทึกเข้าแอปไฟล์หรือแอปไดรฟ์บนเครื่องได้ทันที)
+Run `npm run setup:env` to create `.env.local` from the example. Set `VITE_REVIEW_ENDPOINT` to the full Google Apps Script web app URL ending in `/exec`. The endpoint is public in the browser bundle. [Review setup guide](docs/features/i18n-themes-and-privacy.en.md#first-time-setup)
 
-## การพัฒนา
+### Deploy to Cloudflare Pages
 
-คำสั่งสำหรับตรวจสอบคุณภาพโค้ดและสร้างไฟล์ผลิต:
+Use `npm run build` as the build command and `dist` as the output directory. For reviews in production, set `VITE_REVIEW_ENDPOINT` in the Production environment and redeploy.
 
-```bash
-npm run lint
-npm run lint:tailwind
-npm run format:check
-npm run typecheck
-npm run deadcode
-npm run test
-npm run build
-```
+## Development commands
 
-`npm run lint:tailwind` เรียกใช้ Tailwind CSS IntelliSense language server ผ่านเทอร์มินัล รวมถึง PowerShell บน Windows คำสั่งแสดงชื่อไฟล์และบรรทัดที่มีคำเตือน Tailwind และคืนสถานะล้มเหลวเมื่อพบคำเตือน
+| Command                 | Purpose                             |
+| ----------------------- | ----------------------------------- |
+| `npm run dev`           | Start the Vite dev server.          |
+| `npm run setup:env`     | Create the local review config.     |
+| `npm run lint`          | Check the code with ESLint.         |
+| `npm run lint:tailwind` | Check Tailwind CSS classes.         |
+| `npm run format:check`  | Check formatting with Prettier.     |
+| `npm run typecheck`     | Check TypeScript types.             |
+| `npm run deadcode`      | Find unused code and dependencies.  |
+| `npm run test`          | Run the Vitest suite.               |
+| `npm run build`         | Build the static site into `dist/`. |
+| `npm run preview`       | Serve the production build locally. |
 
-GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)) รันชุดตรวจนี้ทุกครั้งที่ push หรือเปิด PR เข้า `main` สำหรับการเผยแพร่ Production บน **Cloudflare Pages** ใช้ build command `npm run build` และ output directory `dist`
+## Documentation
 
-ดู[คู่มือเจ้าของเว็บสำหรับเปิดรับและจัดการรีวิว](docs/features/i18n-themes-and-privacy.md#การเปิดรับรีวิวผ่าน-google-forms)
-
-## เอกสารเพิ่มเติม
-
-- [เอกสารสรุปรายฟีเจอร์](docs/README.md) (`docs/features/`)
-- [แกลเลอรีภาพทุกหน้าและสถานะ](docs/screenshots/README.md) (เดสก์ท็อปและมือถือ)
+- [Feature documentation](docs/README.en.md)
+- [Desktop and mobile screenshots](docs/screenshots/README.md)
 - [Changelog](CHANGELOG.md)
-- [Project Agent Instructions](AGENTS.md)
+- [AI agent guidelines](AGENTS.md)
 
-## ลิขสิทธิ์และหมายเหตุ
+If reviews are enabled, use the feedback form on the app’s **About** page to report a problem or suggest an improvement.
 
-- สร้างโดย [Wattanaroj Butdee (GitHub)](https://github.com/Wattanaroj2567)
-- `© 2026 IG Follow Analyzer` — เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta
-- พรีวิว A4 และไฟล์ PDF ใช้สีตามธีมเว็บขณะดาวน์โหลด และใช้ฟอนต์ `Plus Jakarta Sans` กับ `IBM Plex Sans Thai` จาก `public/fonts/`
+Created by [Wattanaroj Butdee](https://github.com/Wattanaroj2567). © 2026 IG Follow Analyzer. Independent tool, not affiliated with Instagram or Meta.

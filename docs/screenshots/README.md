@@ -119,7 +119,7 @@
 | ตาราง · ติดตามกันทั้งสองฝ่าย                        | [เปิดภาพ](desktop/results/table-mutual.png)             | [เปิดภาพ](mobile/results/table-mutual.png)             |
 | ค้นหาแล้วไม่มีบัญชีตรงกัน                             | [เปิดภาพ](desktop/results/search-empty.png)             | [เปิดภาพ](mobile/results/search-empty.png)             |
 | เลือกรอบก่อนหน้าที่จะเทียบ                           | [เปิดภาพ](desktop/results/comparison-picker.png)        | [เปิดภาพ](mobile/results/comparison-picker.png)        |
-| ยอดของ ZIP สองรอบและผลต่างสุทธิ                   | [เปิดภาพ](desktop/results/comparison-totals.png)        | [เปิดภาพ](mobile/results/comparison-totals.png)        |
+| ยอดติดตามใหม่และหายจากรายชื่อ                      | [เปิดภาพ](desktop/results/comparison-totals.png)        | [เปิดภาพ](mobile/results/comparison-totals.png)        |
 | รายชื่อที่หายและไทม์ไลน์                             | [เปิดภาพ](desktop/results/missing-timeline.png)         | [เปิดภาพ](mobile/results/missing-timeline.png)         |
 | รายชื่อผู้ติดตามใหม่                                 | [เปิดภาพ](desktop/results/new-followers.png)            | [เปิดภาพ](mobile/results/new-followers.png)            |
 | วิเคราะห์ ZIP ครั้งแรก ยังไม่มีคู่เทียบ                  | [เปิดภาพ](desktop/results/without-baseline.png)         | [เปิดภาพ](mobile/results/without-baseline.png)         |

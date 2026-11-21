@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "deadcode": "knip",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "git config commit.template .gitmessage || true"
   },
   "dependencies": {
     "fflate": "^0.8.3",

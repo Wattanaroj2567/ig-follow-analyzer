@@ -6,6 +6,8 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ### Changed
 
+- Add a conventional commit message template (`.gitmessage`), a `git ci` alias, and an npm `prepare` script to encourage atomic, conventional commits.
+
 - Refresh the share preview image to the current landing page, captured in the System theme.
 - Use theme-aware background tints to distinguish sections on the landing page.
 - Label both ZIPs consistently and display the net increase, decrease, or unchanged count with its calculation.

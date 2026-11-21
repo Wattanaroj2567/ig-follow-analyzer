@@ -16,14 +16,19 @@ export function LandingReviews() {
   useEffect(() => {
     if (!endpoint) return;
     const request = new AbortController();
-    void loadReviewSummary(endpoint, AbortSignal.any([request.signal, AbortSignal.timeout(12_000)]))
+    const timeout = window.setTimeout(() => request.abort(), 12_000);
+    void loadReviewSummary(endpoint, request.signal)
       .then((data) => {
         if (!request.signal.aborted) setSummary(data);
       })
       .catch(() => {
         // Reviews are optional content. A failed request leaves the landing page usable.
-      });
-    return () => request.abort();
+      })
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      window.clearTimeout(timeout);
+      request.abort();
+    };
   }, [endpoint]);
 
   if (!summary) return null;
@@ -35,7 +40,7 @@ export function LandingReviews() {
   }).format(average);
   const count = new Intl.NumberFormat(locale).format(scoreCount);
   return (
-    <section className="py-6 sm:py-8" aria-labelledby="landing-review-heading">
+    <section className="landing-reviews py-6 sm:py-8" aria-labelledby="landing-review-heading">
       <div className="product-wrap space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

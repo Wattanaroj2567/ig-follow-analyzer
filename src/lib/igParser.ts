@@ -1,5 +1,5 @@
-import { strFromU8, unzipSync } from 'fflate';
-import { formatDate } from './dates';
+import { unzipSync } from 'fflate';
+import { calendarDate, formatDate } from './dates';
 import type {
   AccountEntry,
   ArchiveErrorCode,
@@ -7,6 +7,7 @@ import type {
   FollowCounts,
   HistoryDiff,
   LatestHandleSnapshot,
+  ParseStage,
 } from '../types/analyzer';
 
 export const MAX_ZIP_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB compressed archive limit
@@ -28,9 +29,7 @@ function isUnsafeArchivePath(path: string): boolean {
 
 function normalizeHandle(raw: string): string | null {
   const cleaned = raw.trim().replace(/^@+/, '').toLowerCase();
-  if (!cleaned) return null;
-  // Instagram handles allow letters, numbers, periods, underscores (1-30 chars)
-  if (!/^[a-z0-9._]{1,64}$/.test(cleaned)) return null;
+  if (!/^[a-z0-9._]{1,30}$/.test(cleaned) || /^\.+$/.test(cleaned)) return null;
   return cleaned;
 }
 
@@ -38,11 +37,12 @@ function extractHandleFromHref(href: string | undefined): string | null {
   if (!href) return null;
   try {
     const url = new URL(href);
-    if (!url.hostname.toLowerCase().includes('instagram.com')) return null;
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    if (url.hostname !== 'instagram.com' && !url.hostname.endsWith('.instagram.com')) return null;
     const parts = url.pathname.split('/').filter(Boolean);
-    if (parts.length === 0) return null;
-    const candidate = parts[0] === '_u' ? parts[1] : parts[0];
-    return candidate ? normalizeHandle(candidate) : null;
+    if (parts.length === 1 && parts[0] !== '_u') return normalizeHandle(parts[0]);
+    if (parts.length === 2 && parts[0] === '_u') return normalizeHandle(parts[1]);
+    return null;
   } catch {
     return null;
   }
@@ -63,11 +63,32 @@ interface RawInstagramEntry {
   string_list_data?: unknown;
 }
 
-function parseEntryList(items: unknown[]): AccountEntry[] {
+type RelationshipList = 'followers' | 'following';
+type ListFormat = 'json' | 'html';
+
+const listSchema = {
+  followers: {
+    key: 'relationships_followers',
+    invalidJson: 'INVALID_FOLLOWERS_JSON',
+    invalidHtml: 'INVALID_FOLLOWERS_HTML',
+    schema: 'UNEXPECTED_FOLLOWERS_SCHEMA',
+  },
+  following: {
+    key: 'relationships_following',
+    invalidJson: 'INVALID_FOLLOWING_JSON',
+    invalidHtml: 'INVALID_FOLLOWING_HTML',
+    schema: 'UNEXPECTED_FOLLOWING_SCHEMA',
+  },
+} as const;
+
+function parseEntryList(
+  items: unknown[],
+  schemaError: (typeof listSchema)[RelationshipList]['schema'],
+): AccountEntry[] {
   const map = new Map<string, AccountEntry>();
 
   for (const raw of items) {
-    if (!raw || typeof raw !== 'object') continue;
+    if (!raw || typeof raw !== 'object') throw new ArchiveParseError(schemaError);
     const entry = raw as RawInstagramEntry;
     const listData = Array.isArray(entry.string_list_data) ? entry.string_list_data : [];
     const first = (
@@ -84,15 +105,15 @@ function parseEntryList(items: unknown[]): AccountEntry[] {
       (rawTitle ? normalizeHandle(rawTitle) : null) ??
       extractHandleFromHref(rawHref);
 
-    if (!handle) continue;
+    if (!handle) throw new ArchiveParseError(schemaError);
 
     const timestamp =
-      typeof first.timestamp === 'number' && Number.isFinite(first.timestamp) && first.timestamp > 0
+      typeof first.timestamp === 'number' && first.timestamp >= 1 && first.timestamp <= 8.64e12
         ? Math.floor(first.timestamp)
         : undefined;
 
     const existing = map.get(handle);
-    if (!existing || (!existing.timestamp && timestamp)) {
+    if (!existing || (timestamp ?? 0) > (existing.timestamp ?? 0)) {
       map.set(handle, {
         handle,
         href: buildSafeProfileHref(handle),
@@ -104,100 +125,162 @@ function parseEntryList(items: unknown[]): AccountEntry[] {
   return Array.from(map.values());
 }
 
-function parseFollowersJson(jsonText: string): AccountEntry[] {
+function parseRelationshipJson(text: string, kind: RelationshipList): AccountEntry[] {
+  const { key, invalidJson, schema } = listSchema[kind];
   let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonText);
+    parsed = JSON.parse(text);
   } catch {
-    throw new ArchiveParseError('INVALID_FOLLOWERS_JSON');
+    throw new ArchiveParseError(invalidJson);
   }
 
-  if (Array.isArray(parsed)) {
-    return parseEntryList(parsed);
+  if (Array.isArray(parsed)) return parseEntryList(parsed, schema);
+  if (parsed && typeof parsed === 'object' && key in parsed) {
+    const rows = (parsed as Record<string, unknown>)[key];
+    if (Array.isArray(rows)) return parseEntryList(rows, schema);
   }
-  if (parsed && typeof parsed === 'object') {
-    const obj = parsed as Record<string, unknown>;
-    if (Array.isArray(obj.relationships_followers)) {
-      return parseEntryList(obj.relationships_followers);
-    }
-  }
-
-  throw new ArchiveParseError('UNEXPECTED_FOLLOWERS_SCHEMA');
-}
-
-function parseFollowingJson(jsonText: string): AccountEntry[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    throw new ArchiveParseError('INVALID_FOLLOWING_JSON');
-  }
-
-  if (Array.isArray(parsed)) {
-    return parseEntryList(parsed);
-  }
-  if (parsed && typeof parsed === 'object') {
-    const obj = parsed as Record<string, unknown>;
-    if (Array.isArray(obj.relationships_following)) {
-      return parseEntryList(obj.relationships_following);
-    }
-  }
-
-  throw new ArchiveParseError('UNEXPECTED_FOLLOWING_SCHEMA');
+  throw new ArchiveParseError(schema);
 }
 
 /**
  * Safe HTML fallback parser — works in both Web Worker (no DOM needed) and browser
  * without ever injecting HTML into the live DOM or executing scripts.
  */
-function parseInstagramHtml(htmlText: string): AccountEntry[] {
-  const map = new Map<string, AccountEntry>();
-  const anchorRegex =
-    /<a\b[^>]*href=["'](https?:\/\/(?:www\.)?instagram\.com\/[^"']+)["'][^>]*>([^<]*)<\/a>/gi;
-  let match: RegExpExecArray | null;
+function parseInstagramHtml(htmlText: string, kind: RelationshipList): AccountEntry[] {
+  if (!/<html(?:\s[^>]*)?>/i.test(htmlText) || !/<\/html\s*>/i.test(htmlText)) {
+    throw new ArchiveParseError(listSchema[kind].invalidHtml);
+  }
 
-  while ((match = anchorRegex.exec(htmlText)) !== null) {
-    const href = match[1];
-    const innerText = match[2];
-    const handle = extractHandleFromHref(href) ?? normalizeHandle(innerText);
-    if (!handle) continue;
-    if (!map.has(handle)) {
-      map.set(handle, {
-        handle,
-        href: buildSafeProfileHref(handle),
-      });
-    }
+  const map = new Map<string, AccountEntry>();
+  const anchors = htmlText.matchAll(/<a\b(?=\s|>)(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi);
+  for (const [tag] of anchors) {
+    const href = tag.match(/\shref\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    const handle = extractHandleFromHref(href?.[1] ?? href?.[2]);
+    if (handle && !map.has(handle)) map.set(handle, { handle, href: buildSafeProfileHref(handle) });
   }
 
   return Array.from(map.values());
 }
 
-function classifyTargetEntry(path: string): {
-  kind: 'followers' | 'following';
-  format: 'json' | 'html';
-} | null {
-  const norm = path.replace(/\\/g, '/').toLowerCase();
-  const base = norm.split('/').pop() ?? '';
-  const inFollowFolder =
-    norm.includes('followers_and_following/') ||
-    norm.startsWith('followers') ||
-    norm.startsWith('following');
+interface ArchiveListFile {
+  path: string;
+  normalizedPath: string;
+  kind: RelationshipList;
+  format: ListFormat;
+  part: number;
+  size: number;
+}
 
-  if (!inFollowFolder) return null;
+function classifyTargetEntry(path: string) {
+  const segments = path
+    .replace(/\\/g, '/')
+    .toLowerCase()
+    .split('/')
+    .filter((part) => part && part !== '.');
+  const base = segments.at(-1) ?? '';
+  if (segments.length > 1 && !segments.slice(0, -1).includes('followers_and_following'))
+    return null;
 
-  if (/^followers(_\d+)?\.json$/.test(base)) {
-    return { kind: 'followers', format: 'json' };
+  const match = /^(followers|following)(?:_(\d+))?\.(json|html?)$/.exec(base);
+  if (!match) return null;
+  const kind: RelationshipList = match[1] === 'followers' ? 'followers' : 'following';
+  const format: ListFormat = match[3] === 'json' ? 'json' : 'html';
+  return {
+    path,
+    normalizedPath: segments.join('/'),
+    kind,
+    format,
+    part: match[2] === undefined ? 1 : Number(match[2]),
+  };
+}
+
+function verifyListParts(files: ArchiveListFile[]) {
+  const parts: Record<ListFormat, Set<number>> = { json: new Set(), html: new Set() };
+  for (const { format, part } of files) {
+    const seen = parts[format];
+    if (!Number.isSafeInteger(part) || part < 1 || seen.has(part)) {
+      throw new ArchiveParseError('INCOMPLETE_ARCHIVE_LIST');
+    }
+    seen.add(part);
   }
-  if (/^following(_\d+)?\.json$/.test(base)) {
-    return { kind: 'following', format: 'json' };
+  for (const seen of Object.values(parts)) {
+    for (let part = 1; part <= seen.size; part++) {
+      if (!seen.has(part)) throw new ArchiveParseError('INCOMPLETE_ARCHIVE_LIST');
+    }
   }
-  if (/^followers(_\d+)?\.html?$/.test(base)) {
-    return { kind: 'followers', format: 'html' };
+}
+
+function unpackRelationshipFiles(buffer: Uint8Array) {
+  const files: Record<RelationshipList, ArchiveListFile[]> = { followers: [], following: [] };
+  const paths = new Set<string>();
+  let totalEntriesScanned = 0;
+  let skippedNonTargetEntries = 0;
+  let targetBytes = 0;
+  let extracted: ReturnType<typeof unzipSync>;
+  try {
+    extracted = unzipSync(buffer, {
+      filter(file) {
+        if (++totalEntriesScanned > MAX_ARCHIVE_ENTRIES) {
+          throw new ArchiveParseError('TOO_MANY_ENTRIES');
+        }
+        if (isUnsafeArchivePath(file.name)) throw new ArchiveParseError('UNSAFE_PATH');
+        const classified = classifyTargetEntry(file.name);
+        if (!classified) {
+          skippedNonTargetEntries++;
+          return false;
+        }
+        if (paths.has(classified.normalizedPath)) {
+          throw new ArchiveParseError('INCOMPLETE_ARCHIVE_LIST');
+        }
+        if (file.compression === 0 && file.size !== file.originalSize) {
+          throw new ArchiveParseError('CORRUPT_ZIP');
+        }
+        targetBytes += file.originalSize;
+        if (targetBytes > MAX_TARGET_UNCOMPRESSED_BYTES) {
+          throw new ArchiveParseError('DECOMPRESSED_TOO_LARGE');
+        }
+        paths.add(classified.normalizedPath);
+        files[classified.kind].push({ ...classified, size: file.originalSize });
+        return true;
+      },
+    });
+  } catch (error) {
+    if (error instanceof ArchiveParseError) throw error;
+    throw new ArchiveParseError('CORRUPT_ZIP');
   }
-  if (/^following(_\d+)?\.html?$/.test(base)) {
-    return { kind: 'following', format: 'html' };
+  return { files, extracted, totalEntriesScanned, skippedNonTargetEntries };
+}
+
+function parseRelationshipFiles(files: ArchiveListFile[], extracted: Record<string, Uint8Array>) {
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const entries: AccountEntry[] = [];
+  for (const { path, size, kind, format } of files) {
+    const bytes = extracted[path];
+    if (!bytes || bytes.byteLength !== size) throw new ArchiveParseError('CORRUPT_ZIP');
+
+    let text: string;
+    try {
+      text = decoder.decode(bytes);
+    } catch {
+      const { invalidJson, invalidHtml } = listSchema[kind];
+      throw new ArchiveParseError(format === 'json' ? invalidJson : invalidHtml);
+    }
+    const list =
+      format === 'json' ? parseRelationshipJson(text, kind) : parseInstagramHtml(text, kind);
+    for (const entry of list) entries.push(entry);
   }
-  return null;
+  return entries;
+}
+
+function indexAccounts(entries: AccountEntry[]) {
+  const byHandle = new Map<string, AccountEntry>();
+  for (const entry of entries) {
+    const existing = byHandle.get(entry.handle);
+    if (!existing || (entry.timestamp ?? 0) > (existing.timestamp ?? 0)) {
+      byHandle.set(entry.handle, entry);
+    }
+  }
+  return byHandle;
 }
 
 export function computeFollowRelationshipSets(
@@ -211,15 +294,8 @@ export function computeFollowRelationshipSets(
   notFollowedBack: AccountEntry[];
   mutual: AccountEntry[];
 } {
-  const followerMap = new Map<string, AccountEntry>();
-  for (const item of followersInput) {
-    if (!followerMap.has(item.handle)) followerMap.set(item.handle, item);
-  }
-
-  const followingMap = new Map<string, AccountEntry>();
-  for (const item of followingInput) {
-    if (!followingMap.has(item.handle)) followingMap.set(item.handle, item);
-  }
+  const followerMap = indexAccounts(followersInput);
+  const followingMap = indexAccounts(followingInput);
 
   const notFollowingBack: AccountEntry[] = [];
   const mutual: AccountEntry[] = [];
@@ -299,150 +375,74 @@ function formatThaiDate(date: Date): string {
   return formatDate(date, 'th-TH');
 }
 
-function extractSnapshotDateFromFileName(fileName: string, fallback: Date): string {
-  const m = fileName.match(/(20\d{2})[-_](\d{2})[-_](\d{2})/);
-  if (m) {
-    const parsed = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    if (!Number.isNaN(parsed.getTime())) {
-      return formatThaiDate(parsed);
-    }
-  }
-  return formatThaiDate(fallback);
+const officialExportName =
+  /^instagram-([a-z0-9._]{1,30})-(20\d{2})[-_](\d{2})[-_](\d{2})(?=[._ -]|$)/i;
+
+function exportFileInfo(fileName: string): { ownerHandle?: string; date?: Date } {
+  const baseName = fileName.split(/[\\/]/).pop() ?? fileName;
+  const official = baseName.match(officialExportName);
+  const dateParts =
+    official?.slice(2) ?? baseName.match(/(20\d{2})[-_](\d{2})[-_](\d{2})/)?.slice(1);
+  if (!dateParts) return {};
+  const [year, month, day] = dateParts.map(Number);
+  const date = calendarDate(year, month - 1, day);
+  const ownerHandle = date && official ? (normalizeHandle(official[1]) ?? undefined) : undefined;
+  return { ownerHandle, date };
 }
 
-/**
- * Extracts the Instagram owner's username from official export ZIP filenames such as:
- * `instagram-somchai.demo-2026-11-19-aBcDeF12.zip` or `instagram-tawan_dev-2026-11-19 (1).zip`.
- * Returns undefined if the user renamed the file and no handle can be reliably identified.
- */
 export function extractOwnerHandleFromFileName(fileName: string): string | undefined {
-  const base = fileName.split(/[\\/]/).pop() ?? fileName;
-  const match = base.match(/^instagram-([a-z0-9._]{1,30})-20\d{2}[-_]\d{2}[-_]\d{2}\b/i);
-  if (!match) return undefined;
-  return normalizeHandle(match[1]) ?? undefined;
+  return exportFileInfo(fileName).ownerHandle;
 }
 
 export function parseInstagramZipBuffer(
   buffer: Uint8Array,
   fileName: string,
-  onProgress?: (
-    stage: 'validating' | 'unpacking' | 'parsing' | 'comparing',
-    percent: number,
-  ) => void,
+  onProgress?: (stage: ParseStage, percent: number) => void,
 ): AnalysisResult {
   onProgress?.('validating', 15);
+  if (buffer.byteLength === 0) throw new ArchiveParseError('EMPTY_FILE');
+  if (buffer.byteLength > MAX_ZIP_SIZE_BYTES) throw new ArchiveParseError('ARCHIVE_TOO_LARGE');
 
-  if (buffer.byteLength === 0) {
-    throw new ArchiveParseError('EMPTY_FILE');
-  }
-
-  if (buffer.byteLength > MAX_ZIP_SIZE_BYTES) {
-    throw new ArchiveParseError('ARCHIVE_TOO_LARGE');
-  }
-
-  // ZIP magic signature check ("PK\x03\x04" or empty/spanned PK header)
-  if (buffer.byteLength < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+  const signature =
+    buffer.length >= 4 ? new DataView(buffer.buffer, buffer.byteOffset, 4).getUint32(0, true) : 0;
+  if (signature !== 0x04034b50 && signature !== 0x06054b50 && signature !== 0x08074b50) {
     throw new ArchiveParseError('NOT_A_ZIP');
   }
+  if (buffer.byteLength < 22) throw new ArchiveParseError('CORRUPT_ZIP');
 
   onProgress?.('unpacking', 40);
-
-  let totalEntriesScanned = 0;
-  let skippedNonTargetEntries = 0;
-  let targetUncompressedBytes = 0;
-  const matchedMeta = new Map<
-    string,
-    { kind: 'followers' | 'following'; format: 'json' | 'html' }
-  >();
-
-  let extracted: Record<string, Uint8Array>;
-  try {
-    extracted = unzipSync(buffer, {
-      filter(file) {
-        totalEntriesScanned += 1;
-        if (totalEntriesScanned > MAX_ARCHIVE_ENTRIES) {
-          throw new ArchiveParseError('TOO_MANY_ENTRIES');
-        }
-        if (isUnsafeArchivePath(file.name)) {
-          throw new ArchiveParseError('UNSAFE_PATH');
-        }
-        const classified = classifyTargetEntry(file.name);
-        if (!classified) {
-          skippedNonTargetEntries += 1;
-          return false;
-        }
-        targetUncompressedBytes += file.originalSize;
-        if (targetUncompressedBytes > MAX_TARGET_UNCOMPRESSED_BYTES) {
-          throw new ArchiveParseError('DECOMPRESSED_TOO_LARGE');
-        }
-        matchedMeta.set(file.name, classified);
-        return true;
-      },
-    });
-  } catch (err) {
-    if (err instanceof ArchiveParseError) throw err;
-    throw new ArchiveParseError('CORRUPT_ZIP');
-  }
-
-  const followerFiles: string[] = [];
-  const followingFiles: string[] = [];
-  const formatsSeen = new Set<'json' | 'html'>();
-
-  for (const [path, info] of matchedMeta.entries()) {
-    if (!extracted[path]) continue;
-    formatsSeen.add(info.format);
-    if (info.kind === 'followers') followerFiles.push(path);
-    else followingFiles.push(path);
-  }
-
-  if (followerFiles.length === 0 && followingFiles.length === 0) {
-    throw new ArchiveParseError('MISSING_BOTH_SECTIONS');
-  }
-
-  if (followerFiles.length === 0) {
-    throw new ArchiveParseError('MISSING_FOLLOWERS');
-  }
-
-  if (followingFiles.length === 0) {
-    throw new ArchiveParseError('MISSING_FOLLOWING');
-  }
+  const { files, extracted, totalEntriesScanned, skippedNonTargetEntries } =
+    unpackRelationshipFiles(buffer);
+  const { followers, following } = files;
+  if (!followers.length && !following.length) throw new ArchiveParseError('MISSING_BOTH_SECTIONS');
+  if (!followers.length) throw new ArchiveParseError('MISSING_FOLLOWERS');
+  if (!following.length) throw new ArchiveParseError('MISSING_FOLLOWING');
+  verifyListParts(followers);
+  verifyListParts(following);
 
   onProgress?.('parsing', 70);
-
-  const rawFollowers: AccountEntry[] = [];
-  const rawFollowing: AccountEntry[] = [];
-
-  for (const path of followerFiles) {
-    const meta = matchedMeta.get(path)!;
-    const text = strFromU8(extracted[path]);
-    const list = meta.format === 'json' ? parseFollowersJson(text) : parseInstagramHtml(text);
-    rawFollowers.push(...list);
-  }
-
-  for (const path of followingFiles) {
-    const meta = matchedMeta.get(path)!;
-    const text = strFromU8(extracted[path]);
-    const list = meta.format === 'json' ? parseFollowingJson(text) : parseInstagramHtml(text);
-    rawFollowing.push(...list);
-  }
+  const rawFollowers = parseRelationshipFiles(followers, extracted);
+  const rawFollowing = parseRelationshipFiles(following, extracted);
 
   onProgress?.('comparing', 90);
 
   const sets = computeFollowRelationshipSets(rawFollowers, rawFollowing);
   const now = new Date();
+  const { ownerHandle, date } = exportFileInfo(fileName);
+  const formatsSeen = new Set([...followers, ...following].map((file) => file.format));
   const format = formatsSeen.size === 2 ? 'mixed' : formatsSeen.has('json') ? 'json' : 'html';
 
   return {
     sourceFileName: fileName,
     sourceFileSize: buffer.byteLength,
-    ownerHandle: extractOwnerHandleFromFileName(fileName),
+    ownerHandle,
     analyzedAtIso: now.toISOString(),
-    snapshotDateLabel: extractSnapshotDateFromFileName(fileName, now),
+    snapshotDateLabel: formatThaiDate(date ?? now),
     isDemoData: false,
     detectedFiles: {
       format,
-      followerFiles: followerFiles.sort(),
-      followingFiles: followingFiles.sort(),
+      followerFiles: followers.map((file) => file.path).sort(),
+      followingFiles: following.map((file) => file.path).sort(),
       totalEntriesScanned,
       skippedNonTargetEntries,
     },
@@ -456,11 +456,12 @@ export function computeHistoryDiff(
 ): HistoryDiff | null {
   if (!previous || current.isDemoData) return null;
 
-  // Never compare two different Instagram accounts against each other
-  if (previous.ownerHandle && current.ownerHandle && previous.ownerHandle !== current.ownerHandle) {
-    return null;
-  }
-
+  const previousOwner =
+    previous.ownerHandle ??
+    (previous.sourceFileName && extractOwnerHandleFromFileName(previous.sourceFileName));
+  const currentOwner =
+    current.ownerHandle ?? extractOwnerHandleFromFileName(current.sourceFileName);
+  if (!previousOwner || !currentOwner || previousOwner !== currentOwner) return null;
   return compareFollowerSnapshots(previous, current);
 }
 

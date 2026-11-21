@@ -7,16 +7,16 @@ import {
   Upload,
   XCircle,
 } from 'lucide-react';
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import { NormalButton } from '../components/NormalButton';
 import { UploadFileGuide } from '../components/UploadFileGuide';
 import { formatBytes } from '../lib/fileSize';
 import { useLanguage } from '../lib/language';
-import { type UploadErrorCode, uploadErrors, uploadProgress } from '../lib/uploadFeedback';
-import { MAX_ZIP_SIZE_BYTES } from '../lib/igParser';
-import type { AnalysisResult, ParseStage, WorkerOutboundMessage } from '../types/analyzer';
+import { uploadErrors, uploadProgress } from '../lib/uploadFeedback';
+import { useZipAnalysis } from '../lib/useZipAnalysis';
+import type { AnalysisResult } from '../types/analyzer';
 
 interface UploadScreenProps {
   onAnalysisComplete: (result: AnalysisResult) => void;
@@ -26,106 +26,28 @@ interface UploadScreenProps {
 export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenProps) {
   const { t, language } = useLanguage();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const workerRef = useRef<Worker | null>(null);
-
+  const errorRef = useRef<HTMLDivElement>(null);
+  const { state, start, cancel } = useZipAnalysis(onAnalysisComplete);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ name: string; size: number } | null>(null);
-  const [stage, setStage] = useState<ParseStage | 'preparing' | 'idle'>('idle');
-  const [percent, setPercent] = useState(0);
-  const [errorCode, setErrorCode] = useState<UploadErrorCode | null>(null);
+  const errorCode = state.status === 'error' ? state.code : null;
+  const selectedFile = state.status !== 'idle' ? state.file : undefined;
   const error = errorCode ? uploadErrors[errorCode] : null;
-
-  const terminateWorker = () => {
-    if (workerRef.current) {
-      workerRef.current.terminate();
-      workerRef.current = null;
-    }
-  };
-
-  const handleCancel = () => {
-    terminateWorker();
-    setStage('idle');
-    setPercent(0);
-    setSelectedFile(null);
-    setErrorCode('CANCELLED');
-  };
-
-  const processZipFile = async (file: File) => {
-    terminateWorker();
-    setErrorCode(null);
-    setSelectedFile({ name: file.name, size: file.size });
-
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-      setStage('idle');
-      setErrorCode('INVALID_EXTENSION');
-      return;
-    }
-
-    if (file.size > MAX_ZIP_SIZE_BYTES) {
-      setStage('idle');
-      setErrorCode('ARCHIVE_TOO_LARGE');
-      return;
-    }
-
-    setStage('preparing');
-    setPercent(8);
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const worker = new Worker(new URL('../workers/zipParser.worker.ts', import.meta.url), {
-        type: 'module',
-      });
-      workerRef.current = worker;
-
-      worker.onmessage = (event: MessageEvent<WorkerOutboundMessage>) => {
-        const msg = event.data;
-        if (msg.type === 'progress') {
-          setStage(msg.stage);
-          setPercent(msg.percent);
-        } else if (msg.type === 'success') {
-          terminateWorker();
-          onAnalysisComplete(msg.result);
-        } else if (msg.type === 'error') {
-          terminateWorker();
-          setStage('idle');
-          setPercent(0);
-          setErrorCode(msg.code);
-        }
-      };
-
-      worker.onerror = () => {
-        terminateWorker();
-        setStage('idle');
-        setPercent(0);
-        setErrorCode('WORKER_ERROR');
-      };
-
-      worker.postMessage({ fileName: file.name, buffer }, [buffer]);
-    } catch {
-      terminateWorker();
-      setStage('idle');
-      setErrorCode('READ_FAILED');
-    }
-  };
+  const isBusy = state.status === 'running';
+  const percent = isBusy ? state.percent : 0;
+  useLayoutEffect(() => {
+    if (errorCode) errorRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [errorCode, selectedFile]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      void processZipFile(file);
-    }
+    void start(e.target.files);
     e.target.value = '';
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      void processZipFile(file);
-    }
+    void start(e.dataTransfer.files);
   };
-
-  const isBusy = stage !== 'idle';
 
   return (
     <div className="product-wrap py-9 lg:py-14">
@@ -219,10 +141,10 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                 />
               </div>
 
-              <p className="mt-3 text-sm text-muted">{uploadProgress[stage][language]}</p>
+              <p className="mt-3 text-sm text-muted">{uploadProgress[state.stage][language]}</p>
 
               <div className="mt-6">
-                <NormalButton variant="danger" onClick={handleCancel}>
+                <NormalButton variant="danger" onClick={cancel}>
                   <XCircle className="h-4 w-4" aria-hidden="true" />
                   {t('ยกเลิกการวิเคราะห์', 'Cancel analysis')}
                 </NormalButton>
@@ -237,7 +159,7 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
-                className={`flex flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-3 py-12 text-center transition-colors sm:px-6 ${
+                className={`flex flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-3 py-7 text-center transition-colors sm:px-6 sm:py-12 ${
                   isDragging
                     ? 'border-accent bg-accent-soft'
                     : 'border-rule-2 bg-paper-3 hover:border-accent'
@@ -248,12 +170,16 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                   type="file"
                   accept=".zip,application/zip,application/x-zip-compressed"
                   onChange={handleFileChange}
+                  tabIndex={-1}
                   className="sr-only"
                   aria-label={t('เลือกไฟล์ ZIP จาก Instagram', 'Choose an Instagram ZIP file')}
                 />
 
                 <FileArchive className="h-9 w-9 text-accent" aria-hidden="true" />
-                <p className="mt-4 text-lg font-medium text-ink">
+                <p className="mt-4 text-lg font-medium text-ink sm:hidden">
+                  {t('เลือกไฟล์ ZIP ที่ดาวน์โหลดไว้', 'Choose your downloaded ZIP')}
+                </p>
+                <p className="mt-4 hidden text-lg font-medium text-ink sm:block">
                   {t('ลากไฟล์ ', 'Drop your ')}
                   <code className="measured text-cool">.zip</code>
                   {t(' มาวางตรงนี้', ' file here')}
@@ -306,8 +232,9 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
 
           {error && (
             <div
+              ref={errorRef}
               role="alert"
-              className="mt-5 rounded-[10px] border border-bad bg-bad-soft p-5 text-left"
+              className="mt-5 scroll-mb-3 rounded-[10px] border border-bad bg-bad-soft p-5 text-left"
             >
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-bad" aria-hidden="true" />

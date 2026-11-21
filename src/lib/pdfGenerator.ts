@@ -6,6 +6,7 @@ import type {
   HistoryDiff,
   PdfReportOptions,
 } from '../types/analyzer';
+import { getFollowerComparisonRisk } from './comparison';
 import { formatDate, formatSnapshotDate } from './dates';
 import { buildSafeProfileHref } from './igParser';
 import { getLanguageFormat, type Language, type Translator } from './language';
@@ -86,10 +87,15 @@ export function getPdfReportLabels(t: Translator) {
     newFollowers: t('ติดตามใหม่', 'New followers'),
     missingFollowers: t('หายจากรายชื่อ', 'Missing from the list'),
     netFollowers: t('ผู้ติดตามสุทธิ', 'Net follower change'),
+    comparisonCaution: t(
+      'รายชื่อเปลี่ยนผิดสังเกต ตรวจว่า ZIP ทั้งสองใช้ช่วงตลอดเวลาก่อนสรุปผล',
+      'Unusually large list change. Check that both ZIPs used the All time date range before interpreting the results.',
+    ),
   };
 }
 
 export function getPdfComparisonSummary(
+  result: Pick<AnalysisResult, 'counts' | 'isDemoData'>,
   diff: HistoryDiff,
   copy: ReturnType<typeof getPdfReportLabels>,
   locale: string,
@@ -111,6 +117,10 @@ export function getPdfComparisonSummary(
   return {
     reference: `${copy.comparedWith} ${file}`,
     counts: `${copy.newFollowers} ${diff.newFollowers.length.toLocaleString(locale)} · ${copy.missingFollowers} ${diff.recentUnfollowers.length.toLocaleString(locale)} · ${copy.netFollowers} ${net}`,
+    caution:
+      !result.isDemoData && getFollowerComparisonRisk(result.counts.followers, diff)
+        ? copy.comparisonCaution
+        : null,
     newFollowersPreview: formatHandles(diff.newFollowers),
     missingFollowersPreview: formatHandles(diff.recentUnfollowers),
   };
@@ -555,7 +565,7 @@ export async function generatePdfBlob(
 
   if (options.includeDiffSection && diff) {
     hasFrontContent = true;
-    const summary = getPdfComparisonSummary(diff, copy, locale);
+    const summary = getPdfComparisonSummary(result, diff, copy, locale);
     content.push({
       table: {
         widths: ['*'],
@@ -580,6 +590,17 @@ export async function generatePdfBlob(
                   color: palette.inkSecondary,
                   margin: [0, 2, 0, 0],
                 },
+                ...(summary.caution
+                  ? [
+                      {
+                        text: reportText(summary.caution),
+                        fontSize: 9,
+                        bold: true,
+                        color: palette.ink,
+                        margin: [0, 4, 0, 0] as [number, number, number, number],
+                      },
+                    ]
+                  : []),
               ],
               fillColor: palette.accentSoft,
               margin: [10, 8, 10, 8],

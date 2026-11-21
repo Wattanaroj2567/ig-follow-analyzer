@@ -77,6 +77,8 @@ export function HistoryScreen({
       'History was cleared and both history settings were turned off.',
     ),
   };
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(false);
   const [feedback, setFeedback] = useState<keyof typeof feedbackMessages | null>(null);
   const formatSignedDelta = (delta: number) =>
     `${delta > 0 ? '+' : ''}${delta.toLocaleString(locale)}`;
@@ -140,33 +142,53 @@ export function HistoryScreen({
     return order;
   }, [recordsByAccount]);
 
-  const handleToggleTier1 = async () => {
-    const nextTier1 = !preferences.tier1SummaryOptIn;
-    await onUpdatePreferences({
-      tier1SummaryOptIn: nextTier1,
-      tier2HandlesOptIn: nextTier1 ? preferences.tier2HandlesOptIn : false,
-    });
-    setFeedback(nextTier1 ? 'summaryOn' : 'summaryOff');
+  const runHistoryAction = async (
+    action: () => Promise<void>,
+    message?: keyof typeof feedbackMessages,
+  ) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    setFeedback(null);
+    setUpdateError(false);
+    try {
+      await action();
+      setFeedback(message ?? null);
+    } catch {
+      setUpdateError(true);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handleToggleTier2 = async () => {
+  const handleToggleTier1 = () => {
+    const enabled = !preferences.tier1SummaryOptIn;
+    void runHistoryAction(
+      () =>
+        onUpdatePreferences({
+          tier1SummaryOptIn: enabled,
+          tier2HandlesOptIn: enabled && preferences.tier2HandlesOptIn,
+        }),
+      enabled ? 'summaryOn' : 'summaryOff',
+    );
+  };
+
+  const handleToggleTier2 = () => {
     if (!preferences.tier1SummaryOptIn) return;
-    const nextTier2 = !preferences.tier2HandlesOptIn;
-    await onUpdatePreferences({
-      tier1SummaryOptIn: true,
-      tier2HandlesOptIn: nextTier2,
-    });
-    setFeedback(nextTier2 ? 'accountsOn' : 'accountsOff');
+    const enabled = !preferences.tier2HandlesOptIn;
+    void runHistoryAction(
+      () => onUpdatePreferences({ tier1SummaryOptIn: true, tier2HandlesOptIn: enabled }),
+      enabled ? 'accountsOn' : 'accountsOff',
+    );
   };
 
-  const confirmDeletion = async () => {
-    if (!pendingDeletion || !deletionDialog.current?.open) return;
+  const confirmDeletion = () => {
+    if (!pendingDeletion || !deletionDialog.current?.open || isUpdating) return;
     deletionDialog.current.close();
     if (pendingDeletion.kind === 'record') {
-      await onDeleteRecord(pendingDeletion.record.id);
+      const id = pendingDeletion.record.id;
+      void runHistoryAction(() => onDeleteRecord(id));
     } else {
-      await onClearAll();
-      setFeedback('cleared');
+      void runHistoryAction(onClearAll, 'cleared');
     }
   };
   const recordToDelete = pendingDeletion?.kind === 'record' ? pendingDeletion.record : null;
@@ -180,17 +202,28 @@ export function HistoryScreen({
         </h1>
         <p className="max-w-[66ch] text-base leading-relaxed text-ink-2">
           {t(
-            'ปกติเมื่อปิดหน้าเว็บ ข้อมูลทั้งหมดจะหายไปทันที หากต้องการเก็บสถิติย้อนหลัง เปิดดูผลรอบก่อน หรือเทียบว่าใครเพิ่งเลิกติดตาม สามารถเลือกเปิดสวิตช์ด้านล่างได้ (เก็บเฉพาะในเบราว์เซอร์เครื่องนี้ ไม่ส่งเข้าเซิร์ฟเวอร์)',
-            'Normally, analysis data disappears when you close the page. Use the options below to keep counts, reopen earlier results, or see who unfollowed you. History stays in this browser.',
+            'ประวัติปิดเป็นค่าเริ่มต้น เปิดสวิตช์ด้านล่างเพื่อเก็บสรุปหรือรายชื่อสำหรับเทียบ ZIP รอบถัดไป ข้อมูลที่บันทึกอยู่ในเบราว์เซอร์นี้',
+            'History is off by default. Use the options below to keep counts or account lists for your next comparison. History stays in this browser.',
           )}
         </p>
+        {records.length > 0 && (
+          <NormalButton
+            variant="secondary"
+            className="mt-4 w-full lg:hidden"
+            onClick={() => {
+              const heading = listHeadingRef.current;
+              heading?.focus({ preventScroll: true });
+              heading?.scrollIntoView?.({ block: 'start' });
+            }}
+          >
+            {t('ดูรายการประวัติ', 'See saved entries')}
+          </NormalButton>
+        )}
       </header>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
         <section className="rounded-[10px] border border-rule bg-paper-2 p-6 lg:sticky lg:top-20 lg:col-span-6">
-          <h2 className="text-lg text-ink">
-            {t('การยินยอมบันทึกข้อมูล (ปิดเป็นค่าเริ่มต้น)', 'History permissions (off by default)')}
-          </h2>
+          <h2 className="text-lg text-ink">{t('ตั้งค่าการบันทึกประวัติ', 'History storage settings')}</h2>
 
           <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-cool/35 bg-cool-soft px-4 py-3 text-xs leading-relaxed text-ink-2 sm:text-sm">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-cool" aria-hidden="true" />
@@ -232,7 +265,8 @@ export function HistoryScreen({
                   'เปิดหรือปิดการบันทึกสถิติสรุปและประวัติรายงาน PDF',
                   'Save summary counts and PDF history',
                 )}
-                onClick={() => void handleToggleTier1()}
+                disabled={isUpdating}
+                onClick={handleToggleTier1}
                 className={`relative mt-0.5 inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
                   preferences.tier1SummaryOptIn
                     ? 'border-ig-blue bg-ig-blue'
@@ -271,13 +305,13 @@ export function HistoryScreen({
               <button
                 type="button"
                 role="switch"
-                disabled={!preferences.tier1SummaryOptIn}
+                disabled={isUpdating || !preferences.tier1SummaryOptIn}
                 aria-checked={preferences.tier2HandlesOptIn}
                 aria-label={t(
                   'เปิดหรือปิดการจำรายชื่อเพื่อเทียบย้อนหลัง',
                   'Save account lists for comparison',
                 )}
-                onClick={() => void handleToggleTier2()}
+                onClick={handleToggleTier2}
                 className={`relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors ${
                   preferences.tier1SummaryOptIn ? 'cursor-pointer' : 'cursor-not-allowed'
                 } ${
@@ -296,6 +330,18 @@ export function HistoryScreen({
               </button>
             </div>
           </div>
+
+          {updateError && (
+            <p
+              role="alert"
+              className="mt-4 rounded-[10px] border border-bad bg-bad-soft px-4 py-3 text-sm text-bad"
+            >
+              {t(
+                'เปลี่ยนแปลงประวัติไม่ได้ ลองอีกครั้ง หากเปิดเว็บเวอร์ชันเก่าในแท็บอื่น ให้รีโหลดแท็บนั้นก่อน',
+                'Could not update history. Try again. If an older version is open in another tab, reload that tab first.',
+              )}
+            </p>
+          )}
 
           {feedback && (
             <div
@@ -329,6 +375,7 @@ export function HistoryScreen({
             </p>
             <NormalButton
               variant="danger"
+              disabled={isUpdating}
               onClick={() => setPendingDeletion({ kind: 'all' })}
               className="shrink-0"
             >
@@ -340,7 +387,7 @@ export function HistoryScreen({
 
         <section className="lg:col-span-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 ref={listHeadingRef} className="scroll-mt-24 text-lg text-ink">
+            <h2 ref={listHeadingRef} tabIndex={-1} className="scroll-mt-24 text-lg text-ink">
               {t('รายการประวัติที่บันทึกไว้บนเครื่องนี้ (', 'History on this device (')}
               {visibleRecords.length}
               {t('รายการ)', ')')}
@@ -563,6 +610,7 @@ export function HistoryScreen({
 
                         <button
                           type="button"
+                          disabled={isUpdating}
                           onClick={() => setPendingDeletion({ kind: 'record', record: rec })}
                           aria-label={t(
                             `ลบประวัติวันที่ ${formatSnapshotDate(rec.snapshotDateLabel, locale)}`,
@@ -799,7 +847,7 @@ export function HistoryScreen({
           >
             {t('ยกเลิก', 'Cancel')}
           </button>
-          <NormalButton variant="danger" onClick={() => void confirmDeletion()}>
+          <NormalButton variant="danger" onClick={confirmDeletion}>
             {recordToDelete ? t('ลบรายการ', 'Delete entry') : t('ล้างทั้งหมด', 'Clear all')}
           </NormalButton>
         </div>

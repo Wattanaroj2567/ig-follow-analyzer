@@ -965,7 +965,7 @@
   border-color: color-mix(in oklab, var(--color-rule-2) 72%, transparent);
 }
 
-.app-frame :is(.landing-hero, .landing-section, .app-subfooter) {
+.app-frame .app-subfooter {
   background-color: transparent;
 }
 
@@ -1016,9 +1016,7 @@
 .landing-hero {
   @apply pt-9 lg:pt-14;
   padding-bottom: clamp(36px, 5vw, 64px);
-  background: var(--color-paper);
   color: var(--color-ink);
-  border-bottom: 1px solid var(--color-rule);
 }
 
 .landing-hero__grid {
@@ -1169,20 +1167,30 @@
   font-weight: 600;
 }
 
+.landing-section,
+.landing-reviews {
+  background-color: color-mix(
+    in oklab,
+    var(--landing-tint, var(--color-paper-2)) 58%,
+    var(--color-paper)
+  );
+  border-block-start: 1px solid
+    color-mix(in oklab, var(--landing-rule, var(--color-rule)) 16%, var(--color-rule));
+  color: var(--color-ink);
+}
+
 .landing-section {
   padding-block: clamp(44px, 6vw, 76px);
 }
 
-.landing-section--deep {
-  background: var(--color-paper-3);
-  color: var(--color-ink);
-  border-block: 1px solid var(--color-rule);
+.landing-section--history {
+  --landing-tint: var(--color-cool-soft);
+  --landing-rule: var(--color-cool);
 }
 
-.landing-section--step {
-  background: var(--color-paper-2);
-  color: var(--color-ink);
-  border-bottom: 1px solid var(--color-rule);
+.landing-section--closing {
+  --landing-tint: var(--color-warm-soft);
+  --landing-rule: var(--color-warm);
 }
 
 .landing-section__head {

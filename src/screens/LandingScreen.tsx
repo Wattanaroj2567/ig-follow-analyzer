@@ -161,7 +161,8 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
           <div className="landing-hero__grid">
             <div className="landing-hero__copy">
               <h1 id="hero-h" className="page-heading">
-                {t('วิเคราะห์ผู้ติดตาม ', 'Analyze ')}
+                {t('วิเคราะห์', 'Analyze ')}
+                <span className="whitespace-nowrap">{t('ผู้ติดตาม', '')}</span>{' '}
                 <span className="inline-flex items-center gap-2.5 align-baseline">
                   <span>Instagram</span>
                   <svg
@@ -332,19 +333,16 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
       </section>
 
       {/* 2. Relatable Use Cases */}
-      <section className="landing-section landing-section--step" aria-labelledby="use-cases-h">
+      <section className="landing-section" aria-labelledby="use-cases-h">
         <div className="product-wrap">
           <div className="landing-section__head">
             <h2 id="use-cases-h">
-              {t(
-                'เคยสงสัยเรื่องผู้ติดตามในโปรไฟล์ Instagram ของคุณไหม?',
-                'Ever wondered about the followers on your Instagram profile?',
-              )}
+              {t('สิ่งที่ทำได้ด้วยไฟล์ ZIP จาก Instagram', 'What you can do with an Instagram ZIP')}
             </h2>
             <p>
               {t(
-                'เริ่มจาก ZIP ไฟล์เดียวเพื่อดูว่าใครติดตามใคร แล้วใช้ไฟล์รอบถัดไปดูว่ารายชื่อเปลี่ยนไปอย่างไร',
-                'Start with one ZIP to see who follows whom, then use your next export to see what changed.',
+                'เริ่มจากไฟล์ ZIP ที่ขอในศูนย์บัญชี Instagram',
+                'Start with the ZIP you request from Instagram Accounts Center.',
               )}
             </p>
           </div>
@@ -359,17 +357,17 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                 tone: 'text-accent',
                 title: t('ดูว่าใครไม่ติดตามคุณกลับ', 'See who doesn’t follow you back'),
                 body: t(
-                  'แยกได้ว่าใครไม่ติดตามคุณกลับ ใครที่คุณยังไม่ติดตามกลับ และใครติดตามกันทั้งสองฝ่าย ค้นหาชื่อแล้วเปิดโปรไฟล์จากตารางได้เลย',
-                  'See who doesn’t follow you back, whom you don’t follow back, and which follows are mutual. Search by username and open profiles from the table.',
+                  'เปิดหมวด “ไม่ติดตามคุณกลับ” เพื่อดูบัญชีที่คุณติดตามอยู่ แต่เขาไม่ได้ติดตามคุณ',
+                  'Open “Not following you back” to see accounts you follow that don’t follow you.',
                 ),
               },
               {
                 icon: UserMinus,
                 tone: 'text-bad',
-                title: t('ดูว่าใครเริ่มติดตามหรือเลิกติดตามคุณ', 'See who started or stopped following you'),
+                title: t('เทียบรายชื่อผู้ติดตามสองรอบ', 'Compare follower lists across two exports'),
                 body: t(
-                  'เปิดบันทึกประวัติและจำรายชื่อไว้ เมื่อวิเคราะห์ ZIP รอบใหม่ของบัญชีเดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติ คุณเลือกไฟล์ย้อนหลังและเปิดดูไทม์ไลน์รายบัญชีได้ด้วย',
-                  'Turn on history and save account lists. When you analyze a new ZIP for the same account, the app compares it with the previous export. You can also pick an older ZIP and open a timeline for each changed account.',
+                  'เปิดประวัติและเลือกเก็บรายชื่อ แล้วเทียบ ZIP สองรอบของบัญชีเดียวกันเพื่อดูว่าใครเพิ่มหรือหายไป',
+                  'Turn on history and choose to save account lists. Compare two ZIPs for the same account to see who’s new or missing.',
                 ),
               },
               {
@@ -377,17 +375,17 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                 tone: 'text-cool',
                 title: t('วิเคราะห์ ZIP บนเครื่องคุณ', 'Analyze the ZIP on your device'),
                 body: t(
-                  'ZIP คือไฟล์รวมข้อมูลที่คุณขอจากศูนย์บัญชี Instagram เบราว์เซอร์อ่านไฟล์และคำนวณผลลัพธ์บนเครื่องคุณ ไม่ต้องเชื่อมบัญชีหรือกรอกรหัสผ่าน',
-                  'A ZIP is a packaged file of data you request from Instagram Accounts Center. Your browser reads it and calculates the results on your device, without connecting an account or entering a password.',
+                  'เว็บประมวลผลไฟล์ทั้งหมดในเบราว์เซอร์ ใช้ได้โดยไม่ต้องเชื่อมบัญชี Instagram หรือกรอกรหัสผ่าน',
+                  'Your browser processes the entire ZIP locally. There’s no need to connect an Instagram account or enter a password.',
                 ),
               },
               {
                 icon: FileText,
                 tone: 'text-ok',
-                title: t('ส่งออกผลลัพธ์เป็น PDF', 'Export your results as a PDF'),
+                title: t('ดาวน์โหลดรายงาน PDF', 'Download a PDF report'),
                 body: t(
-                  'เลือกรวมหัวข้อสรุปพร้อมกราฟและหมวดรายชื่อที่ต้องการ แล้วดาวน์โหลด PDF ขนาด A4 ลงเครื่องได้ทั้งภาษาไทยและอังกฤษ โดยใช้สีและฟอนต์เดียวกับเว็บ',
-                  'Choose whether to include the summary chart and which account lists to show. Download an A4 PDF in Thai or English with the website’s colors and fonts.',
+                  'เลือกกราฟสรุปและรายชื่อที่จะใส่ แล้วดาวน์โหลด PDF ขนาด A4 เป็นภาษาไทยหรืออังกฤษ',
+                  'Choose which sections to include, then download an A4 PDF in Thai or English.',
                 ),
               },
             ].map((item) => {
@@ -417,7 +415,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
       </section>
 
       {/* Local history preview */}
-      <section className="landing-section landing-section--deep" aria-labelledby="diff-h">
+      <section className="landing-section landing-section--history" aria-labelledby="diff-h">
         <div className="product-wrap">
           <div className="landing-section__head">
             <h2 id="diff-h">{t('ดูว่าใครเพิ่งเลิกติดตาม', 'See who recently unfollowed you')}</h2>
@@ -427,7 +425,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
       </section>
 
       {/* 4. Measured Readings + FAQ */}
-      <section className="landing-section landing-section--step" aria-labelledby="readings-h">
+      <section className="landing-section" aria-labelledby="readings-h">
         <div className="product-wrap">
           <div className="landing-section__head">
             <h2 id="readings-h">
@@ -541,7 +539,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
       </section>
 
       {/* 5. Closing Band */}
-      <section className="landing-section landing-section--deep" aria-labelledby="closing-h">
+      <section className="landing-section landing-section--closing" aria-labelledby="closing-h">
         <div
           ref={closingReveal.ref}
           className={`product-wrap flex flex-col items-start justify-between gap-4 rounded-(--radius-card) border border-rule bg-paper-2 p-5 scroll-reveal sm:p-6 lg:flex-row lg:items-center ${

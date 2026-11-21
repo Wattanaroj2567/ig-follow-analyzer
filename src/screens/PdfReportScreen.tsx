@@ -77,7 +77,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   }, [language]);
   const { t: reportT, locale: reportLocale } = getLanguageFormat(reportLanguage);
   const report = useMemo(() => getPdfReportLabels(reportT), [reportT]);
-  const comparisonSummary = diff && getPdfComparisonSummary(diff, report, reportLocale);
+  const comparisonSummary = diff && getPdfComparisonSummary(result, diff, report, reportLocale);
   const snapshotDate = formatSnapshotDate(result.snapshotDateLabel, reportLocale);
   const [options, setOptions] = useState<PdfReportOptions>({
     includeSummary: true,
@@ -103,12 +103,21 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
   // True-A4 responsive scaling so mobile previews never squish or clip
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const generation = useRef({ active: true });
+  useLayoutEffect(() => {
+    const scope = generation.current;
+    scope.active = true;
+    return () => {
+      scope.active = false;
+    };
+  }, []);
   const [inlineScale, setInlineScale] = useState(1);
 
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [lightboxFitScale, setLightboxFitScale] = useState(1);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [lightboxPage, setLightboxPage] = useState(1);
+  const lightboxDialogRef = useRef<HTMLDialogElement>(null);
   const lightboxScrollRef = useRef<HTMLDivElement>(null);
   const lightboxPageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const lightboxScale = (lightboxFitScale * zoomPercent) / 100;
@@ -277,8 +286,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   }, []);
 
   useLayoutEffect(() => {
+    const dialog = lightboxDialogRef.current;
     const container = lightboxScrollRef.current;
-    if (!container) return;
+    if (!dialog || !container) return;
+    if (!dialog.open) dialog.showModal();
+    container.focus({ preventScroll: true });
 
     const updateScale = () => {
       const { paddingLeft, paddingRight } = getComputedStyle(container);
@@ -292,22 +304,6 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
     observer.observe(container);
     return () => observer.disconnect();
   }, [isZoomOpen, hasAnySection]);
-
-  useEffect(() => {
-    if (!isZoomOpen) return;
-    const opener = document.activeElement;
-    lightboxScrollRef.current?.focus({ preventScroll: true });
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsZoomOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      if (opener instanceof HTMLElement && opener.isConnected) {
-        opener.focus({ preventScroll: true });
-      }
-    };
-  }, [isZoomOpen]);
 
   const scrollLightboxToPage = (targetPage: number) => {
     const clamped = Math.max(1, Math.min(totalPreviewPages, targetPage));
@@ -410,18 +406,19 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   };
 
   const handleDownloadLocalPdf = async () => {
-    if (!hasAnySection) return;
+    if (!hasAnySection || isGenerating) return;
     setIsGenerating(true);
     setStatusMsg(null);
     try {
       const { blob, fileName } = await generatePdfBlob(result, options, diff, reportLanguage);
+      if (!generation.current.active) return;
       triggerBrowserDownload(blob, fileName);
       onPdfSaved('device', fileName);
       setStatusMsg({ kind: 'success', fileName });
     } catch {
-      setStatusMsg({ kind: 'error' });
+      if (generation.current.active) setStatusMsg({ kind: 'error' });
     } finally {
-      setIsGenerating(false);
+      if (generation.current.active) setIsGenerating(false);
     }
   };
 
@@ -580,6 +577,9 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                   <p className="font-bold text-accent">{report.comparisonTitle}</p>
                   <p className="wrap-anywhere text-ink-2">{comparisonSummary.reference}</p>
                   <p className="text-ink-2">{comparisonSummary.counts}</p>
+                  {comparisonSummary.caution && (
+                    <p className="mt-1 font-semibold text-ink">{comparisonSummary.caution}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -704,7 +704,42 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                 )}
           </p>
         </div>
+        <NormalButton
+          variant="primary"
+          disabled={isGenerating || !hasAnySection}
+          onClick={() => void handleDownloadLocalPdf()}
+          className="w-full shrink-0 sm:w-auto"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t('กำลังสร้างไฟล์ PDF…', 'Creating PDF…')}
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" aria-hidden="true" />
+              {t('ดาวน์โหลด PDF ลงเครื่อง', 'Download PDF')}
+            </>
+          )}
+        </NormalButton>
       </header>
+      {statusMsg && (
+        <div
+          role="status"
+          className={`mt-4 flex items-start gap-2.5 rounded-md border p-3.5 text-xs leading-relaxed ${
+            statusMsg.kind === 'success'
+              ? 'border-ok bg-ok-soft text-ok'
+              : 'border-bad bg-bad-soft text-bad'
+          }`}
+        >
+          {statusMsg.kind === 'success' ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          )}
+          <span>{statusText}</span>
+        </div>
+      )}
 
       <section className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
         {/* Left Controls Panel */}
@@ -891,28 +926,6 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
             <p className="measured mt-1 truncate text-cool">{previewFileName}</p>
           </div>
 
-          {/* Actions */}
-          <div className="mt-5 flex flex-col gap-2.5">
-            <NormalButton
-              variant="primary"
-              disabled={isGenerating || !hasAnySection}
-              onClick={() => void handleDownloadLocalPdf()}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  {t('กำลังสร้างไฟล์ PDF…', 'Creating PDF…')}
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  {t('ดาวน์โหลด PDF ลงเครื่อง', 'Download PDF')}
-                </>
-              )}
-            </NormalButton>
-          </div>
-
           {!hasAnySection && (
             <p className="mt-3 text-center text-xs text-accent">
               {t(
@@ -920,24 +933,6 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                 'Choose at least one section to create a PDF.',
               )}
             </p>
-          )}
-
-          {statusMsg && (
-            <div
-              role="status"
-              className={`mt-4 flex items-start gap-2.5 rounded-md border p-3.5 text-xs leading-relaxed ${
-                statusMsg.kind === 'success'
-                  ? 'border-ok bg-ok-soft text-ok'
-                  : 'border-bad bg-bad-soft text-bad'
-              }`}
-            >
-              {statusMsg.kind === 'success' ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              ) : (
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              )}
-              <span>{statusText}</span>
-            </div>
           )}
         </div>
 
@@ -1058,11 +1053,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
       {/* Fullscreen Multi-Page Scrollable A4 Preview Lightbox */}
       {isZoomOpen && hasAnySection && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={lightboxDialogRef}
+          onClose={() => setIsZoomOpen(false)}
           aria-label={t('ตัวอย่างเอกสาร PDF ขนาด A4 แบบขยายครบทุกหน้า', 'Full A4 report preview')}
-          className="pdf-preview-dialog fixed inset-0 z-50 flex flex-col bg-paper/95 backdrop-blur-xs"
+          className="pdf-preview-dialog fixed inset-0 m-0 flex h-dvh max-h-none w-full max-w-none flex-col bg-paper/95 text-ink backdrop-blur-xs"
         >
           {/* Minimal Top Bar: Filename + Close */}
           <header className="pdf-preview-toolbar mobile-top-bar flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -1073,7 +1068,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
             <button
               type="button"
-              onClick={() => setIsZoomOpen(false)}
+              onClick={() => lightboxDialogRef.current?.close()}
               className="mobile-top-bar__action inline-flex min-h-9.5 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-rule bg-paper-2 px-3.5 text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
             >
               <X className="size-5 shrink-0 lg:size-4" aria-hidden="true" />
@@ -1090,7 +1085,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
             onScroll={handleLightboxScroll}
             className="pdf-preview-scroll flex-1 overflow-auto overscroll-contain px-3 pt-2 pb-24 sm:px-8"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setIsZoomOpen(false);
+              if (e.target === e.currentTarget) lightboxDialogRef.current?.close();
             }}
           >
             <div className="flex w-max min-w-full flex-col items-center gap-6">
@@ -1199,7 +1194,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
               </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );

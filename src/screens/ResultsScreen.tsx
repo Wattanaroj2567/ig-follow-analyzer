@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowDownNarrowWide,
   ArrowRight,
   Calendar,
@@ -26,6 +27,7 @@ import { FollowerTimeline } from '../components/FollowerTimeline';
 import { NormalButton } from '../components/NormalButton';
 import { RelationshipOverview } from '../components/RelationshipOverview';
 import type { RelationshipKey } from '../data/relationshipMetrics';
+import { getFollowerComparisonRisk } from '../lib/comparison';
 import { formatAnalysisTime, formatDate, formatSnapshotDate } from '../lib/dates';
 import { buildSafeProfileHref } from '../lib/igParser';
 import { useLanguage } from '../lib/language';
@@ -57,12 +59,22 @@ export function ResultsScreen({
 }: ResultsScreenProps) {
   const { t, locale } = useLanguage();
   const [activeTab, setActiveTab] = useState<SegmentKey | null>(initialCategory ?? null);
+  const overviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'az' | 'za'>('newest');
   const [pageIndex, setPageIndex] = useState(0);
 
   const { counts } = result;
+  const comparisonRisk =
+    diff && !result.isDemoData ? getFollowerComparisonRisk(counts.followers, diff) : null;
+  const followerDropPercent =
+    comparisonRisk?.kind === 'drop'
+      ? comparisonRisk.fraction.toLocaleString(locale, {
+          style: 'percent',
+          maximumFractionDigits: 1,
+        })
+      : undefined;
   const selectCategory = (key: SegmentKey) => {
     setActiveTab(key);
     setPageIndex(0);
@@ -80,17 +92,22 @@ export function ResultsScreen({
 
   const likelyLastYearPartialExport = useMemo(() => {
     if (result.isDemoData || result.followers.length === 0) return false;
-    const fTs = result.followers
-      .map((a) => a.timestamp)
-      .filter((ts): ts is number => typeof ts === 'number' && ts > 0);
-    if (fTs.length < 5) return false;
-    const minF = Math.min(...fTs);
-    const maxF = Math.max(...fTs);
+    let followerDateCount = 0;
+    let minF = Infinity;
+    let maxF = -Infinity;
+    for (const { timestamp } of result.followers) {
+      if (timestamp === undefined || timestamp <= 0) continue;
+      followerDateCount++;
+      minF = Math.min(minF, timestamp);
+      maxF = Math.max(maxF, timestamp);
+    }
+    if (followerDateCount < 5) return false;
     const spanDays = (maxF - minF) / 86400;
-    const fgTs = result.following
-      .map((a) => a.timestamp)
-      .filter((ts): ts is number => typeof ts === 'number' && ts > 0);
-    const minFg = fgTs.length > 0 ? Math.min(...fgTs) : minF;
+
+    let minFg = minF;
+    for (const { timestamp } of result.following) {
+      if (timestamp !== undefined && timestamp > 0) minFg = Math.min(minFg, timestamp);
+    }
     const followingOlderThanFollowers = minF - minFg > 180 * 86400;
     return (
       spanDays <= 370 && (followingOlderThanFollowers || counts.followers < counts.following * 0.55)
@@ -197,6 +214,8 @@ export function ResultsScreen({
     currentTab.key === 'recentUnfollowers' || currentTab.key === 'newFollowers';
   const previousDate = diff ? formatSnapshotDate(diff.previousDateLabel, locale) : '';
   const currentDate = formatSnapshotDate(result.snapshotDateLabel, locale);
+  const previousExportLabel = t('ไฟล์ย้อนหลัง', 'Earlier ZIP');
+  const currentExportLabel = t('ไฟล์ที่กำลังดู', 'ZIP you’re viewing');
   const showTimelineTime = previousDate === currentDate && comparison;
   const timelineMilliseconds =
     comparison?.previous.analysis.analyzedAtIso.slice(0, 19) === result.analyzedAtIso.slice(0, 19);
@@ -232,14 +251,6 @@ export function ResultsScreen({
             ? t('ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', 'Sample follower analysis')
             : t('ผลการวิเคราะห์ผู้ติดตาม', 'Follower analysis')}
         </h1>
-        {result.isDemoData && diff && (
-          <p className="text-sm text-muted">
-            {t(
-              `เทียบไฟล์ ${previousDate} กับ ${currentDate}`,
-              `Comparing the ${previousDate} and ${currentDate} exports`,
-            )}
-          </p>
-        )}
         {!result.isDemoData && (
           <p className="max-w-[62ch] text-sm text-ink-2">
             {t(
@@ -248,6 +259,39 @@ export function ResultsScreen({
             )}
           </p>
         )}
+        {diff && (
+          <p
+            role="status"
+            aria-label={t('วันที่ของไฟล์ที่ใช้เปรียบเทียบ', 'Comparison export dates')}
+            className="mt-2 grid w-fit max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5 rounded-lg border border-cool/35 bg-cool-soft px-3 py-2 sm:gap-4"
+          >
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-xs font-medium text-cool">{previousExportLabel}</span>
+              <strong className="text-base leading-snug font-semibold text-ink">
+                {timelinePreviousDate}
+              </strong>
+            </span>
+            <ArrowRight className="size-4 text-cool" aria-hidden="true" />
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-xs font-medium text-cool">{currentExportLabel}</span>
+              <strong className="text-base leading-snug font-semibold text-ink">
+                {timelineCurrentDate}
+              </strong>
+            </span>
+          </p>
+        )}
+        <NormalButton
+          variant="primary"
+          className="mt-4 w-full sm:hidden"
+          onClick={() => {
+            const heading = overviewHeadingRef.current;
+            heading?.focus({ preventScroll: true });
+            heading?.scrollIntoView?.({ block: 'start' });
+          }}
+        >
+          <ArrowDown className="h-4 w-4" aria-hidden="true" />
+          {t('ดูภาพรวมบัญชีและรายชื่อ', 'See account totals and lists')}
+        </NormalButton>
       </header>
 
       <div className="mt-4 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-6">
@@ -366,7 +410,7 @@ export function ResultsScreen({
         </section>
       )}
 
-      {likelyLastYearPartialExport && (
+      {likelyLastYearPartialExport && comparisonRisk === null && (
         <section
           role="note"
           className="mt-6 flex flex-col justify-between gap-4 rounded-[10px] border border-accent bg-accent-soft p-5 sm:flex-row sm:items-center"
@@ -416,6 +460,48 @@ export function ResultsScreen({
               }}
             />
           )}
+          {comparisonRisk && (
+            <div
+              role="status"
+              className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-accent/45 bg-accent-soft p-4 sm:flex-row sm:justify-between"
+            >
+              <div className="flex items-start gap-3 text-sm leading-relaxed">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold text-ink">
+                    {comparisonRisk.kind === 'drop'
+                      ? t('ยอดผู้ติดตามลดลงผิดสังเกต', 'Large drop in follower count')
+                      : t(
+                          'รายชื่อผู้ติดตามเปลี่ยนมากทั้งสองฝั่ง',
+                          'Many follower names changed in both lists',
+                        )}
+                  </p>
+                  <p className="mt-1 text-ink-2">
+                    {comparisonRisk.kind === 'drop'
+                      ? t(
+                          `ZIP ที่เปิดอยู่มีผู้ติดตามน้อยกว่า ZIP ที่ใช้เทียบ ${followerDropPercent} อาจมาจากรายชื่อไม่ครบหรือการเปลี่ยนแปลงจริง`,
+                          `The open ZIP has ${followerDropPercent} fewer followers than the comparison ZIP. This may reflect an incomplete list or a real change.`,
+                        )
+                      : t(
+                          `พบชื่อใหม่ ${comparisonRisk.added.toLocaleString(locale)} บัญชี และไม่พบชื่อเดิม ${comparisonRisk.missing.toLocaleString(locale)} บัญชี ยอดรวมอาจเปลี่ยนเพียงเล็กน้อยแม้รายชื่อจะเปลี่ยนมาก`,
+                          `${comparisonRisk.added.toLocaleString(locale)} names appear only in the open ZIP, and ${comparisonRisk.missing.toLocaleString(locale)} appear only in the comparison ZIP. A small net change can hide large differences in the lists.`,
+                        )}{' '}
+                    {t(
+                      'ตรวจว่าทั้งสอง ZIP มาจากบัญชีเดียวกันและตั้งช่วงวันที่เป็น ตลอดเวลา (All time) ก่อนสรุปว่าใครเลิกติดตาม',
+                      'Check that both ZIPs came from the same account and used the All time date range before drawing conclusions about unfollows.',
+                    )}
+                  </p>
+                </div>
+              </div>
+              <NormalButton
+                variant="secondary"
+                onClick={() => onNavigate('how-it-works')}
+                className="shrink-0 text-xs"
+              >
+                {t('ดูวิธีเลือกช่วงตลอดเวลา', 'How to select All time')}
+              </NormalButton>
+            </div>
+          )}
           <p
             role="note"
             className="mt-4 flex items-center gap-2 text-sm leading-relaxed text-muted"
@@ -463,6 +549,65 @@ export function ResultsScreen({
               </button>
             ))}
           </div>
+          <div className="mt-4 grid gap-3 border-t border-rule pt-3 sm:grid-cols-2">
+            {[
+              {
+                label: t('ผู้ติดตามทั้งหมด', 'Total followers'),
+                current: counts.followers,
+                delta: diff.followersDelta,
+              },
+              {
+                label: t('ไม่ติดตามคุณกลับ', 'Not following you back'),
+                current: counts.notFollowingBack,
+                delta: diff.notFollowingBackDelta,
+                description: t(
+                  'บัญชีที่คุณติดตามอยู่ แต่เขาไม่ได้ติดตามคุณ',
+                  'Accounts you follow that don’t follow you.',
+                ),
+              },
+            ].map(({ label, current, delta, description }) => {
+              const previousCount = (current - delta).toLocaleString(locale);
+              const currentCount = current.toLocaleString(locale);
+              const netChange = delta.toLocaleString(locale, { signDisplay: 'exceptZero' });
+              const changeLabel =
+                delta > 0
+                  ? t('เพิ่มสุทธิ', 'Net increase')
+                  : delta < 0
+                    ? t('ลดสุทธิ', 'Net decrease')
+                    : t('เท่าเดิม', 'Unchanged');
+
+              return (
+                <section
+                  key={label}
+                  aria-label={label}
+                  className="min-w-0 rounded-lg bg-paper-3 p-3"
+                >
+                  <h3 className="text-sm font-semibold text-ink-2">{label}</h3>
+                  <dl className="mt-2 grid grid-cols-3 gap-2">
+                    {[
+                      [previousExportLabel, previousCount],
+                      [currentExportLabel, currentCount],
+                      [changeLabel, netChange],
+                    ].map(([caption, value]) => (
+                      <div key={caption} className="min-w-0">
+                        <dt className="text-xs leading-snug text-muted">{caption}</dt>
+                        <dd className="mt-0.5 text-lg font-semibold wrap-anywhere text-ink tabular-nums">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-1.5 text-xs text-muted tabular-nums">
+                    {t(
+                      `วิธีคิด ${currentCount} − ${previousCount} = ${netChange} บัญชี`,
+                      `Calculation: ${currentCount} − ${previousCount} = ${netChange}`,
+                    )}
+                  </p>
+                  {description && <p className="mt-1.5 text-xs text-muted">{description}</p>}
+                </section>
+              );
+            })}
+          </div>
           <div className="mt-3 flex items-start gap-2 text-sm leading-relaxed text-muted">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <div className="space-y-1">
@@ -481,20 +626,6 @@ export function ResultsScreen({
               </p>
             </div>
           </div>
-          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-rule pt-3 text-xs text-muted">
-            <span>
-              {t('ผู้ติดตามสุทธิ', 'Net followers')}{' '}
-              <strong className="text-ink">
-                {diff.followersDelta.toLocaleString(locale, { signDisplay: 'exceptZero' })}
-              </strong>
-            </span>
-            <span>
-              {t('ยอดไม่ติดตามคุณกลับเปลี่ยนไป', 'Not following back, net change')}{' '}
-              <strong className="text-ink">
-                {diff.notFollowingBackDelta.toLocaleString(locale, { signDisplay: 'exceptZero' })}
-              </strong>
-            </span>
-          </p>
         </section>
       )}
 
@@ -502,7 +633,12 @@ export function ResultsScreen({
         className="mt-7 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-7"
         aria-labelledby="overview-heading"
       >
-        <h2 id="overview-heading" className="mb-4 text-xl text-ink">
+        <h2
+          id="overview-heading"
+          ref={overviewHeadingRef}
+          tabIndex={-1}
+          className="mb-4 scroll-mt-4 text-xl text-ink"
+        >
           {t('ภาพรวมบัญชี', 'Account overview')}
         </h2>
         <RelationshipOverview

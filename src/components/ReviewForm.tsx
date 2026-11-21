@@ -30,6 +30,8 @@ export function ReviewForm({ endpoint }: { endpoint?: string }) {
       return;
     sending.current = true;
     setStatus('sending');
+    const request = new AbortController();
+    const timeout = window.setTimeout(() => request.abort(), 20_000);
 
     try {
       browserId.current ??= getReviewBrowserId(endpoint);
@@ -44,7 +46,7 @@ export function ReviewForm({ endpoint }: { endpoint?: string }) {
           mayPublish: String(mayPublish),
           browserId: browserId.current,
         }),
-        signal: AbortSignal.timeout(20_000),
+        signal: request.signal,
       });
       const result: unknown = response.ok ? await response.json() : null;
       if (typeof result !== 'object' || !result || !('ok' in result) || result.ok !== true) {
@@ -60,6 +62,7 @@ export function ReviewForm({ endpoint }: { endpoint?: string }) {
     } catch {
       setStatus('error');
     } finally {
+      window.clearTimeout(timeout);
       sending.current = false;
     }
   }

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildDemoAnalysisResult } from '../data/demoAnalysis';
 import type { HistoryRecord } from '../types/analyzer';
-import { getComparisonExports, getHistoryComparisonTargets } from './comparison';
+import {
+  getComparisonExports,
+  getFollowerComparisonRisk,
+  getLargeFollowerDrop,
+} from './comparison';
 
 function savedExport(
   id: string,
@@ -30,6 +34,54 @@ function savedExport(
 }
 
 describe('Saved exports for comparison', () => {
+  it.each([
+    { previous: 100, current: 70, expected: 0.3 },
+    { previous: 100, current: 71, expected: null },
+    { previous: 9, current: 0, expected: null },
+    { previous: 10, current: 0, expected: 1 },
+    { previous: 0, current: 0, expected: null },
+    { previous: 100, current: 101, expected: null },
+  ])('checks the drop from $previous to $current', ({ previous, current, expected }) => {
+    expect(getLargeFollowerDrop(previous, current)).toBe(expected);
+  });
+
+  it('warns about large changes in both directions even when the net count is unchanged', () => {
+    const accounts = (count: number) => Array.from({ length: count }, (_, i) => `sample_${i}`);
+    const diff = { followersDelta: 0, recentUnfollowers: accounts(30), newFollowers: accounts(30) };
+    expect(getFollowerComparisonRisk(100, diff)).toEqual({
+      kind: 'turnover',
+      missing: 30,
+      added: 30,
+    });
+    expect(getFollowerComparisonRisk(101, diff)).toBeNull();
+    expect(
+      getFollowerComparisonRisk(9, {
+        ...diff,
+        recentUnfollowers: accounts(9),
+        newFollowers: accounts(9),
+      }),
+    ).toBeNull();
+  });
+
+  it('skips byte-identical imports but keeps older exports with different data', () => {
+    const hash = 'a'.repeat(64);
+    const earlier = savedExport('earlier', 'fictitious', '18 พ.ย. 2569', '2026-11-18T05:00:00Z');
+    const duplicate = savedExport(
+      'duplicate',
+      'fictitious',
+      '19 พ.ย. 2569',
+      '2026-11-19T05:00:00Z',
+    );
+    duplicate.savedAnalysis!.archiveSha256 = hash;
+    const current = savedExport('current', 'fictitious', '21 พ.ย. 2569', '2026-11-21T05:00:00Z');
+    current.savedAnalysis!.archiveSha256 = hash;
+    expect(
+      getComparisonExports(current.savedAnalysis!, [earlier, duplicate], []).earlier.map(
+        (x) => x.id,
+      ),
+    ).toEqual(['earlier']);
+  });
+
   it('orders matching exports by export date then analysis time and excludes ineligible files', () => {
     const owner = 'demo.owner';
     const current = savedExport('current', owner, '19 พ.ย. 2569', '2026-11-20T17:00:00.000Z');
@@ -75,33 +127,5 @@ describe('Saved exports for comparison', () => {
       ownerHandle: undefined,
     };
     expect(getComparisonExports(renamed, [earlier], []).earlier).toEqual([]);
-  });
-
-  it('opens history PDFs only when the earlier and latest exports for the same owner have lists', () => {
-    const owner = 'demo.owner';
-    const earlier = savedExport('earlier', owner, '19 ต.ค. 2569', '2026-11-21T12:00:00.000Z');
-    const latest = savedExport('latest', owner, '19 พ.ย. 2569', '2026-11-20T12:00:00.000Z');
-    const summary = savedExport(
-      'summary',
-      owner,
-      '19 ก.ย. 2569',
-      '2026-09-19T12:00:00.000Z',
-      false,
-    );
-    const other = savedExport('other', 'another.demo', '20 พ.ย. 2569', '2026-11-21T12:00:00.000Z');
-    const records = [earlier, latest, summary, other];
-
-    expect([...getHistoryComparisonTargets(records).entries()]).toEqual([
-      ['earlier', { id: latest.id, analysis: latest.savedAnalysis, ownerHandle: owner }],
-    ]);
-
-    const latestSummary = savedExport(
-      'newest',
-      owner,
-      '20 พ.ย. 2569',
-      '2026-11-20T12:00:00.000Z',
-      false,
-    );
-    expect(getHistoryComparisonTargets([...records, latestSummary]).size).toBe(0);
   });
 });

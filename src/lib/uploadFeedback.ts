@@ -5,6 +5,7 @@ export type UploadErrorCode =
   | ArchiveErrorCode
   | 'CANCELLED'
   | 'INVALID_EXTENSION'
+  | 'MULTIPLE_FILES'
   | 'WORKER_ERROR'
   | 'READ_FAILED'
   | 'UNKNOWN_ERROR';
@@ -38,6 +39,13 @@ export const uploadErrors: Record<UploadErrorCode, { message: Bilingual; hint: B
       en: 'Choose the .zip file you downloaded from Instagram.',
     },
     hint: selectOriginal,
+  },
+  MULTIPLE_FILES: {
+    message: { th: 'กรุณาเลือกไฟล์ ZIP ทีละไฟล์', en: 'Choose one ZIP file at a time.' },
+    hint: {
+      th: 'วิเคราะห์ทีละไฟล์ แล้วใช้หน้าประวัติเพื่อเปรียบเทียบ',
+      en: 'Analyze one file per run, then use history to compare exports.',
+    },
   },
   ARCHIVE_TOO_LARGE: {
     message: { th: 'ไฟล์ ZIP มีขนาดเกิน 200 MB', en: 'This ZIP is larger than 200 MB.' },
@@ -78,6 +86,27 @@ export const uploadErrors: Record<UploadErrorCode, { message: Bilingual; hint: B
     message: {
       th: 'ไม่สามารถอ่านไฟล์ JSON ของรายชื่อที่กำลังติดตามได้',
       en: 'The following JSON couldn’t be read.',
+    },
+    hint: getNewExport,
+  },
+  INVALID_FOLLOWERS_HTML: {
+    message: {
+      th: 'ไม่สามารถอ่านไฟล์ HTML ของรายชื่อผู้ติดตามได้ครบ',
+      en: 'The followers HTML file couldn’t be read in full.',
+    },
+    hint: getNewExport,
+  },
+  INVALID_FOLLOWING_HTML: {
+    message: {
+      th: 'ไม่สามารถอ่านไฟล์ HTML ของรายชื่อที่กำลังติดตามได้ครบ',
+      en: 'The following HTML file couldn’t be read in full.',
+    },
+    hint: getNewExport,
+  },
+  INCOMPLETE_ARCHIVE_LIST: {
+    message: {
+      th: 'ไฟล์ ZIP มีไฟล์ย่อยของรายชื่อซ้ำหรือมีหมายเลขขาดหาย',
+      en: 'The ZIP has duplicate or missing numbered account list files.',
     },
     hint: getNewExport,
   },
@@ -181,5 +210,4 @@ export const uploadProgress: Record<ParseStage | 'preparing', Bilingual> = {
     th: 'กำลังคำนวณเปรียบเทียบความสัมพันธ์ผู้ติดตาม…',
     en: 'Comparing the account lists…',
   },
-  complete: { th: 'วิเคราะห์เสร็จสมบูรณ์', en: 'Analysis complete' },
 };

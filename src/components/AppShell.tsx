@@ -120,6 +120,7 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
+  const drawerToggleRef = useRef<HTMLButtonElement>(null);
   const theme = useThemePreference();
   const showLatestAnalysis = hasAnalysis && activePage !== 'results';
   const getNavigationTarget = (id: PageId) => (id === 'upload' && hasAnalysis ? 'results' : id);
@@ -138,7 +139,10 @@ export function AppShell({
   useEffect(() => {
     if (!drawerOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDrawerOpen(false);
+      if (event.key === 'Escape') {
+        setDrawerOpen(false);
+        drawerToggleRef.current?.focus();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -204,6 +208,7 @@ export function AppShell({
 
           <div className="lg:hidden">
             <button
+              ref={drawerToggleRef}
               className="nav__toggle mobile-top-bar__action"
               type="button"
               aria-expanded={drawerOpen}

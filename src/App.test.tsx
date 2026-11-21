@@ -7,6 +7,29 @@ import { THEME_STORAGE_KEY } from './lib/theme';
 import { HistoryScreen } from './screens/HistoryScreen';
 import type { HistoryRecord } from './types/analyzer';
 
+function stubZipReaders() {
+  const readers: TestFileReader[] = [];
+  class TestFileReader {
+    result: ArrayBuffer | null = null;
+    onload?: () => void;
+    onabort?: () => void;
+    onerror?: () => void;
+    readAsArrayBuffer = vi.fn();
+    abort = vi.fn(() => this.onabort?.());
+
+    constructor() {
+      readers.push(this);
+    }
+
+    finish() {
+      this.result = new ArrayBuffer(4);
+      this.onload?.();
+    }
+  }
+  vi.stubGlobal('FileReader', TestFileReader);
+  return readers;
+}
+
 describe('IG Follow Analyzer — Real Client-Side Application', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
@@ -68,6 +91,18 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(details).toBeVisible();
     expect(details).toHaveValue('เพิ่มตัวกรอง');
     expect(suggestion).toHaveAttribute('aria-pressed', 'true');
+    const nativeForm = feedback.getByRole<HTMLFormElement>('form');
+    expect(nativeForm).toHaveAttribute('method', 'post');
+    expect(nativeForm).toHaveAttribute('target', '_blank');
+    expect(nativeForm.action).toMatch(/^https:\/\/docs\.google\.com\/forms\/.*\/formResponse$/);
+    expect(fireEvent.submit(nativeForm)).toBe(true);
+    expect([...new FormData(nativeForm).values()]).toEqual([
+      'เสนอฟีเจอร์',
+      'เพิ่มตัวกรอง',
+      expect.stringMatching(/\d+×\d+$/),
+    ]);
+    expect(await form.findByRole('status')).toHaveTextContent(/ตรวจผลการส่งในแท็บ Google Forms/);
+    expect(details).toHaveValue('เพิ่มตัวกรอง');
   });
 
   it('keeps a review draft when changing theme or hiding the form', async () => {
@@ -198,6 +233,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
   });
 
   it('shows the rating total and up to six public comments on the landing page', async () => {
+    vi.stubGlobal('AbortSignal', undefined);
     vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
     const fetchReview = vi.fn().mockResolvedValue({
       ok: true,
@@ -220,6 +256,111 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(summary.getAllByRole('listitem')).toHaveLength(6);
     expect(summary.getAllByText('ก')).toHaveLength(6);
     expect(summary.queryByText('ข้อความทดสอบ 7')).not.toBeInTheDocument();
+  });
+
+  it.each(['cancel', 'navigate'])('discards a pending ZIP read on %s', async (action) => {
+    window.history.replaceState(null, '', '/#/upload');
+    const createWorker = vi.fn();
+    vi.stubGlobal('Worker', createWorker);
+    const readers = stubZipReaders();
+    const { container } = render(<App />);
+    const input = container.querySelector('input[type="file"]')!;
+    const file = new File(['test'], 'test.zip');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    if (action === 'cancel') {
+      fireEvent.click(screen.getByRole('button', { name: 'ยกเลิกการวิเคราะห์' }));
+    } else {
+      act(() => {
+        window.history.replaceState(null, '', '/#/about');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+    }
+    expect(readers[0].abort).toHaveBeenCalledOnce();
+    await act(async () => readers[0].finish());
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe(action === 'cancel' ? '#/upload' : '#/about');
+  });
+
+  it('ignores a cancelled worker callback when the next upload has started', async () => {
+    window.history.replaceState(null, '', '/#/upload');
+    const readers = stubZipReaders();
+    const workers: TestWorker[] = [];
+    class TestWorker {
+      onmessage?: (event: {
+        data: { type: string; result: ReturnType<typeof buildDemoAnalysisResult> };
+      }) => void;
+      terminate = vi.fn();
+      postMessage = vi.fn();
+
+      constructor() {
+        workers.push(this);
+      }
+    }
+    vi.stubGlobal('Worker', TestWorker);
+    const { container } = render(<App />);
+    const choose = async (name: string) => {
+      await act(async () => {
+        fireEvent.change(container.querySelector('input[type="file"]')!, {
+          target: { files: [new File(['test'], name)] },
+        });
+        readers.at(-1)?.finish();
+      });
+    };
+
+    await choose('first.zip');
+    fireEvent.click(screen.getByRole('button', { name: 'ยกเลิกการวิเคราะห์' }));
+    await choose('second.zip');
+    expect(workers).toHaveLength(2);
+    const result = { ...buildDemoAnalysisResult(), isDemoData: false };
+    act(() => workers[0].onmessage?.({ data: { type: 'success', result } }));
+    expect(workers[0].terminate).toHaveBeenCalledOnce();
+    expect(workers[1].terminate).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('#/upload');
+    await act(async () => workers[1].onmessage?.({ data: { type: 'success', result } }));
+    expect(window.location.hash).toBe('#/results');
+  });
+
+  it('rejects empty and multiple ZIP selections before reading any files', async () => {
+    window.history.replaceState(null, '', '/#/upload');
+    const readers = stubZipReaders();
+    const { container } = render(<App />);
+    const input = container.querySelector('input[type="file"]')!;
+    const dropZone = input.parentElement!;
+    const empty = new File([], 'empty.zip');
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [empty] } });
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('ขนาด 0 ไบต์');
+    fireEvent.drop(dropZone, {
+      dataTransfer: { files: [empty, new File(['test'], 'second.zip')] },
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('เลือกไฟล์ ZIP ทีละไฟล์');
+    expect(readers).toHaveLength(0);
+  });
+
+  it('distinguishes worker startup failure from a file read error', async () => {
+    window.history.replaceState(null, '', '/#/upload');
+    const readers = stubZipReaders();
+    vi.stubGlobal(
+      'Worker',
+      class FailingWorker {
+        constructor() {
+          throw new Error('Worker unavailable');
+        }
+      },
+    );
+    const { container } = render(<App />);
+    const choose = () =>
+      fireEvent.change(container.querySelector('input[type="file"]')!, {
+        target: { files: [new File(['test'], 'test.zip')] },
+      });
+    choose();
+    await act(async () => readers[0].onerror?.());
+    expect(screen.getByRole('alert')).toHaveTextContent('ไม่สามารถอ่านไฟล์จากอุปกรณ์');
+    choose();
+    await act(async () => readers[1].finish());
+    expect(screen.getByRole('alert')).toHaveTextContent('ไม่สามารถเริ่มตัวประมวลผลไฟล์');
   });
 
   it('keeps the review form on the About page while the receiver is unavailable', async () => {
@@ -256,8 +397,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(document.documentElement.lang).toBe('en');
     expect(screen.getByRole('searchbox', { name: 'Search by username' })).toBe(search);
     expect(search).toHaveValue('bkk.cafe.hopper');
-    expect(screen.getByText('19 Nov 2026')).toBeVisible();
-    expect(screen.getByText('Comparing the 19 Oct 2026 and 19 Nov 2026 exports')).toBeVisible();
+    const exportDates = within(screen.getByRole('status', { name: 'Comparison export dates' }));
+    expect(exportDates.getByText('19 Oct 2026')).toBeVisible();
+    expect(exportDates.getByText('19 Nov 2026')).toBeVisible();
     expect(window.location.hash).toBe('#/results?demo');
 
     app.unmount();
@@ -511,8 +653,20 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const comparison = within(
       await screen.findByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' }),
     );
+    const exportDateStatus = { name: 'วันที่ของไฟล์ที่ใช้เปรียบเทียบ' };
     expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
     expect(comparison.getByText('ไฟล์ล่าสุด')).toBeVisible();
+    const followers = within(comparison.getByRole('region', { name: 'ผู้ติดตามทั้งหมด' }));
+    const notFollowingBack = within(comparison.getByRole('region', { name: 'ไม่ติดตามคุณกลับ' }));
+    expect(followers.getByText('1,192')).toBeVisible();
+    expect(followers.getByText('1,248')).toBeVisible();
+    expect(followers.getByText('+56')).toBeVisible();
+    expect(followers.getByText('เพิ่มสุทธิ')).toBeVisible();
+    expect(followers.getByText('วิธีคิด 1,248 − 1,192 = +56 บัญชี')).toBeVisible();
+    expect(notFollowingBack.getByText('124')).toBeVisible();
+    expect(notFollowingBack.getByText('150')).toBeVisible();
+    expect(notFollowingBack.getByText('+26')).toBeVisible();
+    expect(notFollowingBack.getByText('วิธีคิด 150 − 124 = +26 บัญชี')).toBeVisible();
     fireEvent.click(comparison.getByText('เปลี่ยนไฟล์ย้อนหลัง'));
     expect(
       comparison.getByRole('radio', { name: /instagram-demo-2026-10-19.zip.*รอบก่อนหน้า/ }),
@@ -522,11 +676,20 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     );
     expect(comparison.getByText('เทียบกับ · เลือกเอง')).toBeVisible();
     expect(comparison.getByText('รอบเก่ากว่า', { selector: 'dt span' })).toBeVisible();
+    expect(followers.getByText('1,155')).toBeVisible();
+    expect(followers.getByText('1,248')).toBeVisible();
+    expect(followers.getByText('+93')).toBeVisible();
+    expect(notFollowingBack.getByText('94')).toBeVisible();
+    expect(notFollowingBack.getByText('150')).toBeVisible();
+    expect(notFollowingBack.getByText('+56')).toBeVisible();
+    expect(notFollowingBack.getByText('วิธีคิด 150 − 94 = +56 บัญชี')).toBeVisible();
     expect(comparison.getByText(/เว็บจะแสดงบัญชี A ในหมวด/)).toBeVisible();
     expect(
       comparison.getByText('instagram-demo-2026-11-19.zip', { selector: 'dd span' }),
     ).toBeVisible();
-    expect(await screen.findByText('เทียบไฟล์ 19 ก.ย. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
+      /19 ก.ย. 2569.*19 พ.ย. 2569/,
+    );
 
     fireEvent.click(comparison.getByRole('button', { name: /หายจากรายชื่อ/ }));
     fireEvent.click(screen.getByText('@demo_account_014', { exact: true }));
@@ -537,7 +700,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     fireEvent.click(comparison.getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
     expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
-    expect(screen.getByText('เทียบไฟล์ 19 ต.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
+      /19 ต.ค. 2569.*19 พ.ย. 2569/,
+    );
 
     fireEvent.click(comparison.getByRole('radio', { name: /instagram-demo-2026-09-19.zip/ }));
     fireEvent.click(screen.getByRole('button', { name: 'สร้างรายงาน PDF ตัวอย่าง' }));
@@ -573,7 +738,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const estimateAfter = screen.getByText(/หน้า A4 · .*บัญชี|A4 pages · .*accounts/).textContent;
     expect(estimateAfter).not.toBe(estimateBefore);
     fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }));
-    expect(screen.getByText('เทียบไฟล์ 19 ก.ย. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
+      /19 ก.ย. 2569.*19 พ.ย. 2569/,
+    );
     expect(openDatabase).not.toHaveBeenCalled();
   });
 
@@ -652,7 +819,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     window.history.replaceState(null, '', '/#/results?demo');
     render(<App />);
 
-    expect(await screen.findByText(/ภาพรวมบัญชี/i)).toBeInTheDocument();
+    const overview = await screen.findByRole('heading', { name: 'ภาพรวมบัญชี' });
+    fireEvent.click(screen.getByRole('button', { name: 'ดูภาพรวมบัญชีและรายชื่อ' }));
+    expect(overview).toHaveFocus();
     expect(screen.queryByText('1,398')).not.toBeInTheDocument();
     // Account list stays collapsed until the user clicks a Dashboard metric card
     expect(screen.queryByLabelText(/ค้นหาชื่อบัญชี/i)).toBeNull();
@@ -663,7 +832,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     )!;
     fireEvent.click(notBackCard);
 
-    expect(await screen.findByRole('heading', { name: /ไม่ติดตามคุณกลับ/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'ไม่ติดตามคุณกลับ', level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /หมวดรายชื่อบัญชี/ })).toBeNull();
     const searchInput = screen.getByLabelText(/ค้นหาชื่อบัญชี/i);
     fireEvent.change(searchInput, { target: { value: 'bkk.cafe.hopper' } });
@@ -729,7 +900,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(
       await screen.findByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', level: 1 }),
     ).toBeVisible();
-    expect(screen.getByText('เทียบไฟล์ 19 ต.ค. 2569 กับ 19 พ.ย. 2569')).toBeVisible();
+    expect(screen.getByRole('status', { name: 'วันที่ของไฟล์ที่ใช้เปรียบเทียบ' })).toHaveTextContent(
+      /19 ต.ค. 2569.*19 พ.ย. 2569/,
+    );
     expect(screen.queryByRole('region', { name: 'ตัวอย่างแดชบอร์ด' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'ภาพรวมบัญชี' })).toBeVisible();
     expect(screen.getByRole('button', { name: /หายจากรายชื่อ/ })).toBeVisible();
@@ -843,7 +1016,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }));
     expect(onDeleteRecord).not.toHaveBeenCalled();
     fireEvent.click(deleteButton);
-    fireEvent.click(screen.getByRole('button', { name: 'ลบรายการ' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'ลบรายการ' }));
+    });
     expect(onDeleteRecord).toHaveBeenCalledExactlyOnceWith('4');
 
     const clearButton = screen.getByRole('button', { name: 'ล้างประวัติทั้งหมด' });
@@ -853,7 +1028,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }));
     expect(onClearAll).not.toHaveBeenCalled();
     fireEvent.click(clearButton);
-    fireEvent.click(screen.getByRole('button', { name: 'ล้างทั้งหมด' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'ล้างทั้งหมด' }));
+    });
     expect(onClearAll).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/ล้างประวัติและปิดสวิตช์/)).toBeVisible();
   });
@@ -902,8 +1079,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(themes.getByRole('button', { name: 'สว่าง', pressed: true })).toBeVisible();
     expect(document.documentElement.dataset.theme).toBe('light');
 
-    fireEvent.click(screen.getByRole('button', { name: 'ปิดเมนูหลัก' }));
+    themes.getByRole('button', { name: 'สว่าง' }).focus();
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(drawer).not.toBeInTheDocument();
+    expect(menuToggle).toHaveFocus();
   });
 
   it('restores System, tracks device changes, and respects a saved manual override', async () => {

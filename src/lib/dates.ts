@@ -17,12 +17,18 @@ export function formatAnalysisTime(iso: string, locale: string, showMilliseconds
   });
 }
 
+export function calendarDate(year: number, month: number, day: number): Date | undefined {
+  const date = new Date(year, month, day);
+  if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day)
+    return date;
+}
+
 export function parseSnapshotDate(savedThaiDate: string): Date | undefined {
   // Existing histories store Thai date labels, including the Buddhist Era year.
   const [day, month, year] = savedThaiDate.trim().split(/\s+/);
   const monthIndex = thaiMonths.indexOf(month);
   if (monthIndex < 0 || !/^\d{1,2}$/.test(day) || !/^\d{4}$/.test(year)) return;
-  return new Date(Number(year) - 543, monthIndex, Number(day));
+  return calendarDate(Number(year) - 543, monthIndex, Number(day));
 }
 
 export function formatSnapshotDate(savedThaiDate: string, locale: string): string {

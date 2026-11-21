@@ -9,6 +9,122 @@ import {
 } from './igParser';
 
 describe('igParser — Real Instagram ZIP/JSON/HTML engine', () => {
+  const emptyLists = {
+    'followers_1.json': strToU8('[]'),
+    'following.json': strToU8('{"relationships_following":[]}'),
+  };
+
+  it('accepts genuinely empty lists and rejects nonempty lists without any account records', () => {
+    const empty = parseInstagramZipBuffer(zipSync(emptyLists), 'archive.zip');
+    expect(empty.counts.followers).toBe(0);
+    const wrongShape = zipSync({ ...emptyLists, 'followers_1.json': strToU8('[{}]') });
+    expect(() => parseInstagramZipBuffer(wrongShape, 'archive.zip')).toThrow(
+      expect.objectContaining({ code: 'UNEXPECTED_FOLLOWERS_SCHEMA' }),
+    );
+  });
+
+  it.each([
+    ['followers_1.json', 'MISSING_FOLLOWING'],
+    ['following.json', 'MISSING_FOLLOWERS'],
+    ['other.json', 'MISSING_BOTH_SECTIONS'],
+  ])('provides a specific error when an archive only contains %s', (entry, code) => {
+    const zip = zipSync({ [entry]: strToU8('[]') });
+    expect(() => parseInstagramZipBuffer(zip, 'archive.zip')).toThrow(
+      expect.objectContaining({ code }),
+    );
+  });
+
+  it('keeps a readable account even when its timestamp is outside the date range', () => {
+    const zip = zipSync({
+      ...emptyLists,
+      'followers_1.json': strToU8(
+        JSON.stringify([{ string_list_data: [{ value: 'fictitious', timestamp: 9e12 }] }]),
+      ),
+    });
+    const result = parseInstagramZipBuffer(zip, 'archive.zip');
+    expect(result.followers[0].handle).toBe('fictitious');
+    expect(result.followers[0].timestamp).toBeUndefined();
+  });
+
+  it('rejects a section with both readable and unreadable rows', () => {
+    const zip = zipSync({
+      ...emptyLists,
+      'followers_1.json': strToU8(
+        JSON.stringify([{ string_list_data: [{ value: 'fictitious' }] }, {}]),
+      ),
+    });
+    expect(() => parseInstagramZipBuffer(zip, 'archive.zip')).toThrow(
+      expect.objectContaining({ code: 'UNEXPECTED_FOLLOWERS_SCHEMA' }),
+    );
+  });
+
+  it('rejects a numbered export with a missing followers part', () => {
+    const zip = zipSync({ ...emptyLists, 'followers_3.json': strToU8('[]') });
+    expect(() => parseInstagramZipBuffer(zip, 'archive.zip')).toThrow(
+      expect.objectContaining({ code: 'INCOMPLETE_ARCHIVE_LIST' }),
+    );
+  });
+
+  it('uses the newest valid date for duplicate accounts across numbered parts', () => {
+    const includeAccounts = (date?: number) =>
+      strToU8(JSON.stringify([{ string_list_data: [{ value: 'fictitious', timestamp: date }] }]));
+    const zip = zipSync({
+      'followers_1.json': includeAccounts(),
+      'followers_2.json': includeAccounts(1710000100),
+      'followers_3.json': includeAccounts(1710000200),
+      'following.html': strToU8('<html><h1>Following</h1></html>'),
+    });
+    const result = parseInstagramZipBuffer(zip, 'archive.zip');
+    expect(result.detectedFiles.format).toBe('mixed');
+    expect(result.counts.followers).toBe(1);
+    expect(result.followers[0].followedUsAt).toBe(1710000200);
+  });
+
+  it('rejects a truncated HTML list while keeping legitimate empty lists', () => {
+    const zip = zipSync({
+      'followers_1.html': strToU8('<html><h1>Followers</h1></html>'),
+      'following.html': strToU8('<html><h1>Following'),
+    });
+    expect(() => parseInstagramZipBuffer(zip, 'archive.zip')).toThrow(
+      expect.objectContaining({ code: 'INVALID_FOLLOWING_HTML' }),
+    );
+  });
+
+  it('uses the date after the owner name and ignores impossible calendar dates', () => {
+    const valid = 'instagram-user2025_01_01-2026-02-14_export.zip';
+    const invalid = 'instagram-sample-2026-02-31.zip';
+    const zip = zipSync(emptyLists);
+    expect(parseInstagramZipBuffer(zip, valid).snapshotDateLabel).toBe('14 ก.พ. 2569');
+    expect(extractOwnerHandleFromFileName(valid)).toBe('user2025_01_01');
+    expect(extractOwnerHandleFromFileName(invalid)).toBeUndefined();
+  });
+
+  it('reads HTML profile links when text is wrapped in formatting markup', () => {
+    const zip = zipSync({
+      'followers_1.html': strToU8(
+        '<html><a href = "https://www.instagram.com/_u/fictitious"><strong>Fictitious</strong></a></html>',
+      ),
+      'following.html': strToU8('<html><h1>Following</h1></html>'),
+    });
+    const result = parseInstagramZipBuffer(zip, 'archive.zip');
+    expect(result.followers.map(({ handle }) => handle)).toEqual(['fictitious']);
+    expect(result.counts.notFollowedBack).toBe(1);
+  });
+
+  it('parses a single list with more accounts than a function call can accept as arguments', () => {
+    const size = 150_000;
+    const rows = Array.from({ length: size }, (_, i) => ({
+      string_list_data: [{ value: `fictitious_${i}`, timestamp: 1731000000 + i }],
+    }));
+    const zip = zipSync({
+      'followers_1.json': strToU8(JSON.stringify(rows)),
+      'following.json': strToU8('[]'),
+    });
+    const result = parseInstagramZipBuffer(zip, 'instagram-test_user-2026-11-21.zip');
+    expect(result.counts.followers).toBe(size);
+    expect(result.counts.notFollowedBack).toBe(size);
+  });
+
   it('parses multi-part followers_*.json and Meta 2025-2026 following.json (title + _u href)', () => {
     const followers1 = JSON.stringify([
       {
@@ -154,10 +270,11 @@ describe('igParser — Real Instagram ZIP/JSON/HTML engine', () => {
       ),
     });
 
-    const current = parseInstagramZipBuffer(zip, 'instagram-2026-11-19.zip');
+    const current = parseInstagramZipBuffer(zip, 'instagram-fictitious-2026-11-19.zip');
     const diff = computeHistoryDiff(
       {
         id: 'latest',
+        sourceFileName: 'instagram-fictitious-2026-11-12.zip',
         analyzedAtIso: '2026-11-12T00:00:00Z',
         snapshotDateLabel: '12 พ.ย. 2569',
         counts: { followers: 2, following: 1, notFollowingBack: 0, notFollowedBack: 1, mutual: 1 },
@@ -173,6 +290,7 @@ describe('igParser — Real Instagram ZIP/JSON/HTML engine', () => {
     const datedDiff = computeHistoryDiff(
       {
         id: 'latest',
+        ownerHandle: 'fictitious',
         analyzedAtIso: '2026-11-12T00:00:00Z',
         snapshotDateLabel: '12 พ.ย. 2569',
         counts: current.counts,
@@ -219,6 +337,13 @@ describe('igParser — Real Instagram ZIP/JSON/HTML engine', () => {
 
     // Must never compare account_b against account_a
     expect(computeHistoryDiff(snapshotFromAccountA, parsed)).toBeNull();
+    expect(
+      computeHistoryDiff(snapshotFromAccountA, {
+        ...parsed,
+        ownerHandle: undefined,
+        sourceFileName: 'renamed.zip',
+      }),
+    ).toBeNull();
 
     // Must never compute diff for demo mode
     expect(

@@ -1,12 +1,5 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronDown,
-  Loader2,
-  MessageSquarePlus,
-  Send,
-} from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { AlertCircle, ChevronDown, MessageSquarePlus, Send } from 'lucide-react';
+import { type FormEvent, useRef, useState } from 'react';
 import { useLanguage } from '../lib/language';
 import { privacyHref } from '../lib/routes';
 import { NormalButton } from './NormalButton';
@@ -56,7 +49,8 @@ export function FeedbackForm() {
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>('แจ้งปัญหา');
   const [details, setDetails] = useState('');
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [submitted, setSubmitted] = useState(false);
+  const deviceField = useRef<HTMLInputElement>(null);
   const canSubmit = details.trim().length > 0 && details.length <= DETAILS_LIMIT;
 
   const categories: { value: FeedbackCategory; label: string }[] = [
@@ -65,34 +59,14 @@ export function FeedbackForm() {
     { value: 'อื่นๆ', label: t('อื่นๆ', 'Other') },
   ];
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    setStatus('submitting');
-    try {
-      const deviceSummary = detectDeviceSummary();
-      const viewport =
-        typeof window !== 'undefined' ? `${window.innerWidth}×${window.innerHeight}` : '';
-      const devicePayload = viewport ? `${deviceSummary} · ${viewport}` : deviceSummary;
-
-      const body = new URLSearchParams();
-      body.append(ENTRY_CATEGORY, category);
-      body.append(ENTRY_DETAILS, details.trim());
-      body.append(ENTRY_DEVICE, devicePayload);
-
-      await fetch(GOOGLE_FORM_ACTION, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: body.toString(),
-      });
-
-      setDetails('');
-      setStatus('success');
-    } catch {
-      setStatus('error');
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const device = deviceField.current;
+    if (!canSubmit || !device) {
+      e.preventDefault();
+      return;
     }
+    device.value = `${detectDeviceSummary()} · ${window.innerWidth}×${window.innerHeight}`;
+    setSubmitted(true);
   };
 
   return (
@@ -138,12 +112,18 @@ export function FeedbackForm() {
       </div>
 
       <form
+        action={GOOGLE_FORM_ACTION}
+        method="post"
+        target="_blank"
         id="feedback-form"
         aria-labelledby="feedback-h"
         hidden={!isOpen}
         onSubmit={(e) => void handleSubmit(e)}
         className="space-y-5 border-t border-rule p-6 sm:p-8"
       >
+        <input type="hidden" name={ENTRY_CATEGORY} value={category} />
+        <input type="hidden" name={ENTRY_DETAILS} value={details.trim()} />
+        <input type="hidden" name={ENTRY_DEVICE} ref={deviceField} />
         <fieldset>
           <legend className="text-sm font-medium text-ink">
             {t('1. เลือกประเภทเรื่อง', '1. Topic')}
@@ -158,7 +138,7 @@ export function FeedbackForm() {
                   aria-pressed={active}
                   onClick={() => {
                     setCategory(item.value);
-                    if (status === 'success' || status === 'error') setStatus('idle');
+                    setSubmitted(false);
                   }}
                   className={`min-h-10 cursor-pointer rounded-md border px-3.5 py-2 text-sm font-medium transition-colors ${
                     active
@@ -186,7 +166,7 @@ export function FeedbackForm() {
             value={details}
             onChange={(e) => {
               setDetails(e.target.value);
-              if (status === 'success' || status === 'error') setStatus('idle');
+              setSubmitted(false);
             }}
             placeholder={t(
               'อธิบายปัญหาที่เจอหรือฟีเจอร์ที่อยากให้เพิ่ม เช่น ขั้นตอนที่ติดขัด หรือสิ่งที่อยากให้ปรับ…',
@@ -208,22 +188,9 @@ export function FeedbackForm() {
         </div>
 
         <div className="space-y-2">
-          <NormalButton
-            type="submit"
-            variant="primary"
-            disabled={status === 'submitting' || !canSubmit}
-          >
-            {status === 'submitting' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t('กำลังส่งข้อความ…', 'Sending…')}
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" aria-hidden="true" />
-                {t('ส่งข้อเสนอแนะ', 'Send feedback')}
-              </>
-            )}
+          <NormalButton type="submit" variant="primary" disabled={!canSubmit}>
+            <Send className="h-4 w-4" aria-hidden="true" />
+            {t('ส่งผ่าน Google Forms (เปิดแท็บใหม่)', 'Send via Google Forms (opens a new tab)')}
           </NormalButton>
           <p className="text-xs text-muted">
             {t(
@@ -239,34 +206,17 @@ export function FeedbackForm() {
           </p>
         </div>
 
-        {status === 'success' && (
-          <div
+        {submitted && (
+          <p
             role="status"
-            className="flex items-center gap-2 rounded-[10px] border border-ok bg-ok-soft px-4 py-3 text-sm font-medium text-ok"
-          >
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              {t(
-                'ส่งข้อเสนอแนะเรียบร้อยแล้ว ขอบคุณที่ช่วยปรับปรุง IG Follow Analyzer ครับ',
-                'Feedback sent. Thank you for helping improve IG Follow Analyzer.',
-              )}
-            </span>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div
-            role="alert"
-            className="flex items-center gap-2 rounded-[10px] border border-bad bg-bad-soft px-4 py-3 text-sm font-medium text-bad"
+            className="flex items-center gap-2 rounded-[10px] border border-rule bg-paper-3 px-4 py-3 text-sm text-ink"
           >
             <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              {t(
-                'ไม่สามารถส่งได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง',
-                'Couldn’t send right now. Please try again.',
-              )}
-            </span>
-          </div>
+            {t(
+              'ตรวจผลการส่งในแท็บ Google Forms ร่างยังอยู่ในหน้านี้',
+              'Check the Google Forms tab for the submission result. Your draft is still here.',
+            )}
+          </p>
         )}
       </form>
     </section>

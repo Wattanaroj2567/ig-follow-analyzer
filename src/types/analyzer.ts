@@ -25,6 +25,7 @@ interface DetectedArchiveFiles {
 export interface AnalysisResult {
   sourceFileName: string;
   sourceFileSize: number;
+  archiveSha256?: string;
   ownerHandle?: string; // Extracted from official Instagram ZIP filename when intact
   analyzedAtIso: string;
   snapshotDateLabel: string;
@@ -39,6 +40,7 @@ export interface AnalysisResult {
 }
 
 export interface HistoryPreferences {
+  revision?: number;
   tier1SummaryOptIn: boolean;
   tier2HandlesOptIn: boolean;
 }
@@ -87,11 +89,14 @@ export interface PdfReportOptions {
   includeTimestamps: boolean;
 }
 
-export type ParseStage = 'validating' | 'unpacking' | 'parsing' | 'comparing' | 'complete';
+export type ParseStage = 'validating' | 'unpacking' | 'parsing' | 'comparing';
 
 export type ArchiveErrorCode =
   | 'INVALID_FOLLOWERS_JSON'
   | 'INVALID_FOLLOWING_JSON'
+  | 'INVALID_FOLLOWERS_HTML'
+  | 'INVALID_FOLLOWING_HTML'
+  | 'INCOMPLETE_ARCHIVE_LIST'
   | 'UNEXPECTED_FOLLOWERS_SCHEMA'
   | 'UNEXPECTED_FOLLOWING_SCHEMA'
   | 'EMPTY_FILE'
@@ -104,6 +109,11 @@ export type ArchiveErrorCode =
   | 'MISSING_BOTH_SECTIONS'
   | 'MISSING_FOLLOWERS'
   | 'MISSING_FOLLOWING';
+
+export interface WorkerInboundMessage {
+  fileName: string;
+  buffer: ArrayBuffer;
+}
 
 export type WorkerOutboundMessage =
   | { type: 'progress'; stage: ParseStage; percent: number }

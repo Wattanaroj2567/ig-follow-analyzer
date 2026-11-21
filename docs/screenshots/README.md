@@ -1,6 +1,6 @@
 # ภาพหน้าจอ IG Follow Analyzer
 
-144 สถานะ · 322 ภาพ · 21 พฤศจิกายน 2026
+152 สถานะ · 338 ภาพ · 21 พฤศจิกายน 2026
 
 ทุกสถานะมีภาพเดสก์ท็อป **1440 × 960** และมือถือ **390 × 844** แยกกัน กดลิงก์ในตารางเพื่อเปิด PNG ขนาดจริง ภาพใช้ Chrome และข้อมูลสมมติในโปรไฟล์ทดสอบ ภาพหน้าจอยาวจัดเฟรมตามส่วนที่ระบุในแถว คู่มือขอ ZIP มีภาพซูมไปยังส่วนภาพประกอบบนมือถือเพิ่มอีก 34 ภาพ
 
@@ -19,10 +19,14 @@
 | สิ่งที่ทำได้ด้วยไฟล์ ZIP จาก Instagram               | [เปิดภาพ](desktop/home/landing-use-cases.png)     | [เปิดภาพ](mobile/home/landing-use-cases.png)     |
 | คู่มือเพิ่มเว็บลงหน้าจอหลัก                           | [เปิดภาพ](desktop/home/landing-install.png)       | [เปิดภาพ](mobile/home/landing-install.png)       |
 | คำถามที่พบบ่อยบนหน้าแรก                           | [เปิดภาพ](desktop/home/landing-faq.png)           | [เปิดภาพ](mobile/home/landing-faq.png)           |
-| ทำไมไม่แสดงรูปโปรไฟล์ของแต่ละบัญชี?                 | [เปิดภาพ](desktop/home/faq-01.png)                | [เปิดภาพ](mobile/home/faq-01.png)                |
-| ต้องกรอกรหัสผ่าน Instagram หรือเชื่อมบัญชีกับเว็บนี้ไหม?  | [เปิดภาพ](desktop/home/faq-02.png)                | [เปิดภาพ](mobile/home/faq-02.png)                |
-| ไฟล์ข้อมูลผู้ติดตามถูกอัปโหลดไปที่เซิร์ฟเวอร์หรือเปล่า?      | [เปิดภาพ](desktop/home/faq-03.png)                | [เปิดภาพ](mobile/home/faq-03.png)                |
-| ทำไมต้องขอไฟล์เองและรอให้พร้อม?                   | [เปิดภาพ](desktop/home/faq-04.png)                | [เปิดภาพ](mobile/home/faq-04.png)                |
+| ใช้ครั้งแรก มี ZIP แค่ไฟล์เดียว ทำอะไรได้บ้าง?         | [เปิดภาพ](desktop/home/faq-01.png)                | [เปิดภาพ](mobile/home/faq-01.png)                |
+| เคยเก็บรายชื่อไว้แล้ว จะเทียบกับ ZIP รอบใหม่ยังไง?     | [เปิดภาพ](desktop/home/faq-02.png)                | [เปิดภาพ](mobile/home/faq-02.png)                |
+| ถ้าอัปโหลด ZIP เดิมซ้ำ ระบบจะทำอะไร?              | [เปิดภาพ](desktop/home/faq-03.png)                | [เปิดภาพ](mobile/home/faq-03.png)                |
+| ยอดผู้ติดตามเท่าเดิม รายชื่อเปลี่ยนได้ไหม?              | [เปิดภาพ](desktop/home/faq-04.png)                | [เปิดภาพ](mobile/home/faq-04.png)                |
+| ทำไมไม่แสดงรูปโปรไฟล์ของแต่ละบัญชี?                 | [เปิดภาพ](desktop/home/faq-05.png)                | [เปิดภาพ](mobile/home/faq-05.png)                |
+| ต้องกรอกรหัสผ่าน Instagram หรือเชื่อมบัญชีกับเว็บนี้ไหม?  | [เปิดภาพ](desktop/home/faq-06.png)                | [เปิดภาพ](mobile/home/faq-06.png)                |
+| ไฟล์ข้อมูลผู้ติดตามถูกอัปโหลดไปที่เซิร์ฟเวอร์หรือเปล่า?      | [เปิดภาพ](desktop/home/faq-07.png)                | [เปิดภาพ](mobile/home/faq-07.png)                |
+| ทำไมต้องขอไฟล์เองและรอให้พร้อม?                   | [เปิดภาพ](desktop/home/faq-08.png)                | [เปิดภาพ](mobile/home/faq-08.png)                |
 | คะแนนและรีวิวจากตัวรับจำลอง · **จำลอง**           | [เปิดภาพ](desktop/home/landing-reviews.png)       | [เปิดภาพ](mobile/home/landing-reviews.png)       |
 | เมนูและตัวเลือกภาษาและธีม                         | [เปิดภาพ](desktop/home/navigation.png)            | [เปิดภาพ](mobile/home/navigation.png)            |
 | ตัวอย่างธีมมืดและภาษาอังกฤษ                        | [เปิดภาพ](desktop/home/dark-english.png)          | [เปิดภาพ](mobile/home/dark-english.png)          |
@@ -112,6 +116,7 @@
 | เปิดหน้าผลโดยยังไม่มีข้อมูล ระบบแสดงหน้าเลือก ZIP       | [เปิดภาพ](desktop/results/no-active-analysis.png)       | [เปิดภาพ](mobile/results/no-active-analysis.png)       |
 | หน้าผลตัวอย่าง                                    | [เปิดภาพ](desktop/results/sample.png)                   | [เปิดภาพ](mobile/results/sample.png)                   |
 | ภาพรวม 5 หมวด                                  | [เปิดภาพ](desktop/results/overview.png)                 | [เปิดภาพ](mobile/results/overview.png)                 |
+| วิธีคำนวณสัดส่วนเปอร์เซ็นต์                           | [เปิดภาพ](desktop/results/percentage-details.png)       | [เปิดภาพ](mobile/results/percentage-details.png)       |
 | ตาราง · ผู้ติดตามของคุณ                            | [เปิดภาพ](desktop/results/table-followers.png)          | [เปิดภาพ](mobile/results/table-followers.png)          |
 | ตาราง · คุณกำลังติดตาม                            | [เปิดภาพ](desktop/results/table-following.png)          | [เปิดภาพ](mobile/results/table-following.png)          |
 | ตาราง · ไม่ติดตามคุณกลับ                           | [เปิดภาพ](desktop/results/table-not-following-back.png) | [เปิดภาพ](mobile/results/table-not-following-back.png) |
@@ -172,11 +177,14 @@
 | ต้องขอไฟล์แบบไหนจาก Instagram และต้องรอนานแค่ไหน?                   | [เปิดภาพ](desktop/information/faq-04.png)             | [เปิดภาพ](mobile/information/faq-04.png)             |
 | ถ้าขอไฟล์มาเป็นแบบ HTML แทน JSON ใช้ได้ไหม? ต่างกันอย่างไร?             | [เปิดภาพ](desktop/information/faq-05.png)             | [เปิดภาพ](mobile/information/faq-05.png)             |
 | ทำไมยอดผู้ติดตามต่างจากหน้าโปรไฟล์?                                   | [เปิดภาพ](desktop/information/faq-06.png)             | [เปิดภาพ](mobile/information/faq-06.png)             |
-| จะรู้ได้อย่างไรว่าใครเพิ่งเลิกติดตามเราไป?                               | [เปิดภาพ](desktop/information/faq-07.png)             | [เปิดภาพ](mobile/information/faq-07.png)             |
-| ใช้ตรวจหลายบัญชี Instagram ในเครื่องเดียวกันได้ไหม?                     | [เปิดภาพ](desktop/information/faq-08.png)             | [เปิดภาพ](mobile/information/faq-08.png)             |
-| ประมวลผลและเก็บประวัติในเครื่อง จะหนักเครื่องหรือเปลืองพื้นที่มือถือไหม?        | [เปิดภาพ](desktop/information/faq-09.png)             | [เปิดภาพ](mobile/information/faq-09.png)             |
-| เปิดดูโปรไฟล์ IG และดาวน์โหลดรายงาน PDF ทำอย่างไร? รองรับภาษาอะไรบ้าง? | [เปิดภาพ](desktop/information/faq-10.png)             | [เปิดภาพ](mobile/information/faq-10.png)             |
-| จะลบประวัติที่เคยบันทึกไว้อย่างไร? และถ้าล้างข้อมูลเบราว์เซอร์จะเกิดอะไรขึ้น?    | [เปิดภาพ](desktop/information/faq-11.png)             | [เปิดภาพ](mobile/information/faq-11.png)             |
+| ใช้ครั้งแรก มี ZIP แค่ไฟล์เดียว ทำอะไรได้บ้าง?                           | [เปิดภาพ](desktop/information/faq-07.png)             | [เปิดภาพ](mobile/information/faq-07.png)             |
+| เคยเก็บรายชื่อไว้แล้ว จะเทียบกับ ZIP รอบใหม่ยังไง?                       | [เปิดภาพ](desktop/information/faq-08.png)             | [เปิดภาพ](mobile/information/faq-08.png)             |
+| ถ้าอัปโหลด ZIP เดิมซ้ำ ระบบจะทำอะไร?                                | [เปิดภาพ](desktop/information/faq-09.png)             | [เปิดภาพ](mobile/information/faq-09.png)             |
+| ยอดผู้ติดตามเท่าเดิม รายชื่อเปลี่ยนได้ไหม?                                | [เปิดภาพ](desktop/information/faq-10.png)             | [เปิดภาพ](mobile/information/faq-10.png)             |
+| ใช้ตรวจหลายบัญชี Instagram ในเครื่องเดียวกันได้ไหม?                     | [เปิดภาพ](desktop/information/faq-11.png)             | [เปิดภาพ](mobile/information/faq-11.png)             |
+| ประมวลผลและเก็บประวัติในเครื่อง จะหนักเครื่องหรือเปลืองพื้นที่มือถือไหม?        | [เปิดภาพ](desktop/information/faq-12.png)             | [เปิดภาพ](mobile/information/faq-12.png)             |
+| เปิดดูโปรไฟล์ IG และดาวน์โหลดรายงาน PDF ทำอย่างไร? รองรับภาษาอะไรบ้าง? | [เปิดภาพ](desktop/information/faq-13.png)             | [เปิดภาพ](mobile/information/faq-13.png)             |
+| จะลบประวัติที่เคยบันทึกไว้อย่างไร? และถ้าล้างข้อมูลเบราว์เซอร์จะเกิดอะไรขึ้น?    | [เปิดภาพ](desktop/information/faq-14.png)             | [เปิดภาพ](mobile/information/faq-14.png)             |
 | ลิงก์ตรงไปข้อมูลข้อเสนอแนะ                                           | [เปิดภาพ](desktop/information/privacy-feedback.png)   | [เปิดภาพ](mobile/information/privacy-feedback.png)   |
 | ลิงก์ตรงไปข้อมูลรีวิว                                                 | [เปิดภาพ](desktop/information/privacy-review.png)     | [เปิดภาพ](mobile/information/privacy-review.png)     |
 | เกี่ยวกับ IG Follow Analyzer                                       | [เปิดภาพ](desktop/information/about.png)              | [เปิดภาพ](mobile/information/about.png)              |

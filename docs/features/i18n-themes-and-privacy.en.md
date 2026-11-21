@@ -59,6 +59,10 @@ Once ratings exist, the homepage shows their average and count above the footer.
    - `exclude` removes the comment, name, and rating from the homepage, for example for a test or spam submission.
 3. Reload the homepage. These reversible controls preserve the original answer. For permanent deletion, remove the answer in Forms and any copy in the linked response tab and remove the identifying data from **Review controls** as needed. Set visibility to `exclude` first.
 
+### Pause new reviews
+
+In the review spreadsheet, add an **Accept new reviews** checkbox and name that cell `ReviewIntakeOpen` under **Data → Named ranges**. In the project spreadsheet, the checkbox is **เปิดรับรีวิว** in the **คู่มือจัดการรีวิว** tab. Keep it checked to accept reviews while the Google Form is accepting responses. Clear it to stop new submissions. After the updated Apps Script and site have been deployed, the About page shows the paused message when opened or reloaded. The homepage still displays previously screened reviews, and feedback can still be submitted. To resume, check the box again and reopen the About page.
+
 ### Test before launch
 
 Use a separate test form and sheet. Open the test site in a private window and submit a clearly labeled **System test** review with consent. Check **Responses**, **Review controls**, and the homepage above the footer. Use the edit link to change the rating and confirm the count stays the same. Set `hide`, then `exclude`, and reload after each change.

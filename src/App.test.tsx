@@ -33,6 +33,8 @@ function stubZipReaders() {
 describe('IG Follow Analyzer — Real Client-Side Application', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', '');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
     const store = new Map<string, string>();
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => store.get(key) ?? null,
@@ -169,11 +171,52 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(submit).toBeDisabled();
   });
 
+  it('hides the review form when intake is paused while keeping feedback available', async () => {
+    const endpoint = 'https://script.google.com/macros/s/test-review/exec';
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', endpoint);
+    const fetchReview = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ acceptingReviews: false }),
+    });
+    vi.stubGlobal('fetch', fetchReview);
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    expect(await screen.findByText('พักรับรีวิวชั่วคราว')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'เขียนรีวิว' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'เปิดแบบฟอร์มแจ้งปัญหา' })).toBeEnabled();
+    expect(fetchReview).toHaveBeenCalledWith(`${endpoint}?status=1`, expect.anything());
+  });
+
+  it('shows the paused message when intake closes after the form was loaded', async () => {
+    const endpoint = 'https://script.google.com/macros/s/test-review/exec';
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', endpoint);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ acceptingReviews: true }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: false, paused: true }) }),
+    );
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'เขียนรีวิว' }));
+    fireEvent.click(screen.getByRole('radio', { name: '4 ดาว' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /ชื่อที่ต้องการให้แสดง/ }), {
+      target: { value: 'ผู้ทดสอบ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'ส่งรีวิว' }));
+    expect(await screen.findByText('พักรับรีวิวชั่วคราว')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'ส่งรีวิว' })).not.toBeInTheDocument();
+  });
+
   it('preserves a review after a failed save and confirms only an acknowledged submission', async () => {
     const endpoint = 'https://script.google.com/macros/s/test-review/exec';
     vi.stubEnv('VITE_REVIEW_ENDPOINT', endpoint);
     const fetchReview = vi
       .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ acceptingReviews: true }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: false }) })
       .mockResolvedValueOnce({
         ok: true,
@@ -209,8 +252,8 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(submit);
     expect(await review.findByRole('alert')).toBeVisible();
     expect(comment).toHaveValue('เทียบไฟล์ได้ง่าย');
-    expect(fetchReview.mock.calls[0][0]).toBe(endpoint);
-    expect(Object.fromEntries(fetchReview.mock.calls[0][1].body)).toEqual({
+    expect(fetchReview.mock.calls[1][0]).toBe(endpoint);
+    expect(Object.fromEntries(fetchReview.mock.calls[1][1].body)).toEqual({
       rating: '4',
       comment: 'เทียบไฟล์ได้ง่าย',
       displayName: 'ผู้ทดสอบ',
@@ -221,9 +264,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(consent);
     fireEvent.click(submit);
     expect(await review.findByRole('status')).toHaveTextContent('บันทึกรีวิวแล้ว');
-    expect(fetchReview.mock.calls[1][1].body.get('mayPublish')).toBe('true');
-    expect(fetchReview.mock.calls[1][1].body.get('browserId')).toBe(
-      fetchReview.mock.calls[0][1].body.get('browserId'),
+    expect(fetchReview.mock.calls[2][1].body.get('mayPublish')).toBe('true');
+    expect(fetchReview.mock.calls[2][1].body.get('browserId')).toBe(
+      fetchReview.mock.calls[1][1].body.get('browserId'),
     );
     expect(review.getByRole('link', { name: 'แก้รีวิวใน Google Forms' })).toHaveAttribute(
       'href',

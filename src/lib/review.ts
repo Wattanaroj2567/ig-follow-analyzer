@@ -8,6 +8,25 @@ export function getReviewEndpoint(): string | undefined {
 type PublicReview = { displayName: string; rating: number; comment: string };
 type ReviewSummary = { scoreCount: number; average: number; reviews: PublicReview[] };
 
+export async function isReviewIntakePaused(
+  endpoint: string,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const response = await fetch(`${endpoint}?status=1`, {
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    cache: 'no-store',
+    signal,
+  });
+  const data: unknown = response.ok ? await response.json() : null;
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'acceptingReviews' in data &&
+    data.acceptingReviews === false
+  );
+}
+
 function isPublicReview(value: unknown): value is PublicReview {
   return (
     typeof value === 'object' &&

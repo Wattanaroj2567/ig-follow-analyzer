@@ -4,6 +4,10 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Pause new review submissions from the review spreadsheet and show the pause on the About page.
+
 ### Changed
 
 - Add a conventional commit message template (`.gitmessage`), a `git ci` alias, and an npm `prepare` script to encourage atomic, conventional commits.

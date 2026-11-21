@@ -11,7 +11,7 @@ const NAME_LIMIT = 80;
 const INPUT_CLASS =
   'w-full rounded-md border border-rule-2 bg-paper-3 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-hidden';
 
-export function ReviewForm({ endpoint }: { endpoint?: string }) {
+export function ReviewForm({ endpoint, onPaused }: { endpoint?: string; onPaused: () => void }) {
   const { t } = useLanguage();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -49,6 +49,10 @@ export function ReviewForm({ endpoint }: { endpoint?: string }) {
         signal: request.signal,
       });
       const result: unknown = response.ok ? await response.json() : null;
+      if (typeof result === 'object' && result && 'paused' in result && result.paused === true) {
+        onPaused();
+        return;
+      }
       if (typeof result !== 'object' || !result || !('ok' in result) || result.ok !== true) {
         setStatus('error');
         return;

@@ -6,7 +6,7 @@ import { NormalButton } from '../components/NormalButton';
 import { BackButton } from '../components/BackButton';
 import { ReviewForm } from '../components/ReviewForm';
 import { useLanguage } from '../lib/language';
-import { getReviewEndpoint } from '../lib/review';
+import { getReviewEndpoint, isReviewIntakePaused } from '../lib/review';
 import { pageHref, type PrivacyTopic } from '../lib/routes';
 
 export function TermsAndFaqScreen({
@@ -323,6 +323,18 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
   const { t } = useLanguage();
   const reviewEndpoint = getReviewEndpoint();
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewPaused, setReviewPaused] = useState(false);
+
+  useEffect(() => {
+    if (!reviewEndpoint) return;
+    const request = new AbortController();
+    void isReviewIntakePaused(reviewEndpoint, request.signal)
+      .then((paused) => {
+        if (paused && !request.signal.aborted) setReviewPaused(true);
+      })
+      .catch(() => {});
+    return () => request.abort();
+  }, [reviewEndpoint]);
 
   return (
     <div className="product-wrap py-9 lg:py-14">
@@ -424,31 +436,40 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
               <h2 id="review-heading" className="text-xl text-ink">
                 {t('รีวิวการใช้งาน', 'Review your experience')}
               </h2>
-              <p className="mt-1 max-w-[48ch] text-sm leading-relaxed text-muted">
-                {t(
-                  'ให้คะแนน 1–5 ดาวและกรอกชื่อแสดงผล เขียนข้อความเพิ่มเติมได้ตามสะดวก',
-                  'Give a rating from 1 to 5 stars and enter a display name. You can also leave a comment.',
-                )}
+              <p
+                aria-live="polite"
+                className="mt-1 max-w-[48ch] text-sm leading-relaxed text-muted"
+              >
+                {reviewPaused
+                  ? t('พักรับรีวิวชั่วคราว', 'Review submissions are temporarily paused.')
+                  : t(
+                      'ให้คะแนน 1–5 ดาวและกรอกชื่อแสดงผล เขียนข้อความเพิ่มเติมได้ตามสะดวก',
+                      'Give a rating from 1 to 5 stars and enter a display name. You can also leave a comment.',
+                    )}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            className="btn btn--secondary shrink-0"
-            aria-expanded={reviewOpen}
-            aria-controls="review-form"
-            onClick={() => setReviewOpen((open) => !open)}
-          >
-            {reviewOpen ? t('ซ่อนแบบฟอร์ม', 'Hide review form') : t('เขียนรีวิว', 'Write a review')}
-            <ChevronDown
-              className={`size-4 shrink-0 ${reviewOpen ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-          </button>
+          {!reviewPaused && (
+            <button
+              type="button"
+              className="btn btn--secondary shrink-0"
+              aria-expanded={reviewOpen}
+              aria-controls="review-form"
+              onClick={() => setReviewOpen((open) => !open)}
+            >
+              {reviewOpen ? t('ซ่อนแบบฟอร์ม', 'Hide review form') : t('เขียนรีวิว', 'Write a review')}
+              <ChevronDown
+                className={`size-4 shrink-0 ${reviewOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+          )}
         </div>
-        <div id="review-form" hidden={!reviewOpen} className="border-t border-rule p-6 sm:p-8">
-          <ReviewForm endpoint={reviewEndpoint} />
-        </div>
+        {!reviewPaused && (
+          <div id="review-form" hidden={!reviewOpen} className="border-t border-rule p-6 sm:p-8">
+            <ReviewForm endpoint={reviewEndpoint} onPaused={() => setReviewPaused(true)} />
+          </div>
+        )}
       </section>
       <FeedbackForm />
     </div>

@@ -21,8 +21,11 @@ function setupReviewLedger() {
   sheet.getRange('D2:D').setDataValidation(validation);
 }
 
-function doGet() {
+function doGet(event) {
   try {
+    if (event?.parameter?.status === '1') {
+      return reviewResult({ acceptingReviews: isReviewIntakeOpen(reviewBook()) });
+    }
     const { form, ratingItem, commentItem, nameItem, permissionItem, permission } = reviewForm();
     const controls = new Map(reviewRows(reviewSheet()).map((row) => [row[5], row[3]]));
     const date = Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
@@ -78,12 +81,13 @@ function doPost(event) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return reviewResult({ ok: false });
   try {
-    const sheet = reviewSheet();
+    const book = reviewBook();
+    const sheet = reviewSheet(book);
     const existing = reviewRows(sheet).find((row) => row[4] === browserId);
     if (existing)
       return reviewResult({ ok: Boolean(existing[5]), duplicate: Boolean(existing[5]) });
     const { form, ratingItem, commentItem, nameItem, permissionItem, permission } = reviewForm();
-    if (!form.isAcceptingResponses()) return reviewResult({ ok: false });
+    if (!isReviewIntakeOpen(book, form)) return reviewResult({ ok: false, paused: true });
     const response = form
       .createResponse()
       .withItemResponse(ratingItem.createResponse(Number(rating)))
@@ -118,8 +122,15 @@ function reviewBook() {
   );
 }
 
-function reviewSheet() {
-  const sheet = reviewBook().getSheetByName('Review controls');
+function isReviewIntakeOpen(book, form) {
+  const setting = book.getRangeByName('ReviewIntakeOpen');
+  return (
+    (!setting || setting.getValue() === true) && (form ?? reviewForm().form).isAcceptingResponses()
+  );
+}
+
+function reviewSheet(book = reviewBook()) {
+  const sheet = book.getSheetByName('Review controls');
   if (!sheet) throw new Error('Run setupReviewLedger first');
   return sheet;
 }

@@ -3,6 +3,30 @@ import type { FollowCounts } from '../types/analyzer';
 
 export type RelationshipKey = keyof FollowCounts;
 
+export const RELATIONSHIP_SEGMENTS = ['mutual', 'notFollowingBack', 'notFollowedBack'] as const;
+
+export function getRelationshipTotal(counts: FollowCounts): number {
+  return counts.mutual + counts.notFollowingBack + counts.notFollowedBack;
+}
+
+export function formatRelationshipPercentage(count: number, total: number): string {
+  return total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+}
+
+export function getFollowBackSummary(counts: FollowCounts, t: Translator, locale: string) {
+  const mutual = counts.mutual.toLocaleString(locale);
+  const following = counts.following.toLocaleString(locale);
+  const percentage = formatRelationshipPercentage(counts.mutual, counts.following);
+
+  return {
+    label: t('คนที่คุณติดตามและติดตามคุณกลับ', 'People you follow who follow you back'),
+    value: t(
+      `${mutual} จาก ${following} บัญชี (${percentage}%)`,
+      `${mutual} of ${following} (${percentage}%)`,
+    ),
+  };
+}
+
 export const getRelationshipMetrics = (t: Translator) =>
   ({
     followers: {

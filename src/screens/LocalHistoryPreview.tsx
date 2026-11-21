@@ -100,15 +100,37 @@ export function LocalHistoryPreview({ onOpenDemo, onOpenHistory }: LocalHistoryP
         className="flex items-start gap-2.5 border-t border-rule px-4 py-3 text-sm leading-relaxed text-ink-2 md:px-6"
       >
         <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
-        <p>
-          <strong className="font-semibold text-ink">
+        <div className="min-w-0 max-w-3xl space-y-2">
+          <p className="font-semibold text-ink">
             {t('ทิปสำหรับเทียบย้อนหลัง', 'Tip for comparing exports')}
-          </strong>{' '}
-          {t(
-            'แต่ละรอบใช้ ZIP เพียงไฟล์เดียว ถ้าอยากเห็นความเปลี่ยนแปลงชัดขึ้น ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น ไฟล์ที่ขอวันเดียวกันอาจมีรายชื่อเหมือนกัน',
-            'Use one ZIP per analysis. To give your follower list time to change, request a fresh ZIP the next day or later. Exports requested on the same day may contain the same list.',
-          )}
-        </p>
+          </p>
+          <ul className="list-disc space-y-1.5 ps-5">
+            <li>
+              {t(
+                'ลองจดยอดผู้ติดตามบนโปรไฟล์ Instagram ตอนเก็บ ZIP รอบแรก',
+                'Note the follower count on your Instagram profile when you save your first ZIP.',
+              )}
+            </li>
+            <li>
+              {t(
+                'ถ้าเห็นว่ายอดลดลง ให้ขอ ZIP ใหม่มาเทียบเพื่อดูว่าบัญชีไหนหายจากรายชื่อ',
+                'If the count looks lower, compare a new ZIP with the earlier one to see which accounts are missing.',
+              )}
+            </li>
+            <li>
+              {t(
+                'ถ้าจำยอดเดิมไม่ได้ ก็ใช้ ZIP รอบก่อนที่บันทึกไว้เทียบได้เลย',
+                'If you don’t remember the earlier count, you can still compare with your saved ZIP.',
+              )}
+            </li>
+          </ul>
+          <p className="text-muted">
+            {t(
+              'ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น เพราะไฟล์ที่ขอวันเดียวกันอาจมีรายชื่อเหมือนกัน',
+              'Try requesting a fresh ZIP the next day or later. Same-day exports may contain the same list.',
+            )}
+          </p>
+        </div>
       </div>
       <div className="flex flex-col gap-3 border-t border-rule bg-paper-3 p-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <p className="flex items-center gap-2 text-sm text-muted">
@@ -126,10 +148,11 @@ export function LocalHistoryPreview({ onOpenDemo, onOpenHistory }: LocalHistoryP
             }}
           >
             {t('ลองดูผลเทียบ 2 ไฟล์', 'Try comparing two sample ZIPs')}
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
           </a>
           <a className="btn btn--primary" href={pageHref('history')} onClick={onOpenHistory}>
             {t('ตั้งค่าประวัติบนเครื่อง', 'Set up local history')}
-            <ArrowRight className="size-4" aria-hidden="true" />
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
           </a>
         </div>
       </div>

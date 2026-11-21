@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell, type PageId } from './components/AppShell';
 import { demoHref, pageHref, PRIVACY_TOPICS, type PrivacyTopic } from './lib/routes';
 import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
@@ -25,6 +25,7 @@ import { ExportComparisonScreen } from './screens/ExportComparisonScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HowItWorksScreen } from './screens/HowItWorksScreen';
 import { LandingScreen } from './screens/LandingScreen';
+import { PdfReportScreen } from './screens/PdfReportScreen';
 import { ResultsScreen } from './screens/ResultsScreen';
 import { AboutScreen, TermsAndFaqScreen } from './screens/TrustAndAboutScreen';
 import { UploadScreen } from './screens/UploadScreen';
@@ -43,9 +44,6 @@ const PAGE_IDS: PageId[] = [
 ];
 
 const demoAnalysis = buildDemoAnalysisResult();
-const PdfReportScreen = lazy(() =>
-  import('./screens/PdfReportScreen').then(({ PdfReportScreen }) => ({ default: PdfReportScreen })),
-);
 
 function readHash(): {
   page: PageId;
@@ -53,6 +51,7 @@ function readHash(): {
   category?: RelationshipKey;
   record?: string;
   privacyTopic?: PrivacyTopic;
+  focusExportDateRange: boolean;
 } {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [name, query = ''] = raw.split('?');
@@ -65,7 +64,8 @@ function readHash(): {
   const record = demo && page !== 'history' ? (params.get('record') ?? undefined) : undefined;
   const privacyTopic =
     page === 'terms' ? PRIVACY_TOPICS.find((topic) => topic === params.get('section')) : undefined;
-  return { page, demo, category, record, privacyTopic };
+  const focusExportDateRange = page === 'how-it-works' && params.get('section') === 'date-range';
+  return { page, demo, category, record, privacyTopic, focusExportDateRange };
 }
 
 export function App() {
@@ -117,7 +117,9 @@ function AppContent() {
   useEffect(() => {
     const onHash = () => {
       const next = readHash();
-      if (!next.privacyTopic) contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
+      if (!next.privacyTopic && !next.focusExportDateRange) {
+        contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
+      }
       setRoute(next);
     };
     window.addEventListener('popstate', onHash);
@@ -337,7 +339,9 @@ function AppContent() {
           onOpenDemo={() => navigate(demoHref('results'))}
         />
       )}
-      {activePage === 'how-it-works' && <HowItWorksScreen onNavigate={setActivePage} />}
+      {activePage === 'how-it-works' && (
+        <HowItWorksScreen onNavigate={setActivePage} focusDateRange={route.focusExportDateRange} />
+      )}
       {activePage === 'export-comparison' && <ExportComparisonScreen onNavigate={setActivePage} />}
       {activePage === 'upload' && (
         <UploadScreen
@@ -398,27 +402,15 @@ function AppContent() {
         ))}
       {activePage === 'pdf' &&
         (activeAnalysis ? (
-          <Suspense
-            fallback={
-              <div
-                className="grid min-h-[calc(100dvh-var(--nav-bar-height)-2rem)] place-items-center px-5"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="text-sm font-medium text-muted">
-                  {t('กำลังโหลดหน้ารายงาน PDF…', 'Loading the PDF report…')}
-                </p>
-              </div>
+          <PdfReportScreen
+            key={JSON.stringify([resultKey, previous?.id])}
+            result={activeAnalysis}
+            diff={diff}
+            onPdfSaved={handlePdfSaved}
+            resultsHref={
+              route.demo ? demoHref('results', route.category, route.record) : pageHref('results')
             }
-          >
-            <PdfReportScreen
-              key={JSON.stringify([resultKey, previous?.id])}
-              result={activeAnalysis}
-              diff={diff}
-              onPdfSaved={handlePdfSaved}
-              onNavigate={navigateFromResult}
-            />
-          </Suspense>
+          />
         ) : (
           <UploadScreen
             onAnalysisComplete={(res) => void handleAnalysisComplete(res)}

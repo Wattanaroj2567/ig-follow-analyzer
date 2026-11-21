@@ -8,7 +8,7 @@ export function NormalButton({
   disabled = false,
   className = '',
 }: {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'cool';
   children: ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit';
@@ -20,6 +20,7 @@ export function NormalButton({
     secondary: 'btn--secondary',
     ghost: 'btn--ghost',
     danger: 'btn--danger',
+    cool: 'btn--cool',
   };
 
   return (

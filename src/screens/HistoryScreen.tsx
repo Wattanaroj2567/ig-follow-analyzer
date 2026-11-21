@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { NormalButton } from '../components/NormalButton';
 import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
+import { getFollowBackSummary } from '../data/relationshipMetrics';
 import { formatSnapshotDate } from '../lib/dates';
 import { formatBytes } from '../lib/fileSize';
 import { useLanguage } from '../lib/language';
@@ -207,17 +208,19 @@ export function HistoryScreen({
           )}
         </p>
         {records.length > 0 && (
-          <NormalButton
-            variant="secondary"
-            className="mt-4 w-full lg:hidden"
-            onClick={() => {
-              const heading = listHeadingRef.current;
-              heading?.focus({ preventScroll: true });
-              heading?.scrollIntoView?.({ block: 'start' });
-            }}
-          >
-            {t('ดูรายการประวัติ', 'See saved entries')}
-          </NormalButton>
+          <div className="mt-4 lg:hidden">
+            <NormalButton
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                const heading = listHeadingRef.current;
+                heading?.focus({ preventScroll: true });
+                heading?.scrollIntoView?.({ block: 'start' });
+              }}
+            >
+              {t('ดูรายการประวัติ', 'See saved entries')}
+            </NormalButton>
+          </div>
         )}
       </header>
 
@@ -539,10 +542,7 @@ export function HistoryScreen({
                       : index === 1
                         ? t('ก่อนหน้า', 'Previous')
                         : t('เก่ากว่า', 'Older');
-                  const followBackPct =
-                    rec.counts.following > 0
-                      ? Math.round((rec.counts.mutual / rec.counts.following) * 100)
-                      : 0;
+                  const followBack = getFollowBackSummary(rec.counts, t, locale);
 
                   const followerDelta = previousRecord
                     ? rec.counts.followers - previousRecord.counts.followers
@@ -720,8 +720,8 @@ export function HistoryScreen({
                               </strong>
                             </span>
                             <span>
-                              {t('อัตราติดตามกลับ:', 'Follow-back rate:')}{' '}
-                              <strong className="measured text-ok">{followBackPct}%</strong>
+                              {followBack.label}{' '}
+                              <strong className="measured text-ink">{followBack.value}</strong>
                             </span>
                           </div>
 
@@ -831,12 +831,7 @@ export function HistoryScreen({
               )}
             </p>
           )}
-          <p>
-            {t(
-              'กู้คืนประวัติที่ลบแล้วไม่ได้ ไฟล์ ZIP และ PDF ที่ดาวน์โหลดไว้ยังอยู่',
-              'Deleted history can’t be recovered. Your downloaded ZIP and PDF files stay where you saved them.',
-            )}
-          </p>
+          <p>{t('ประวัติที่ลบแล้วกู้คืนไม่ได้', 'Deleted history can’t be recovered.')}</p>
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button

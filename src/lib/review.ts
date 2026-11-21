@@ -8,10 +8,10 @@ export function getReviewEndpoint(): string | undefined {
 type PublicReview = { displayName: string; rating: number; comment: string };
 type ReviewSummary = { scoreCount: number; average: number; reviews: PublicReview[] };
 
-export async function isReviewIntakePaused(
+export async function loadReviewIntakeStatus(
   endpoint: string,
   signal: AbortSignal,
-): Promise<boolean> {
+): Promise<'open' | 'paused' | 'unavailable'> {
   const response = await fetch(`${endpoint}?status=1`, {
     credentials: 'omit',
     referrerPolicy: 'no-referrer',
@@ -19,12 +19,14 @@ export async function isReviewIntakePaused(
     signal,
   });
   const data: unknown = response.ok ? await response.json() : null;
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'acceptingReviews' in data &&
-    data.acceptingReviews === false
-  );
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !('acceptingReviews' in data) ||
+    typeof data.acceptingReviews !== 'boolean'
+  )
+    return 'unavailable';
+  return data.acceptingReviews ? 'open' : 'paused';
 }
 
 function isPublicReview(value: unknown): value is PublicReview {

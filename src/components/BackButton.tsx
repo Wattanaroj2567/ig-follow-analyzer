@@ -11,7 +11,7 @@ interface BackButtonProps {
 
 export function BackButton({ onNavigate, onClick, target = 'landing', label }: BackButtonProps) {
   const { t } = useLanguage();
-  const labelText = label ?? t('ย้อนกลับ', 'Back');
+  const labelText = label ?? t('กลับหน้าแรก', 'Back to home');
 
   return (
     <button

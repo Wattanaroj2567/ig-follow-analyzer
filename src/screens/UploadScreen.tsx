@@ -203,8 +203,8 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                 </div>
                 <p className="mt-3 text-sm text-muted">
                   {t(
-                    'ขอไฟล์แบบ JSON และเลือกช่วงวันที่ ตลอดเวลา เพื่อให้รายชื่อครบและมีวันที่ติดตาม',
-                    'Choose JSON and All time when requesting your export to include the full list and follow dates.',
+                    'ขอไฟล์แบบ JSON และเลือกช่วง ตลอดเวลา (All time) ให้ทั้งสอง ZIP ก่อนเทียบ ช่วงสั้นหรือช่วงที่กำหนดเองอาจทำให้รายชื่อบางบัญชีหายจากไฟล์',
+                    'Request JSON and set Date range to All time for both ZIPs before comparing. Short or custom ranges may leave accounts out.',
                   )}
                 </p>
               </div>

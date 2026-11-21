@@ -48,14 +48,18 @@ export function FollowerTimeline({
   return (
     <div className="text-xs leading-relaxed">
       <ol role="list" className="ml-1 border-l border-rule-2">
-        {steps.map(({ date, label, color }) => (
+        {steps.map(({ date, label, color }, index) => (
           <li key={label} className="relative pb-2 pl-3.5 last:pb-0">
             <span
               className={`absolute top-1.5 -left-1 size-1.5 rounded-full ${color}`}
               aria-hidden="true"
             />
             <span className="font-semibold text-ink">{date}</span>
-            <span className="ml-1.5 text-ink-2">{label}</span>
+            <span
+              className={`ml-1.5 text-ink-2 ${index === steps.length - 1 ? 'font-semibold' : ''}`}
+            >
+              {label}
+            </span>
           </li>
         ))}
       </ol>

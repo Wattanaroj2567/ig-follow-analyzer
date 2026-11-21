@@ -1,5 +1,10 @@
 import pdfMakeUrl from 'pdfmake/build/pdfmake.min.js?url';
 import type { Content, TDocumentDefinitions, TableCell } from 'pdfmake/interfaces';
+import {
+  formatRelationshipPercentage,
+  getFollowBackSummary,
+  getRelationshipTotal,
+} from '../data/relationshipMetrics';
 import type {
   AnalysisResult,
   FollowCounts,
@@ -11,7 +16,7 @@ import { formatDate, formatSnapshotDate } from './dates';
 import { buildSafeProfileHref } from './igParser';
 import { getLanguageFormat, type Language, type Translator } from './language';
 
-export const PDF_TABLE_ROWS_PER_PAGE = 20;
+export const PDF_TABLE_ROWS_PER_PAGE = 30;
 
 function getPdfReportPalette(color = (token: string) => `var(--color-${token})`) {
   return {
@@ -21,6 +26,7 @@ function getPdfReportPalette(color = (token: string) => `var(--color-${token})`)
     inkSecondary: color('ink-2'),
     muted: color('muted'),
     rule: color('rule'),
+    ruleStrong: color('rule-2'),
     accent: color('accent'),
     accentSoft: color('accent-soft'),
     cool: color('cool'),
@@ -64,8 +70,6 @@ export function getPdfReportLabels(t: Translator) {
     mutual: t('ติดตามกันทั้งสองฝ่าย', 'Mutual follows'),
     chart: t('สัดส่วนความสัมพันธ์ทั้งหมด', 'Relationship breakdown'),
     mutualDetail: t('บัญชีที่ติดตามกันทั้งสองฝ่าย (Mutual)', 'Mutual followers'),
-    followBackRate: t('อัตราที่คนที่คุณติดตามกดติดตามกลับ', 'Follow-back rate'),
-    netDifference: t('ส่วนต่าง (กำลังติดตาม − ผู้ติดตาม)', 'Difference (following − followers)'),
     notFollowingBackList: t('รายชื่อคนที่ไม่ติดตามคุณกลับ', 'Accounts that don’t follow you back'),
     notFollowedBackList: t('รายชื่อคนที่คุณไม่ได้ติดตามกลับ', 'Accounts you don’t follow back'),
     followersList: t('รายชื่อผู้ติดตามของคุณทั้งหมด', 'All followers'),
@@ -76,6 +80,7 @@ export function getPdfReportLabels(t: Translator) {
     username: t('ชื่อบัญชี (@username)', 'Username'),
     profileLink: t('ลิงก์โปรไฟล์', 'Profile link'),
     page: t('หน้า', 'Page'),
+    account: t('บัญชี', 'account'),
     accounts: t('บัญชี', 'accounts'),
     affiliation: t(
       'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
@@ -85,11 +90,14 @@ export function getPdfReportLabels(t: Translator) {
     comparisonTitle: t('ความเปลี่ยนแปลงระหว่างสองไฟล์', 'Changes between exports'),
     comparedWith: t('เทียบกับ', 'Compared with'),
     newFollowers: t('ติดตามใหม่', 'New followers'),
-    missingFollowers: t('หายจากรายชื่อ', 'Missing from the list'),
-    netFollowers: t('ผู้ติดตามสุทธิ', 'Net follower change'),
+    missingFollowers: t('หายจากรายชื่อผู้ติดตาม', 'Missing from the follower list'),
     comparisonCaution: t(
       'รายชื่อเปลี่ยนผิดสังเกต ตรวจว่า ZIP ทั้งสองใช้ช่วงตลอดเวลาก่อนสรุปผล',
       'Unusually large list change. Check that both ZIPs used the All time date range before interpreting the results.',
+    ),
+    comparisonDateRange: t(
+      'ตรวจว่า ZIP ทั้งสองใช้ช่วงตลอดเวลา ช่วงวันที่จำกัดอาจทำให้บางบัญชีไม่อยู่ในไฟล์',
+      'Check that both ZIPs used All time. A limited date range may leave accounts out.',
     ),
   };
 }
@@ -103,7 +111,6 @@ export function getPdfComparisonSummary(
   const file = [diff.previousSourceFileName, formatSnapshotDate(diff.previousDateLabel, locale)]
     .filter(Boolean)
     .join(' · ');
-  const net = diff.followersDelta.toLocaleString(locale, { signDisplay: 'exceptZero' });
   const formatHandles = (handles: string[]) => {
     const preview = handles
       .slice(0, 30)
@@ -114,13 +121,16 @@ export function getPdfComparisonSummary(
       ? `${preview} · +${extraCount.toLocaleString(locale)} ${copy.accounts}`
       : preview;
   };
+  const formatCount = (count: number) =>
+    `${count.toLocaleString(locale)} ${count === 1 ? copy.account : copy.accounts}`;
   return {
     reference: `${copy.comparedWith} ${file}`,
-    counts: `${copy.newFollowers} ${diff.newFollowers.length.toLocaleString(locale)} · ${copy.missingFollowers} ${diff.recentUnfollowers.length.toLocaleString(locale)} · ${copy.netFollowers} ${net}`,
-    caution:
-      !result.isDemoData && getFollowerComparisonRisk(result.counts.followers, diff)
+    counts: `${copy.newFollowers} ${formatCount(diff.newFollowers.length)} · ${copy.missingFollowers} ${formatCount(diff.recentUnfollowers.length)}`,
+    caution: result.isDemoData
+      ? null
+      : getFollowerComparisonRisk(result.counts.followers, diff)
         ? copy.comparisonCaution
-        : null,
+        : copy.comparisonDateRange,
     newFollowersPreview: formatHandles(diff.newFollowers),
     missingFollowersPreview: formatHandles(diff.recentUnfollowers),
   };
@@ -147,10 +157,6 @@ export function getPdfSummaryMetrics(
       fill: palette.coolSoft,
     },
   ];
-}
-
-export function getRelationshipTotal(counts: FollowCounts): number {
-  return counts.mutual + counts.notFollowingBack + counts.notFollowedBack;
 }
 
 export function buildPdfDonutArcs(
@@ -256,6 +262,10 @@ function loadReportFonts() {
   return reportFontLoad;
 }
 
+export function loadPdfAssets() {
+  return Promise.all([loadPdfMake(), loadReportFonts()]);
+}
+
 function reportText(value: string) {
   if (!/[\u0E00-\u0E7F]/u.test(value)) return value;
 
@@ -274,39 +284,6 @@ export function buildReportFileName(now = new Date()): string {
   return `IG-Follow-Report-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
 }
 
-export function estimatePdfPageCount(
-  result: AnalysisResult,
-  options: PdfReportOptions,
-  diff: HistoryDiff | null,
-): { pages: number; listedAccounts: number } {
-  const rowsPerPage = PDF_TABLE_ROWS_PER_PAGE;
-  let pages = 0;
-  let listedAccounts = 0;
-
-  if (options.includeSummary || (options.includeDiffSection && diff)) {
-    pages += 1;
-  }
-  if (options.includeDiffSection && diff) {
-    listedAccounts += diff.newFollowers.length + diff.recentUnfollowers.length;
-    pages += Math.max(1, Math.ceil(diff.newFollowers.length / rowsPerPage));
-    pages += Math.max(1, Math.ceil(diff.recentUnfollowers.length / rowsPerPage));
-  }
-  if (options.includeNotFollowingBack) {
-    listedAccounts += result.counts.notFollowingBack;
-    pages += Math.max(1, Math.ceil(result.counts.notFollowingBack / rowsPerPage));
-  }
-  if (options.includeNotFollowedBack) {
-    listedAccounts += result.counts.notFollowedBack;
-    pages += Math.max(1, Math.ceil(result.counts.notFollowedBack / rowsPerPage));
-  }
-  if (options.includeAllFollowers) {
-    listedAccounts += result.counts.followers;
-    pages += Math.max(1, Math.ceil(result.counts.followers / rowsPerPage));
-  }
-
-  return { pages, listedAccounts };
-}
-
 export async function generatePdfBlob(
   result: AnalysisResult,
   options: PdfReportOptions,
@@ -316,7 +293,7 @@ export async function generatePdfBlob(
   const { t, locale } = getLanguageFormat(language);
   const copy = getPdfReportLabels(t);
   const palette = readPdfReportPalette();
-  const [pdfMake, vfs] = await Promise.all([loadPdfMake(), loadReportFonts()]);
+  const [pdfMake, vfs] = await loadPdfAssets();
 
   const generatedDate = new Date();
   const generatedDateLabel = formatDate(generatedDate, locale);
@@ -331,13 +308,11 @@ export async function generatePdfBlob(
   const snapshotDate = formatSnapshotDate(result.snapshotDateLabel, locale);
 
   const { counts } = result;
-  const totalUnique = getRelationshipTotal(counts) || 1;
-  const mutualPct = ((counts.mutual / totalUnique) * 100).toFixed(1);
-  const notBackPct = ((counts.notFollowingBack / totalUnique) * 100).toFixed(1);
-  const notFollowedPct = ((counts.notFollowedBack / totalUnique) * 100).toFixed(1);
-  const followBackRate =
-    counts.following > 0 ? ((counts.mutual / counts.following) * 100).toFixed(1) : '0.0';
-  const netDiff = counts.following - counts.followers;
+  const totalUnique = getRelationshipTotal(counts);
+  const mutualPct = formatRelationshipPercentage(counts.mutual, totalUnique);
+  const notBackPct = formatRelationshipPercentage(counts.notFollowingBack, totalUnique);
+  const notFollowedPct = formatRelationshipPercentage(counts.notFollowedBack, totalUnique);
+  const followBack = getFollowBackSummary(counts, t, locale);
 
   const content: Content[] = [
     {
@@ -529,24 +504,12 @@ export async function generatePdfBlob(
             },
           ],
           [
-            { text: reportText(copy.followBackRate), fontSize: 11, color: palette.inkSecondary },
+            { text: reportText(followBack.label), fontSize: 11, color: palette.inkSecondary },
             {
-              text: reportText(`${followBackRate}%`),
+              text: reportText(followBack.value),
               fontSize: 11,
               bold: true,
               color: palette.cool,
-              alignment: 'right',
-            },
-          ],
-          [
-            { text: reportText(copy.netDifference), fontSize: 11, color: palette.inkSecondary },
-            {
-              text: reportText(
-                `${netDiff >= 0 ? '+' : ''}${netDiff.toLocaleString(locale)} ${copy.accounts}`,
-              ),
-              fontSize: 11,
-              bold: true,
-              color: palette.ink,
               alignment: 'right',
             },
           ],
@@ -633,7 +596,7 @@ export async function generatePdfBlob(
       const continued = start > 0 ? t(' — ต่อ', ' — continued') : '';
       content.push({
         text: reportText(
-          `${tableSectionNumber}. ${title} (${entries.length.toLocaleString(locale)} ${copy.accounts})${continued}`,
+          `${tableSectionNumber}. ${title} (${entries.length.toLocaleString(locale)} ${entries.length === 1 ? copy.account : copy.accounts})${continued}`,
         ),
         fontSize: 15,
         bold: true,
@@ -658,19 +621,27 @@ export async function generatePdfBlob(
     if (options.includeTimestamps) columnLabels.push(dateColumnLabel);
     columnLabels.push(copy.profileLink);
     const makeHeader = (): TableCell[] =>
-      columnLabels.map((text) => ({
+      columnLabels.map((text, colIndex) => ({
         text: reportText(text),
         bold: true,
         fontSize: 11,
         fillColor: headerFill,
         color: accentHex,
+        ...(colIndex === 0 ? { alignment: 'center' as const, noWrap: true } : {}),
       }));
 
     const makeRow = (acc: AnalysisResult['followers'][number], index: number): TableCell[] => {
       const dateText = acc.timestamp ? formatDate(new Date(acc.timestamp * 1000), locale) : '—';
       const rowFill = index % 2 === 1 ? palette.surface : undefined;
       const row: TableCell[] = [
-        { text: String(index + 1), fontSize: 9.5, color: palette.muted, fillColor: rowFill },
+        {
+          text: String(index + 1),
+          fontSize: 9.5,
+          color: palette.muted,
+          fillColor: rowFill,
+          alignment: 'center',
+          noWrap: true,
+        },
         {
           text: `@${acc.handle}`,
           fontSize: 9.5,
@@ -693,6 +664,7 @@ export async function generatePdfBlob(
         color: palette.cool,
         fillColor: rowFill,
         link: acc.href,
+        decoration: 'underline',
       });
       return row;
     };
@@ -704,16 +676,18 @@ export async function generatePdfBlob(
         table: {
           headerRows: 1,
           dontBreakRows: true,
-          widths: options.includeTimestamps ? [29, '*', 89, 180] : [29, '*', 210],
+          widths: options.includeTimestamps ? [40, '*', 85, 195] : [40, '*', 220],
           body: [makeHeader(), ...rows.map((account, index) => makeRow(account, start + index))],
         },
         layout: {
           hLineWidth: (i, node) =>
             i === 0 || i === 1 || i === node.table.body.length ? 0.75 : 0.4,
-          vLineWidth: () => 0,
-          hLineColor: () => palette.rule,
-          paddingTop: () => 3.5,
-          paddingBottom: () => 3.5,
+          vLineWidth: () => 0.75,
+          vLineColor: () => palette.ruleStrong,
+          hLineColor: (i, node) =>
+            i === 0 || i === 1 || i === node.table.body.length ? palette.ruleStrong : palette.rule,
+          paddingTop: () => 4.2,
+          paddingBottom: () => 4.2,
         },
         margin: [0, 0, 0, 12],
       });
@@ -721,8 +695,9 @@ export async function generatePdfBlob(
   };
 
   if (options.includeDiffSection && diff) {
+    const newFollowerHandles = new Set(diff.newFollowers);
     const newFollowerEntries = result.followers.filter((entry) =>
-      diff.newFollowers.includes(entry.handle),
+      newFollowerHandles.has(entry.handle),
     );
     const missingFollowerEntries = diff.recentUnfollowers.map((handle) => ({
       handle,

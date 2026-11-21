@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronDown, LockKeyhole } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import type { ComparisonExport } from '../lib/comparison';
 import { formatAnalysisTime, formatSnapshotDate } from '../lib/dates';
@@ -29,6 +29,9 @@ export function ComparisonFiles({
   const { previous, earlier, isLatest, automatic } = comparison;
   const previousRound = t('รอบก่อนหน้า', 'Previous export');
   const olderRound = t('รอบเก่ากว่า', 'Older export');
+  const comparisonLabel = t('ไฟล์ที่ใช้เทียบ', 'Comparison ZIP');
+  const currentDate = formatSnapshotDate(current.snapshotDateLabel, locale);
+  const sameDate = currentDate === formatSnapshotDate(previous.analysis.snapshotDateLabel, locale);
   const canChange = isLatest && earlier.length > 1;
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerId = useId();
@@ -40,62 +43,55 @@ export function ComparisonFiles({
     if (seenSeconds.has(second)) sharedSeconds.add(second);
     seenSeconds.add(second);
   }
-  const fileDetails = (file: AnalysisResult) => (
+  const fileDetails = (file: AnalysisResult, showAnalysisTime: boolean) => (
     <>
-      <span className="block font-semibold wrap-anywhere text-ink">{file.sourceFileName}</span>
-      <span className="mt-0.5 block text-xs leading-relaxed text-muted">
-        {formatSnapshotDate(file.snapshotDateLabel, locale)} · {t('วิเคราะห์เวลา', 'Analyzed at')}{' '}
-        <time dateTime={file.analyzedAtIso}>
-          {formatAnalysisTime(
-            file.analyzedAtIso,
-            locale,
-            sharedSeconds.has(file.analyzedAtIso.slice(0, 19)),
-          )}
-        </time>
+      <span className="block text-base font-semibold text-ink">
+        {formatSnapshotDate(file.snapshotDateLabel, locale)}
       </span>
+      <span className="block wrap-anywhere text-ink-2">{file.sourceFileName}</span>
+      {showAnalysisTime && (
+        <span className="mt-1 block text-xs leading-relaxed text-muted">
+          {t('วิเคราะห์เวลา', 'Analyzed at')}{' '}
+          <time dateTime={file.analyzedAtIso}>
+            {formatAnalysisTime(
+              file.analyzedAtIso,
+              locale,
+              sharedSeconds.has(file.analyzedAtIso.slice(0, 19)),
+            )}
+          </time>
+        </span>
+      )}
     </>
   );
 
   return (
-    <div className="mt-3 rounded-md border border-rule bg-paper-3">
-      <dl className="grid divide-y divide-rule sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-        <div className="min-w-0 px-3.5 py-3">
-          <dt>
-            {isLatest ? (
-              <span className={`${roundTagClass} border-cool/35 bg-cool-soft text-cool`}>
-                <LockKeyhole className="size-3.5 shrink-0" aria-hidden="true" />
-                {t('ไฟล์ล่าสุด', 'Latest export')}
-              </span>
-            ) : (
-              <span className={neutralRoundTagClass}>{t('ไฟล์ที่เปิดอยู่', 'Current export')}</span>
-            )}
+    <div className="mt-3 overflow-hidden rounded-lg border border-rule-2 bg-paper-3">
+      <dl className="grid divide-y divide-rule-2 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+        <div className="min-w-0 bg-cool-soft px-4 py-3 sm:pr-6">
+          <dt className="text-sm font-semibold text-cool">
+            {t('ไฟล์ที่กำลังดู', 'ZIP you’re viewing')}
           </dt>
-          <dd className="mt-1 text-sm">{fileDetails(current)}</dd>
+          <dd className="mt-1 text-sm">{fileDetails(current, sameDate)}</dd>
         </div>
-        <div className="relative grid min-w-0 grid-cols-1 content-start px-3.5 pt-5 pb-3 sm:pt-3 sm:pl-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-3">
-          <dt
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-muted lg:col-start-1 lg:row-start-1"
-            aria-live="polite"
-          >
+        <div className="relative grid min-w-0 grid-cols-1 content-start px-4 py-3 sm:pl-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-3">
+          <dt className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink lg:col-start-1 lg:row-start-1">
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute -top-px left-1/2 grid size-7 -translate-1/2 place-items-center bg-paper-3 text-accent sm:top-11 sm:-left-px"
+              className="pointer-events-none absolute -top-px left-1/2 grid size-7 -translate-1/2 place-items-center rounded-full border border-accent/50 bg-paper-2 text-accent sm:top-11 sm:left-0"
             >
-              <ArrowLeftRight className="size-5 rotate-90 sm:rotate-0" />
+              <ArrowLeftRight className="size-4 rotate-90 sm:rotate-0" />
             </span>
-            <span className={neutralRoundTagClass}>{automatic ? previousRound : olderRound}</span>
-            <span>
-              {automatic
-                ? t('เทียบกับ · อัตโนมัติ', 'Compared with · Automatic')
-                : t('เทียบกับ · เลือกเอง', 'Compared with · Manual')}
-            </span>
+            <span>{comparisonLabel}</span>
+            {canChange && (
+              <span className={neutralRoundTagClass}>
+                {automatic ? previousRound : t('เลือกเอง', 'Custom')}
+              </span>
+            )}
           </dt>
-          <dd
-            className="mt-1 min-w-0 text-sm lg:col-start-1 lg:row-start-2"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {fileDetails(previous.analysis)}
+          <dd className="mt-1 min-w-0 text-sm lg:col-start-1 lg:row-start-2">
+            <div role="status" aria-label={comparisonLabel}>
+              {fileDetails(previous.analysis, sameDate)}
+            </div>
           </dd>
           {canChange && (
             <dd className="mt-2 flex min-w-0 items-center justify-end lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0">
@@ -141,7 +137,7 @@ export function ComparisonFiles({
                         className="mt-1 size-4 shrink-0 accent-accent"
                       />
                       <span className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
-                        <span className="min-w-0">{fileDetails(analysis)}</span>
+                        <span className="min-w-0">{fileDetails(analysis, true)}</span>
                         <span className={`${neutralRoundTagClass} ml-auto`}>
                           {index === 0 ? previousRound : olderRound}
                         </span>

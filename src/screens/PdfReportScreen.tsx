@@ -1,11 +1,11 @@
 import {
   AlertCircle,
+  ArrowLeft,
   Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
-  ExternalLink,
   FileText,
   Loader2,
   Maximize2,
@@ -14,19 +14,22 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PageId } from '../components/AppShell';
-import { BackButton } from '../components/BackButton';
 import { NormalButton } from '../components/NormalButton';
+import { PercentageCalculationDetails } from '../components/PercentageCalculationDetails';
+import {
+  formatRelationshipPercentage,
+  getFollowBackSummary,
+  getRelationshipTotal,
+} from '../data/relationshipMetrics';
 import { formatDate, formatSnapshotDate } from '../lib/dates';
 import {
   buildPdfDonutArcs,
   buildReportFileName,
-  estimatePdfPageCount,
   generatePdfBlob,
   getPdfComparisonSummary,
   getPdfReportLabels,
   getPdfSummaryMetrics,
-  getRelationshipTotal,
+  loadPdfAssets,
   PDF_PREVIEW_PALETTE,
   PDF_TABLE_ROWS_PER_PAGE,
   triggerBrowserDownload,
@@ -49,7 +52,7 @@ interface PdfReportScreenProps {
   result: AnalysisResult;
   diff: HistoryDiff | null;
   onPdfSaved: (savedTo: 'device' | 'google_drive', fileName: string) => void;
-  onNavigate: (id: PageId) => void;
+  resultsHref: string;
 }
 
 type PresetId = 'recommended' | 'unfollowers' | 'complete';
@@ -69,8 +72,8 @@ type PreviewPageDescriptor =
       rows: AccountEntry[];
     };
 
-export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfReportScreenProps) {
-  const { language, t } = useLanguage();
+export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfReportScreenProps) {
+  const { language, locale, t } = useLanguage();
   const [reportLanguage, setReportLanguage] = useState<Language>(language);
   useEffect(() => {
     setReportLanguage(language);
@@ -90,6 +93,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
   const [inlinePageIndex, setInlinePageIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showDownloadProgress, setShowDownloadProgress] = useState(false);
+  useEffect(() => {
+    // Start loading the export assets while the user reviews the report.
+    void loadPdfAssets().catch(() => {});
+  }, []);
   const [statusMsg, setStatusMsg] = useState<
     { kind: 'success'; fileName: string } | { kind: 'error' } | null
   >(null);
@@ -123,19 +131,13 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   const lightboxScale = (lightboxFitScale * zoomPercent) / 100;
 
   const { counts } = result;
-  const totalUnique = getRelationshipTotal(counts) || 1;
-  const mutualPct = ((counts.mutual / totalUnique) * 100).toFixed(1);
-  const notBackPct = ((counts.notFollowingBack / totalUnique) * 100).toFixed(1);
-  const notFollowedPct = ((counts.notFollowedBack / totalUnique) * 100).toFixed(1);
-  const followBackRate =
-    counts.following > 0 ? ((counts.mutual / counts.following) * 100).toFixed(1) : '0.0';
-  const netDiff = counts.following - counts.followers;
+  const totalUnique = getRelationshipTotal(counts);
+  const mutualPct = formatRelationshipPercentage(counts.mutual, totalUnique);
+  const notBackPct = formatRelationshipPercentage(counts.notFollowingBack, totalUnique);
+  const notFollowedPct = formatRelationshipPercentage(counts.notFollowedBack, totalUnique);
+  const followBack = getFollowBackSummary(counts, reportT, reportLocale);
 
   const previewFileName = useMemo(() => buildReportFileName(), []);
-  const estimate = useMemo(
-    () => estimatePdfPageCount(result, options, diff),
-    [result, options, diff],
-  );
   const donutArcs = useMemo(() => buildPdfDonutArcs(counts), [counts]);
 
   const hasFrontPage = options.includeSummary || (options.includeDiffSection && Boolean(diff));
@@ -150,6 +152,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
       list.push({ kind: 'summary', pageNumber });
     }
 
+    const newFollowerHandles = diff ? new Set(diff.newFollowers) : null;
     const categories: {
       enabled: boolean;
       title: string;
@@ -158,7 +161,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
       fill: string;
       entries: AccountEntry[];
     }[] = [
-      ...(diff && options.includeDiffSection
+      ...(diff && newFollowerHandles && options.includeDiffSection
         ? [
             {
               enabled: true,
@@ -166,7 +169,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
               dateHeader: report.dateTheyFollowed,
               accent: PDF_PREVIEW_PALETTE.ok,
               fill: PDF_PREVIEW_PALETTE.surface,
-              entries: result.followers.filter((entry) => diff.newFollowers.includes(entry.handle)),
+              entries: result.followers.filter((entry) => newFollowerHandles.has(entry.handle)),
             },
             {
               enabled: true,
@@ -266,6 +269,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
   const totalPreviewPages = previewPages.length;
   const totalDocumentPages = totalPreviewPages + truncatedPages;
   const hasAnySection = totalPreviewPages > 0;
+  const pageCountLabel = totalDocumentPages.toLocaleString(locale);
   const safeInlineIndex = Math.min(inlinePageIndex, Math.max(0, totalPreviewPages - 1));
   const currentInlinePage = previewPages[safeInlineIndex];
 
@@ -409,6 +413,9 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
     if (!hasAnySection || isGenerating) return;
     setIsGenerating(true);
     setStatusMsg(null);
+    const progressTimer = window.setTimeout(() => {
+      if (generation.current.active) setShowDownloadProgress(true);
+    }, 300);
     try {
       const { blob, fileName } = await generatePdfBlob(result, options, diff, reportLanguage);
       if (!generation.current.active) return;
@@ -418,7 +425,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
     } catch {
       if (generation.current.active) setStatusMsg({ kind: 'error' });
     } finally {
-      if (generation.current.active) setIsGenerating(false);
+      window.clearTimeout(progressTimer);
+      if (generation.current.active) {
+        setShowDownloadProgress(false);
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -557,16 +568,9 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                         %)
                       </strong>
                     </div>
-                    <div className="flex items-center justify-between py-1.5">
-                      <span className="text-ink-2">{report.followBackRate}</span>
-                      <strong className="font-bold text-cool">{followBackRate}%</strong>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5">
-                      <span className="text-ink-2">{report.netDifference}</span>
-                      <strong className="font-bold text-ink">
-                        {netDiff >= 0 ? '+' : ''}
-                        {netDiff.toLocaleString(reportLocale)} {report.accounts}
-                      </strong>
+                    <div className="flex items-center justify-between gap-3 py-1.5">
+                      <span className="text-ink-2">{followBack.label}</span>
+                      <strong className="text-right font-bold text-cool">{followBack.value}</strong>
                     </div>
                   </div>
                 </>
@@ -607,11 +611,12 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
       >
         <div>
           <div className="h-1.5 w-full" style={{ backgroundColor: page.accent }} />
-          <div className="p-7">
-            <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2.5">
+          <div className="px-6 pt-5 pb-3">
+            <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
               <h3 className="text-[15px] font-bold leading-tight" style={{ color: page.accent }}>
                 {page.sectionNumber}. {page.title} (
-                {page.totalInCategory.toLocaleString(reportLocale)} {report.accounts})
+                {page.totalInCategory.toLocaleString(reportLocale)}{' '}
+                {page.totalInCategory === 1 ? report.account : report.accounts})
                 {isContinuation ? reportT(' — ต่อ', ' — continued') : ''}
               </h3>
               <span className="shrink-0 text-[10px] text-muted">
@@ -622,20 +627,22 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
             {page.rows.length === 0 ? (
               <p className="mt-4 text-[11px] text-muted">{report.empty}</p>
             ) : (
-              <div className="mt-3 overflow-hidden border-y border-rule">
-                <table className="w-full table-fixed border-collapse text-left text-[10px] leading-tight wrap-anywhere">
+              <div className="mt-2.5">
+                <table className="w-full table-fixed border-collapse border border-rule-2 text-left text-[10px] leading-tight wrap-anywhere [&_tr>*+*]:border-l [&_tr>*+*]:border-rule-2">
                   <colgroup>
-                    <col className="w-[8%]" />
+                    <col className="w-[10%]" />
                     <col />
-                    {options.includeTimestamps && <col className="w-[20%]" />}
-                    <col className="w-[38%]" />
+                    {options.includeTimestamps && <col className="w-[19%]" />}
+                    <col className="w-[41%]" />
                   </colgroup>
-                  <thead>
+                  <thead className="border-b border-rule-2">
                     <tr
                       className="text-[10px]"
                       style={{ backgroundColor: page.fill, color: page.accent }}
                     >
-                      <th className="px-2 py-1.5 font-bold">{report.rank}</th>
+                      <th className="whitespace-nowrap px-1.5 py-1.5 text-center font-bold">
+                        {report.rank}
+                      </th>
                       <th className="px-2 py-1.5 font-bold">{report.username}</th>
                       {options.includeTimestamps && (
                         <th className="px-2 py-1.5 font-bold">{page.dateHeader}</th>
@@ -646,20 +653,19 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                   <tbody className="divide-y divide-rule">
                     {page.rows.map((acc, idx) => (
                       <tr key={acc.handle} className={idx % 2 === 1 ? 'bg-paper-3' : 'bg-paper-2'}>
-                        <td className="px-2 py-1 text-muted">{page.startIndex + idx + 1}</td>
-                        <td className="px-2 py-1 font-bold text-ink">@{acc.handle}</td>
+                        <td className="measured whitespace-nowrap px-1.5 py-[3.5px] text-center text-muted">
+                          {page.startIndex + idx + 1}
+                        </td>
+                        <td className="px-2 py-[3.5px] font-bold text-ink">@{acc.handle}</td>
                         {options.includeTimestamps && (
-                          <td className="px-2 py-1 text-ink-2">
+                          <td className="px-2 py-[3.5px] text-ink-2">
                             {acc.timestamp
                               ? formatDate(new Date(acc.timestamp * 1000), reportLocale)
                               : '—'}
                           </td>
                         )}
-                        <td className="px-2 py-1 text-cool">
-                          <span>
-                            instagram.com/{acc.handle}{' '}
-                            <ExternalLink className="inline size-2.5" aria-hidden="true" />
-                          </span>
+                        <td className="px-2 py-[3.5px] text-cool underline">
+                          instagram.com/{acc.handle}
                         </td>
                       </tr>
                     ))}
@@ -684,13 +690,36 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
 
   return (
     <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="results" />
+      <nav
+        aria-label={t('เส้นทางหน้ารายงาน', 'Report breadcrumb')}
+        className="-mt-5 mb-2 lg:-mt-2 lg:mb-3"
+      >
+        <ol className="flex flex-wrap items-center gap-x-2 text-sm">
+          <li>
+            <a
+              href={resultsHref}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-medium text-muted hover:text-ink hover:underline lg:min-h-8"
+            >
+              <ArrowLeft className="size-4 shrink-0 lg:hidden" aria-hidden="true" />
+              <span className="lg:hidden">{t('กลับไปหน้าผลวิเคราะห์', 'Back to results')}</span>
+              <span className="hidden lg:inline">{t('ผลวิเคราะห์', 'Results')}</span>
+            </a>
+          </li>
+          <li
+            aria-current="page"
+            className="hidden items-center gap-2 font-semibold text-ink lg:flex"
+          >
+            <ChevronRight className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
+            {t('รายงาน PDF', 'PDF report')}
+          </li>
+        </ol>
+      </nav>
       <header className="flex flex-col justify-between gap-4 border-b border-rule pb-6 sm:flex-row sm:items-center">
         <div>
           <h1 className="page-heading">
             {result.isDemoData
-              ? t('สร้างรายงาน PDF ตัวอย่าง', 'Create a sample PDF report')
-              : t('สร้างรายงาน PDF (ไทย / อังกฤษ)', 'Create a PDF report (Thai / English)')}
+              ? t('รายงาน PDF ตัวอย่าง', 'Sample PDF report')
+              : t('รายงาน PDF', 'PDF report')}
           </h1>
           <p className="text-base text-ink-2">
             {result.isDemoData
@@ -707,10 +736,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
         <NormalButton
           variant="primary"
           disabled={isGenerating || !hasAnySection}
+          aria-busy={isGenerating}
           onClick={() => void handleDownloadLocalPdf()}
           className="w-full shrink-0 sm:w-auto"
         >
-          {isGenerating ? (
+          {showDownloadProgress ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               {t('กำลังสร้างไฟล์ PDF…', 'Creating PDF…')}
@@ -913,18 +943,15 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
             </div>
           </div>
 
-          {/* Live File Meta Summary */}
-          <div className="mt-5 rounded-md border border-rule bg-paper-3 px-4 py-3 text-xs">
-            <p className="font-medium text-ink">
-              {hasAnySection
-                ? t(
-                    `ทั้งหมด ${totalDocumentPages.toLocaleString()} หน้า A4 · ${estimate.listedAccounts.toLocaleString()} บัญชี`,
-                    `${totalDocumentPages.toLocaleString()} A4 pages · ${estimate.listedAccounts.toLocaleString()} accounts`,
-                  )
-                : t('ยังไม่ได้เลือกหัวข้อ', 'No sections selected')}
-            </p>
-            <p className="measured mt-1 truncate text-cool">{previewFileName}</p>
-          </div>
+          <p
+            role="status"
+            className="mt-5 rounded-md border border-rule bg-paper-3 px-4 py-3 text-xs font-medium text-ink"
+          >
+            {t(
+              `ทั้งหมด ${pageCountLabel} หน้า`,
+              totalDocumentPages === 1 ? '1 page' : `${pageCountLabel} pages`,
+            )}
+          </p>
 
           {!hasAnySection && (
             <p className="mt-3 text-center text-xs text-accent">
@@ -991,6 +1018,12 @@ export function PdfReportScreen({ result, diff, onPdfSaved, onNavigate }: PdfRep
                 </div>
               )}
             </div>
+
+            {options.includeSummary && (
+              <div className="mb-4">
+                <PercentageCalculationDetails counts={counts} includeFollowBackRate />
+              </div>
+            )}
 
             <div
               ref={previewContainerRef}

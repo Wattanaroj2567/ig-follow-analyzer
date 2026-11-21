@@ -12,6 +12,8 @@ export function privacyHref(topic: PrivacyTopic): string {
   return `${pageHref('terms')}?section=${topic}`;
 }
 
+export const exportDateRangeHref = `${pageHref('how-it-works')}?section=date-range`;
+
 export function demoHref(
   id: 'results' | 'pdf' | 'history',
   category?: RelationshipKey,

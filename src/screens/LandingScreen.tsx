@@ -11,6 +11,7 @@ import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AddToHomeGuide } from '../components/AddToHomeGuide';
 import { LandingReviews } from '../components/LandingReviews';
 import type { PageId } from '../components/AppShell';
+import { type FaqItem, getComparisonFaqs } from '../data/comparisonFaqs';
 import { pageHref } from '../lib/routes';
 import type { AnalysisResult } from '../types/analyzer';
 import { type Translator, useLanguage } from '../lib/language';
@@ -106,7 +107,8 @@ function AnimatedStatNumber({
   );
 }
 
-const getLandingFaqs = (t: Translator) => [
+const getLandingFaqs = (t: Translator): FaqItem[] => [
+  ...getComparisonFaqs(t),
   {
     q: t('ทำไมไม่แสดงรูปโปรไฟล์ของแต่ละบัญชี?', 'Why are profile pictures missing?'),
     a: t(
@@ -523,13 +525,22 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                         aria-hidden="true"
                       />
                     </button>
-                    <p
+                    <div
                       id={answerId}
                       hidden={!expanded}
-                      className="pb-3 text-sm leading-relaxed text-muted"
+                      className="max-w-[72ch] pb-3 text-sm leading-relaxed text-muted"
                     >
-                      {item.a}
-                    </p>
+                      <p>{item.a}</p>
+                      {item.link && (
+                        <a
+                          href={pageHref(item.link.page)}
+                          onClick={go(item.link.page)}
+                          className="mt-2 inline-block font-medium text-accent underline underline-offset-4"
+                        >
+                          {item.link.label}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 );
               })}

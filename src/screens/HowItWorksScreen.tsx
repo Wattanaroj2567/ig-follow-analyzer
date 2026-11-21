@@ -1,5 +1,5 @@
 import { AlertTriangle, ExternalLink, Laptop, Smartphone, Upload } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import {
@@ -38,6 +38,7 @@ import { type Translator, useLanguage } from '../lib/language';
 import { NormalButton } from '../components/NormalButton';
 
 interface HowItWorksScreenProps {
+  focusDateRange: boolean;
   onNavigate: (id: PageId) => void;
 }
 
@@ -46,7 +47,7 @@ type Device = 'mobile' | 'web';
 function focusGuideStep(id: string) {
   const step = document.getElementById(id);
   step?.focus({ preventScroll: true });
-  step?.scrollIntoView({ block: 'start' });
+  step?.scrollIntoView?.({ block: 'start' });
 }
 
 interface GuideStep {
@@ -244,8 +245,8 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
       ),
     ],
     tip: t(
-      'ถ้าเลือก ปีที่แล้ว ไฟล์อาจขาดรายชื่อบัญชีที่เริ่มติดตามกันก่อนช่วงนั้น',
-      'If Date range stays set to Last year, older followers can be missing from your export.',
+      'ช่วงที่สั้นกว่าตลอดเวลา รวมถึงช่วงที่กำหนดเอง อาจทำให้บางบัญชีไม่อยู่ในไฟล์',
+      'A shorter or custom date range may leave some accounts out of the export.',
     ),
     mockup: <MobileDateRangeMockup />,
   },
@@ -257,8 +258,8 @@ const getMobileSteps = (t: Translator): GuideStep[] => [
       'Open Format, change HTML to JSON, and tap Save to return to Confirm your export.',
     ),
     tip: t(
-      'ทำไมแนะนำ JSON มากกว่า HTML: ไฟล์ JSON เล็กและอ่านไวกว่า รวมถึงมีข้อมูลวันที่ทั้งฝั่งเขาฟอลคุณและคุณฟอลเขา และตรวจเตือนไฟล์ช่วง "ปีที่แล้ว" ได้ ส่วนไฟล์ HTML วิเคราะห์แยกหมวดรายชื่อได้เหมือนกัน แต่จะไม่มีวันที่เริ่มติดตามและตรวจเตือนไฟล์ไม่ครบไม่ได้ครับ',
-      'JSON is smaller and includes follow dates when available. Those dates help flag exports that may cover only the past year. HTML works for comparing account lists.',
+      'JSON มักมีวันที่ติดตามที่ช่วยสังเกตว่ารายชื่ออาจไม่ครบ ส่วน HTML ยังใช้เทียบรายชื่อได้ ให้ตรวจว่าเลือก ตั้งแต่ต้น (All time) สำหรับทั้งสองไฟล์',
+      'JSON can include follow dates that help flag potentially incomplete lists. HTML still works for comparing lists. Check that both exports use All time.',
     ),
     mockup: <MobileFormatMockup />,
   },
@@ -493,7 +494,7 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
   {
     id: 'w-9',
     title: t(
-      'คลิก ช่วงวันที่ — เปลี่ยนจาก ปีที่แล้ว เป็น ตลอดเวลา (All time) แล้วคลิก บันทึก',
+      'ตั้งช่วงวันที่เป็น ตลอดเวลา (All time) แล้วคลิก บันทึก',
       'Set Date range to All time and click Save',
     ),
     summary: [
@@ -501,8 +502,8 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
       t('เลื่อนลงมาเลือก ตลอดเวลา แล้วคลิก บันทึก', 'Select All time, then click Save.'),
     ],
     tip: t(
-      'อย่าลืมเปลี่ยนจากค่าเริ่มต้น "ปีที่แล้ว" เป็น "ตลอดเวลา (All time)" เพื่อให้ได้รายชื่อผู้ติดตามครบทุกปี',
-      'Choose All time to include followers from before the past year.',
+      'ช่วงที่สั้นกว่าตลอดเวลา รวมถึงช่วงที่กำหนดเอง อาจทำให้บางบัญชีไม่อยู่ในไฟล์',
+      'A shorter or custom date range may leave some accounts out of the export.',
     ),
     mockup: <DesktopDateRangeMockup />,
   },
@@ -514,8 +515,8 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
       'Open Format, change HTML to JSON, and click Save to return to Confirm your export.',
     ),
     tip: t(
-      'ทำไมแนะนำ JSON มากกว่า HTML: ไฟล์ JSON เล็กกว่า มีข้อมูลวันที่เริ่มติดตามครบทั้ง 2 ฝั่ง และตรวจเตือนไฟล์ช่วง "ปีที่แล้ว" ได้ ส่วนไฟล์ HTML วิเคราะห์แยกหมวดรายชื่อได้ครบเช่นกัน แต่จะไม่มีวันที่เริ่มติดตามและแจ้งเตือนไฟล์ไม่ครบไม่ได้ครับ',
-      'JSON is smaller and includes follow dates when available. Those dates help flag exports that may cover only the past year. HTML works for comparing account lists.',
+      'JSON มักมีวันที่ติดตามที่ช่วยสังเกตว่ารายชื่ออาจไม่ครบ ส่วน HTML ยังใช้เทียบรายชื่อได้ ให้ตรวจว่าเลือก ตลอดเวลา (All time) สำหรับทั้งสองไฟล์',
+      'JSON can include follow dates that help flag potentially incomplete lists. HTML still works for comparing lists. Check that both exports use All time.',
     ),
     mockup: <DesktopFormatMockup />,
   },
@@ -582,10 +583,17 @@ const getDesktopSteps = (t: Translator): GuideStep[] => [
   },
 ];
 
-export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
+export function HowItWorksScreen({ onNavigate, focusDateRange }: HowItWorksScreenProps) {
   const { t } = useLanguage();
-  const [device, setDevice] = useState<Device>('mobile');
+  const [device, setDevice] = useState<Device>(() =>
+    focusDateRange && window.matchMedia?.('(min-width: 48rem)').matches ? 'web' : 'mobile',
+  );
   const steps = device === 'mobile' ? getMobileSteps(t) : getDesktopSteps(t);
+  const dateRangeStep = device === 'mobile' ? 'm-10' : 'w-9';
+
+  useEffect(() => {
+    if (focusDateRange) focusGuideStep(dateRangeStep);
+  }, [focusDateRange, dateRangeStep]);
 
   return (
     <div className="product-wrap py-9 lg:py-14">
@@ -758,7 +766,11 @@ export function HowItWorksScreen({ onNavigate }: HowItWorksScreenProps) {
           <li
             key={step.id}
             id={step.id}
-            tabIndex={['m-13', 'm-19', 'w-12'].includes(step.id) ? -1 : undefined}
+            tabIndex={
+              step.id === dateRangeStep || ['m-13', 'm-19', 'w-12'].includes(step.id)
+                ? -1
+                : undefined
+            }
             className="grid scroll-mt-(--nav-bar-height) grid-cols-1 gap-8 py-9 lg:grid-cols-12 lg:items-center"
           >
             <div className="lg:col-span-6">

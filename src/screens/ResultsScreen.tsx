@@ -4,7 +4,6 @@ import {
   ArrowDownNarrowWide,
   ArrowRight,
   Calendar,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +18,7 @@ import {
   UserMinus,
   UserPlus,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
 import { BackButton } from '../components/BackButton';
 import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
@@ -31,6 +30,7 @@ import { getFollowerComparisonRisk } from '../lib/comparison';
 import { formatAnalysisTime, formatDate, formatSnapshotDate } from '../lib/dates';
 import { buildSafeProfileHref } from '../lib/igParser';
 import { useLanguage } from '../lib/language';
+import { exportDateRangeHref } from '../lib/routes';
 import type { AccountEntry, AnalysisResult, HistoryDiff } from '../types/analyzer';
 
 interface ResultsScreenProps {
@@ -58,12 +58,95 @@ export function ResultsScreen({
   initialCategory,
 }: ResultsScreenProps) {
   const { t, locale } = useLanguage();
+  const fileName = result.sourceFileName;
+  const zipExtension = fileName.match(/\.zip$/i)?.[0] ?? '';
+  const showComparisonPrompt = !diff && !result.isDemoData;
+  const canUploadToCompare = !result.isDemoData && (comparisonStatus === 'ready' || Boolean(diff));
+  const compareUploadLabel = t('อัปโหลด ZIP เพื่อเทียบ', 'Upload a ZIP to compare');
+  const comparisonPrompt = {
+    off: {
+      description: t(
+        'เปิดบันทึกประวัติและจำรายชื่อ เพื่อเก็บผลรอบนี้ไว้เทียบกับ ZIP รอบถัดไปของบัญชีเดิม',
+        'Turn on local history and account list storage to save this result for comparison with your next ZIP from the same account.',
+      ),
+      action: t('ตั้งค่าประวัติบนเครื่อง', 'Set up local history'),
+      page: 'history',
+    },
+    ready: {
+      description: t(
+        'บันทึกรายชื่อรอบนี้ไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูว่าใครติดตามใหม่หรือหายจากรายชื่อ',
+        'This list is saved. Upload a newer ZIP from the same account to see who followed you or dropped off the list.',
+      ),
+      action: compareUploadLabel,
+      page: 'upload',
+    },
+    waiting: {
+      description: t(
+        'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP ของบัญชีนี้เพื่อเก็บรายชื่อไว้เทียบในรอบถัดไป',
+        'Account list storage is on. Upload a ZIP from this account to save a list for next time.',
+      ),
+      action: t('อัปโหลด ZIP เพื่อเก็บรายชื่อ', 'Upload a ZIP to save a follower list'),
+      page: 'upload',
+    },
+    'unknown-owner': {
+      description: t(
+        'อัปโหลด ZIP โดยใช้ชื่อไฟล์เดิมจาก Instagram เพื่อให้ระบบระบุบัญชีและจับคู่ไฟล์ได้',
+        'Upload a ZIP with its original Instagram filename so we can identify the account and match exports.',
+      ),
+      action: t('อัปโหลด ZIP ชื่อเดิม', 'Upload a ZIP with its original filename'),
+      page: 'upload',
+    },
+  } as const;
+  const prompt = comparisonPrompt[comparisonStatus];
   const [activeTab, setActiveTab] = useState<SegmentKey | null>(initialCategory ?? null);
   const overviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'az' | 'za'>('newest');
+  const [sortOpen, setSortOpen] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
+  const sortControlRef = useRef<HTMLDivElement>(null);
+  const sortTriggerRef = useRef<HTMLButtonElement>(null);
+  const sortOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const sortOptions = [
+    { value: 'newest', label: t('วันที่ล่าสุดก่อน', 'Newest first') },
+    { value: 'az', label: t('ชื่อบัญชี A–Z', 'Username A–Z') },
+    { value: 'za', label: t('ชื่อบัญชี Z–A', 'Username Z–A') },
+  ] as const;
+  const selectedSortOption = sortOptions.find((option) => option.value === sortBy)!;
+
+  useEffect(() => {
+    if (!sortOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!sortControlRef.current?.contains(event.target as Node)) setSortOpen(false);
+    };
+    const closeOnKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSortOpen(false);
+        sortTriggerRef.current?.focus();
+      } else if (event.key === 'Tab') {
+        setSortOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnKey);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnKey);
+    };
+  }, [sortOpen]);
+
+  const focusSortOption = (index: number) => {
+    sortOptionRefs.current[index]?.focus();
+  };
+
+  const openSortMenu = (index = sortOptions.findIndex((option) => option.value === sortBy)) => {
+    setSortOpen(true);
+    window.requestAnimationFrame(() => focusSortOption(index));
+  };
 
   const { counts } = result;
   const comparisonRisk =
@@ -90,7 +173,7 @@ export function ResultsScreen({
     });
   };
 
-  const likelyLastYearPartialExport = useMemo(() => {
+  const mayHaveLimitedDateRange = useMemo(() => {
     if (result.isDemoData || result.followers.length === 0) return false;
     let followerDateCount = 0;
     let minF = Infinity;
@@ -132,6 +215,10 @@ export function ResultsScreen({
     {
       key: 'newFollowers' as const,
       label: t('ติดตามใหม่', 'New followers'),
+      description: t(
+        'ไฟล์ที่ใช้เทียบไม่มีชื่อ → ไฟล์ที่กำลังดูมีชื่อ',
+        'Absent from the comparison ZIP → Present in the ZIP you’re viewing',
+      ),
       icon: UserPlus,
       tone: 'text-ok',
       iconSurface: 'bg-ok-soft',
@@ -140,6 +227,10 @@ export function ResultsScreen({
     {
       key: 'recentUnfollowers' as const,
       label: t('หายจากรายชื่อผู้ติดตาม', 'Missing from the follower list'),
+      description: t(
+        'ไฟล์ที่ใช้เทียบมีชื่อ → ไฟล์ที่กำลังดูไม่มีชื่อ',
+        'Present in the comparison ZIP → Absent from the ZIP you’re viewing',
+      ),
       icon: UserMinus,
       tone: 'text-bad',
       iconSurface: 'bg-bad-soft',
@@ -214,8 +305,6 @@ export function ResultsScreen({
     currentTab.key === 'recentUnfollowers' || currentTab.key === 'newFollowers';
   const previousDate = diff ? formatSnapshotDate(diff.previousDateLabel, locale) : '';
   const currentDate = formatSnapshotDate(result.snapshotDateLabel, locale);
-  const previousExportLabel = t('ไฟล์ย้อนหลัง', 'Earlier ZIP');
-  const currentExportLabel = t('ไฟล์ที่กำลังดู', 'ZIP you’re viewing');
   const showTimelineTime = previousDate === currentDate && comparison;
   const timelineMilliseconds =
     comparison?.previous.analysis.analyzedAtIso.slice(0, 19) === result.analyzedAtIso.slice(0, 19);
@@ -251,33 +340,12 @@ export function ResultsScreen({
             ? t('ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', 'Sample follower analysis')
             : t('ผลการวิเคราะห์ผู้ติดตาม', 'Follower analysis')}
         </h1>
-        {!result.isDemoData && (
-          <p className="max-w-[62ch] text-sm text-ink-2">
+        {result.isDemoData && (
+          <p className="text-sm text-ink-2">
             {t(
-              'ดูผลด้านล่างได้เลย หากอยากเก็บรายงานรอบนี้ไว้อ่านหรือพิมพ์ภายหลัง เลือกสร้าง PDF แล้วดาวน์โหลดลงเครื่องได้',
-              'View your results below. To keep a copy to read or print later, create a PDF report and download it to your device.',
+              'ใช้ข้อมูลสมมติและไม่บันทึกลงประวัติ',
+              'Sample data is fictional and isn’t saved to history.',
             )}
-          </p>
-        )}
-        {diff && (
-          <p
-            role="status"
-            aria-label={t('วันที่ของไฟล์ที่ใช้เปรียบเทียบ', 'Comparison export dates')}
-            className="mt-2 grid w-fit max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5 rounded-lg border border-cool/35 bg-cool-soft px-3 py-2 sm:gap-4"
-          >
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-xs font-medium text-cool">{previousExportLabel}</span>
-              <strong className="text-base leading-snug font-semibold text-ink">
-                {timelinePreviousDate}
-              </strong>
-            </span>
-            <ArrowRight className="size-4 text-cool" aria-hidden="true" />
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-xs font-medium text-cool">{currentExportLabel}</span>
-              <strong className="text-base leading-snug font-semibold text-ink">
-                {timelineCurrentDate}
-              </strong>
-            </span>
           </p>
         )}
         <NormalButton
@@ -294,44 +362,10 @@ export function ResultsScreen({
         </NormalButton>
       </header>
 
-      <div className="mt-4 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-6">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-ok/35 bg-ok-soft px-2.5 py-1 text-xs font-medium text-ok">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {t('วิเคราะห์เสร็จสมบูรณ์', 'Analysis complete')}
-            </span>
-            {result.isDemoData && (
-              <span className="rounded-md border border-accent/35 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                {t('โหมดข้อมูลตัวอย่าง (ไม่บันทึกลงประวัติ)', 'Sample data (excluded from history)')}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
-            <NormalButton
-              variant="secondary"
-              onClick={() => onNavigate('upload')}
-              className="w-full sm:w-auto"
-            >
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              {t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
-            </NormalButton>
-            <NormalButton
-              variant={result.isDemoData ? 'primary' : 'secondary'}
-              onClick={() => onNavigate('pdf')}
-              className="w-full sm:w-auto"
-            >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              {result.isDemoData
-                ? t('สร้างรายงาน PDF ตัวอย่าง', 'Create a sample PDF report')
-                : t('สร้างรายงาน PDF', 'Create PDF report')}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </NormalButton>
-          </div>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg border border-rule bg-paper-3 px-4 py-3 text-xs sm:grid-cols-3">
+      <div className="mt-4 flex flex-col gap-4 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-6 lg:flex-row lg:items-center">
+        <dl
+          className={`grid min-w-0 flex-1 gap-3 text-xs ${comparison ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}
+        >
           <div className="flex items-start gap-2.5">
             <User className="mt-0.5 h-4 w-4 shrink-0 text-cool" aria-hidden="true" />
             <div className="min-w-0">
@@ -347,70 +381,91 @@ export function ResultsScreen({
           <div className="flex items-start gap-2.5">
             <FileArchive className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
             <div className="min-w-0">
-              <dt className="flex items-center gap-1.5 text-muted">
-                <span>{t('ไฟล์ที่วิเคราะห์', 'Source ZIP')}</span>
-                <span className="measured rounded border border-rule bg-paper-2 px-1.5 py-px text-[10px] font-semibold text-ink-2">
-                  {formatLabel}
-                </span>
-              </dt>
-              <dd
-                className="measured mt-0.5 truncate font-medium text-ink"
-                title={result.sourceFileName}
-              >
-                {result.sourceFileName}
-              </dd>
+              {comparison ? (
+                <>
+                  <dt className="text-muted">{t('รูปแบบไฟล์', 'Export format')}</dt>
+                  <dd className="mt-0.5 font-medium text-ink">{formatLabel}</dd>
+                </>
+              ) : (
+                <>
+                  <dt className="flex items-center gap-1.5 text-muted">
+                    <span>{t('ไฟล์ที่วิเคราะห์', 'Source ZIP')}</span>
+                    <span className="measured rounded border border-rule bg-paper-2 px-1.5 py-px text-[10px] font-semibold text-ink-2">
+                      {formatLabel}
+                    </span>
+                  </dt>
+                  <dd
+                    className="measured mt-0.5 flex min-w-0 font-medium text-ink"
+                    title={fileName}
+                  >
+                    <span className="min-w-0 truncate">
+                      {fileName.slice(0, fileName.length - zipExtension.length)}
+                    </span>
+                    {zipExtension && <span className="shrink-0">{zipExtension}</span>}
+                  </dd>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5">
-            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
-            <div className="min-w-0">
-              <dt className="text-muted">{t('ข้อมูล ณ วันที่', 'Data as of')}</dt>
-              <dd className="mt-0.5 font-medium text-ink">
-                {formatSnapshotDate(result.snapshotDateLabel, locale)}
-              </dd>
+          {!comparison && (
+            <div className="flex items-start gap-2.5">
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+              <div className="min-w-0">
+                <dt className="text-muted">{t('ข้อมูล ณ วันที่', 'Data as of')}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
+                  {formatSnapshotDate(result.snapshotDateLabel, locale)}
+                </dd>
+              </div>
             </div>
-          </div>
+          )}
         </dl>
+
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
+          {(!showComparisonPrompt || comparisonStatus === 'off') && (
+            <NormalButton
+              variant={canUploadToCompare ? 'cool' : 'secondary'}
+              onClick={() => onNavigate('upload')}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              {canUploadToCompare ? compareUploadLabel : t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
+            </NormalButton>
+          )}
+          <NormalButton
+            variant={result.isDemoData ? 'primary' : 'secondary'}
+            onClick={() => onNavigate('pdf')}
+            className="w-full sm:w-auto"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            {result.isDemoData
+              ? t('สร้างรายงาน PDF ตัวอย่าง', 'Create a sample PDF report')
+              : t('สร้างรายงาน PDF', 'Create PDF report')}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </NormalButton>
+        </div>
       </div>
 
-      {!diff && !result.isDemoData && (
-        <section className="mt-4 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3 text-sm text-ink-2">
-            <History className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
-            <span>
-              {comparisonStatus === 'unknown-owner'
-                ? t(
-                    'ใช้ชื่อไฟล์ ZIP เดิมจาก Instagram เพื่อให้ระบบรู้ว่าเป็นไฟล์ของบัญชีเดียวกัน',
-                    'Use the original Instagram ZIP filename so we can identify exports from the same account.',
-                  )
-                : comparisonStatus === 'ready'
-                  ? t(
-                      'บันทึกรายชื่อไว้แล้ว อัปโหลด ZIP รอบใหม่ของบัญชีเดิมเพื่อดูความเปลี่ยนแปลง',
-                      'Your follower list is saved. Upload a newer ZIP for the same account to see changes.',
-                    )
-                  : comparisonStatus === 'waiting'
-                    ? t(
-                        'เปิดการจำรายชื่อแล้ว อัปโหลด ZIP รอบแรกเพื่อเก็บรายชื่อไว้เทียบ',
-                        'Account list storage is on. Upload a first ZIP to save a list for comparison.',
-                      )
-                    : t(
-                        'ประวัติปิดเป็นค่าเริ่มต้น ถ้าอยากรู้ว่าใครติดตามใหม่หรือหายจากรายชื่อ ให้เปิดทั้งบันทึกประวัติและจำรายชื่อ แล้วนำ ZIP รอบถัดไปของบัญชีเดิมมาเทียบในเบราว์เซอร์นี้',
-                        'History is off by default. To see who followed you or dropped off the list, turn on history and account list storage, then bring your next ZIP for the same account to this browser.',
-                      )}
-            </span>
+      {showComparisonPrompt && (
+        <section
+          aria-label={t('ขั้นตอนถัดไปสำหรับเทียบไฟล์', 'Next step for comparing exports')}
+          className="mt-4 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center"
+        >
+          <div className="flex items-start gap-3 text-sm text-ink-2">
+            <History className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+            <span>{prompt.description}</span>
           </div>
           <NormalButton
-            variant="secondary"
-            onClick={() => onNavigate('history')}
-            className="shrink-0 text-xs"
+            variant={canUploadToCompare ? 'cool' : 'secondary'}
+            onClick={() => onNavigate(prompt.page)}
+            className="w-full text-xs sm:w-auto sm:shrink-0"
           >
-            {t('ตั้งค่าประวัติบนเครื่อง', 'Manage local history')}
+            {prompt.action}
           </NormalButton>
         </section>
       )}
 
-      {likelyLastYearPartialExport && comparisonRisk === null && (
+      {mayHaveLimitedDateRange && comparisonRisk === null && (
         <section
           role="note"
           className="mt-6 flex flex-col justify-between gap-4 rounded-[10px] border border-accent bg-accent-soft p-5 sm:flex-row sm:items-center"
@@ -420,25 +475,21 @@ export function ResultsScreen({
             <div>
               <p className="font-medium text-accent">
                 {t(
-                  'ข้อสังเกต: รายชื่อผู้ติดตามในไฟล์นี้อาจมีเฉพาะคนที่ติดตามภายใน 1 ปีล่าสุด',
-                  'This export may include only followers from the past year',
+                  'รายชื่อผู้ติดตามใน ZIP อาจครอบคลุมแค่บางช่วง',
+                  'The ZIP may only cover part of your follower list',
                 )}
               </p>
               <p className="mt-0.5 text-ink-2">
                 {t(
-                  'ค่าเริ่มต้นของ Instagram ตั้ง ช่วงวันที่ เป็น ปีที่แล้ว หากยอดผู้ติดตามน้อยกว่าหน้าโปรไฟล์จริง ให้ส่งออกไฟล์ใหม่แล้วเปลี่ยน ช่วงวันที่ เป็น ตลอดเวลา (All time)',
-                  'Instagram may use Last year as the default date range. If the count is lower than on your profile, request a new export and set the Date range to All time.',
+                  'ช่วงสั้นหรือช่วงที่กำหนดเองอาจทำให้บางบัญชีไม่อยู่ในไฟล์ วันที่ติดตามใน ZIP บอกไม่ได้ว่าคุณตั้งช่วงไหน หากยอดต่ำกว่าหน้าโปรไฟล์ ให้ขอ ZIP ใหม่โดยเลือก ตลอดเวลา (All time)',
+                  'A short or custom range may leave some accounts out. Follow dates in the ZIP can’t tell us which range you selected. If the count is lower than on your profile, request a fresh ZIP with Date range set to All time.',
                 )}
               </p>
             </div>
           </div>
-          <NormalButton
-            variant="secondary"
-            onClick={() => onNavigate('how-it-works')}
-            className="shrink-0 text-xs"
-          >
-            {t('ดูขั้นตอนเปลี่ยนเป็น ตลอดเวลา', 'How to select All time')}
-          </NormalButton>
+          <a href={exportDateRangeHref} className="btn btn--secondary shrink-0 text-xs">
+            {t('ดูขั้นตอนเลือกช่วงตลอดเวลา', 'How to select All time')}
+          </a>
         </section>
       )}
 
@@ -493,120 +544,58 @@ export function ResultsScreen({
                   </p>
                 </div>
               </div>
-              <NormalButton
-                variant="secondary"
-                onClick={() => onNavigate('how-it-works')}
-                className="shrink-0 text-xs"
-              >
-                {t('ดูวิธีเลือกช่วงตลอดเวลา', 'How to select All time')}
-              </NormalButton>
+              <a href={exportDateRangeHref} className="btn btn--secondary shrink-0 text-xs">
+                {t('ดูขั้นตอนเลือกช่วงตลอดเวลา', 'How to select All time')}
+              </a>
             </div>
           )}
-          <p
-            role="note"
-            className="mt-4 flex items-center gap-2 text-sm leading-relaxed text-muted"
-          >
-            <Info className="size-4 shrink-0" aria-hidden="true" />
-            {comparison?.isLatest
-              ? t(
-                  'เว็บเทียบรายชื่อผู้ติดตามใน ZIP ล่าสุดกับไฟล์ฝั่ง “เทียบกับ” ด้านบน',
-                  'The app compares the follower list in your latest ZIP with the ZIP shown under Compared with above.',
-                )
-              : t(
-                  'เว็บเทียบรายชื่อผู้ติดตามใน ZIP ที่เปิดอยู่กับ ZIP รอบก่อนหน้า',
-                  'The app compares the follower list in the ZIP you opened with the previous ZIP.',
-                )}
-          </p>
+          {!result.isDemoData && !comparisonRisk && (
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              {t(
+                'ก่อนใช้ผลเทียบ ตรวจว่า ZIP ทั้งสองเลือกช่วง ตลอดเวลา (All time) ช่วงวันที่จำกัดอาจทำให้ชื่อหายจากไฟล์แม้บัญชียังติดตามอยู่',
+                'Before using these results, check that both ZIPs were exported with All time. A limited date range can leave accounts out of the file.',
+              )}
+            </p>
+          )}
           <div className="mt-3 grid gap-4 sm:grid-cols-2 sm:gap-3">
-            {comparisonTabs.map(({ key, label, icon: Icon, tone, iconSurface, entries }) => (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={activeTab === key}
-                aria-labelledby={`${key}-label ${key}-count`}
-                onClick={() => jumpToCategory(key)}
-                className={`comparison-card flex min-w-0 cursor-pointer flex-col justify-between gap-3 rounded-lg border p-4 text-left transition-colors sm:p-5 ${tone}`}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span className="grid min-w-0 gap-1.5">
-                    <span id={`${key}-label`} className="text-sm font-semibold text-ink-2">
-                      {label}
+            {comparisonTabs.map(
+              ({ key, label, description, icon: Icon, tone, iconSurface, entries }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={activeTab === key}
+                  aria-labelledby={`${key}-label ${key}-count`}
+                  aria-describedby={`${key}-description`}
+                  onClick={() => jumpToCategory(key)}
+                  className={`comparison-card flex min-w-0 cursor-pointer flex-col justify-between gap-3 rounded-lg border p-4 text-left transition-colors sm:p-5 ${tone}`}
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="grid min-w-0 gap-1.5">
+                      <span id={`${key}-label`} className="text-sm font-semibold text-ink-2">
+                        {label}
+                      </span>
+                      <span
+                        id={`${key}-count`}
+                        className="measured text-3xl leading-none font-bold text-ink tabular-nums"
+                      >
+                        {entries.length.toLocaleString(locale)}
+                      </span>
                     </span>
                     <span
-                      id={`${key}-count`}
-                      className="measured text-3xl leading-none font-bold text-ink tabular-nums"
+                      className={`inline-grid size-11 shrink-0 place-items-center rounded-xl border border-current/20 ${iconSurface}`}
                     >
-                      {entries.length.toLocaleString(locale)}
+                      <Icon className="size-5" aria-hidden="true" />
                     </span>
                   </span>
-                  <span
-                    className={`inline-grid size-11 shrink-0 place-items-center rounded-xl border border-current/20 ${iconSurface}`}
-                  >
-                    <Icon className="size-5" aria-hidden="true" />
+                  <span className="flex items-end justify-between gap-2">
+                    <span id={`${key}-description`} className="text-sm leading-relaxed text-muted">
+                      {description}
+                    </span>
+                    <ArrowRight className="mb-0.5 size-4 shrink-0" aria-hidden="true" />
                   </span>
-                </span>
-                <ArrowRight className="mb-0.5 size-4 shrink-0 self-end" aria-hidden="true" />
-              </button>
-            ))}
-          </div>
-          <div className="mt-4 grid gap-3 border-t border-rule pt-3 sm:grid-cols-2">
-            {[
-              {
-                label: t('ผู้ติดตามทั้งหมด', 'Total followers'),
-                current: counts.followers,
-                delta: diff.followersDelta,
-              },
-              {
-                label: t('ไม่ติดตามคุณกลับ', 'Not following you back'),
-                current: counts.notFollowingBack,
-                delta: diff.notFollowingBackDelta,
-                description: t(
-                  'บัญชีที่คุณติดตามอยู่ แต่เขาไม่ได้ติดตามคุณ',
-                  'Accounts you follow that don’t follow you.',
-                ),
-              },
-            ].map(({ label, current, delta, description }) => {
-              const previousCount = (current - delta).toLocaleString(locale);
-              const currentCount = current.toLocaleString(locale);
-              const netChange = delta.toLocaleString(locale, { signDisplay: 'exceptZero' });
-              const changeLabel =
-                delta > 0
-                  ? t('เพิ่มสุทธิ', 'Net increase')
-                  : delta < 0
-                    ? t('ลดสุทธิ', 'Net decrease')
-                    : t('เท่าเดิม', 'Unchanged');
-
-              return (
-                <section
-                  key={label}
-                  aria-label={label}
-                  className="min-w-0 rounded-lg bg-paper-3 p-3"
-                >
-                  <h3 className="text-sm font-semibold text-ink-2">{label}</h3>
-                  <dl className="mt-2 grid grid-cols-3 gap-2">
-                    {[
-                      [previousExportLabel, previousCount],
-                      [currentExportLabel, currentCount],
-                      [changeLabel, netChange],
-                    ].map(([caption, value]) => (
-                      <div key={caption} className="min-w-0">
-                        <dt className="text-xs leading-snug text-muted">{caption}</dt>
-                        <dd className="mt-0.5 text-lg font-semibold wrap-anywhere text-ink tabular-nums">
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <p className="mt-1.5 text-xs text-muted tabular-nums">
-                    {t(
-                      `วิธีคิด ${currentCount} − ${previousCount} = ${netChange} บัญชี`,
-                      `Calculation: ${currentCount} − ${previousCount} = ${netChange}`,
-                    )}
-                  </p>
-                  {description && <p className="mt-1.5 text-xs text-muted">{description}</p>}
-                </section>
-              );
-            })}
+                </button>
+              ),
+            )}
           </div>
           <div className="mt-3 flex items-start gap-2 text-sm leading-relaxed text-muted">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -674,10 +663,11 @@ export function ResultsScreen({
               </p>
               <p className="mt-0.5 text-ink-2">
                 {t(
-                  'ไฟล์แบบ HTML ไม่ได้เก็บวันที่ในรูปแบบมาตรฐาน (timestamp) จึงแสดงเป็น “ไม่มีวันที่” และไม่สามารถตรวจเตือนไฟล์ช่วง “ปีที่แล้ว” อัตโนมัติได้ หากต้องการดูวันที่ทั้งฝั่งเขาฟอลคุณและคุณฟอลเขา แนะนำให้ส่งออกใหม่โดยเลือกรูปแบบเป็น ',
-                  'HTML lacks standard follow timestamps. Dates are unavailable, and the app can’t flag exports limited to the past year. To see follow dates for both lists, request a new export in ',
+                  'ไฟล์ HTML ไม่มีวันที่ติดตามในรูปแบบที่เว็บอ่านได้ จึงใช้วันที่ช่วยสังเกตว่ารายชื่ออาจไม่ครบไม่ได้ หากต้องการดูวันที่ติดตาม ให้ขอไฟล์ใหม่โดยเลือก ตลอดเวลา (All time) และรูปแบบ ',
+                  'HTML lacks usable follow dates, so the app can’t use dates to flag potentially incomplete lists. For follow dates, request a new export with All time and the ',
                 )}
                 <strong className="text-ink">JSON</strong>
+                {t('', ' format.')}
               </p>
             </div>
           </div>
@@ -791,28 +781,95 @@ export function ResultsScreen({
                   />
                 </div>
 
-                <div className="relative sm:shrink-0">
+                <div ref={sortControlRef} className="relative sm:shrink-0">
                   <ArrowDownNarrowWide
                     className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted"
                     aria-hidden="true"
                   />
-                  <select
+                  <button
+                    ref={sortTriggerRef}
+                    type="button"
                     aria-label={t('เรียงลำดับรายชื่อ', 'Sort accounts')}
-                    value={sortBy}
-                    onChange={(e) => {
-                      setSortBy(e.target.value as 'newest' | 'az' | 'za');
-                      setPageIndex(0);
+                    aria-haspopup="listbox"
+                    aria-expanded={sortOpen}
+                    aria-controls="account-sort-options"
+                    onClick={() => {
+                      if (sortOpen) {
+                        setSortOpen(false);
+                      } else {
+                        openSortMenu();
+                      }
                     }}
-                    className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-rule-2 bg-paper-3 pr-10 pl-10 text-sm text-ink hover:border-muted focus:border-accent sm:min-w-48 forced-colors:appearance-auto"
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        openSortMenu();
+                      } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        openSortMenu(sortOptions.length - 1);
+                      } else if (event.key === 'Home') {
+                        event.preventDefault();
+                        openSortMenu(0);
+                      } else if (event.key === 'End') {
+                        event.preventDefault();
+                        openSortMenu(sortOptions.length - 1);
+                      }
+                    }}
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-rule-2 bg-paper-3 pr-3.5 pl-10 text-left text-sm text-ink hover:border-muted focus:border-accent sm:min-w-48"
                   >
-                    <option value="newest">{t('วันที่ล่าสุดก่อน', 'Newest first')}</option>
-                    <option value="az">{t('ชื่อบัญชี A–Z', 'Username A–Z')}</option>
-                    <option value="za">{t('ชื่อบัญชี Z–A', 'Username Z–A')}</option>
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted forced-colors:hidden"
-                    aria-hidden="true"
-                  />
+                    <span>{selectedSortOption.label}</span>
+                    <ChevronDown
+                      className={`size-4 shrink-0 text-muted transition-transform ${sortOpen ? 'rotate-180' : ''}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  {sortOpen && (
+                    <div
+                      id="account-sort-options"
+                      role="listbox"
+                      aria-label={t('เรียงลำดับรายชื่อ', 'Sort accounts')}
+                      className="absolute top-full right-0 z-30 mt-1 w-full overflow-hidden rounded-md border border-rule-2 bg-paper-3 py-1 shadow-xl"
+                    >
+                      {sortOptions.map((option, index) => (
+                        <button
+                          key={option.value}
+                          ref={(element) => {
+                            sortOptionRefs.current[index] = element;
+                          }}
+                          type="button"
+                          role="option"
+                          aria-selected={sortBy === option.value}
+                          tabIndex={sortBy === option.value ? 0 : -1}
+                          onClick={() => {
+                            setSortBy(option.value);
+                            setPageIndex(0);
+                            setSortOpen(false);
+                            sortTriggerRef.current?.focus();
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'ArrowDown') {
+                              event.preventDefault();
+                              focusSortOption((index + 1) % sortOptions.length);
+                            } else if (event.key === 'ArrowUp') {
+                              event.preventDefault();
+                              focusSortOption(
+                                (index - 1 + sortOptions.length) % sortOptions.length,
+                              );
+                            } else if (event.key === 'Home') {
+                              event.preventDefault();
+                              focusSortOption(0);
+                            } else if (event.key === 'End') {
+                              event.preventDefault();
+                              focusSortOption(sortOptions.length - 1);
+                            }
+                          }}
+                          className={`flex min-h-10 w-full cursor-pointer items-center px-3 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${sortBy === option.value ? 'bg-paper-2 font-medium text-accent' : 'text-ink hover:bg-paper-2'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -855,17 +912,22 @@ export function ResultsScreen({
                         return (
                           <li
                             key={account.handle}
-                            className="flex flex-wrap items-start gap-x-4 px-3 sm:flex-nowrap sm:px-4"
+                            className="grid items-start gap-x-5 px-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4"
                           >
-                            <details className="group min-w-0 flex-1">
+                            <details className="group min-w-0">
                               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 text-sm font-semibold text-ink marker:hidden">
                                 <ChevronDown
                                   className="size-4 shrink-0 text-accent transition-transform group-open:rotate-180"
                                   aria-hidden="true"
                                 />
                                 <span className="min-w-0 wrap-anywhere">@{account.handle}</span>
-                                <span className="ml-auto text-right text-xs font-medium text-accent">
-                                  {t('ดูไทม์ไลน์', 'View timeline')}
+                                <span className="ml-auto shrink-0 text-right text-xs font-medium text-accent">
+                                  <span className="group-open:hidden">
+                                    {t('ดูไทม์ไลน์', 'View timeline')}
+                                  </span>
+                                  <span className="hidden group-open:inline">
+                                    {t('ซ่อนไทม์ไลน์', 'Hide timeline')}
+                                  </span>
                                 </span>
                               </summary>
                               <div className="pt-1 pb-4 pl-6">
@@ -888,12 +950,15 @@ export function ResultsScreen({
                               target="_blank"
                               rel="noopener noreferrer"
                               aria-label={t(
-                                `เปิด @${account.handle} บน Instagram`,
-                                `Open @${account.handle} on Instagram`,
+                                `เปิดโปรไฟล์ Instagram ของ @${account.handle}`,
+                                `Open Instagram profile for @${account.handle}`,
                               )}
-                              className="grid size-11 shrink-0 place-items-center text-muted hover:text-accent"
+                              className="ms-6 inline-flex min-h-11 items-center gap-1.5 justify-self-start rounded-sm text-xs font-medium text-cool hover:text-ink sm:ms-0"
                             >
-                              <ExternalLink className="size-4" aria-hidden="true" />
+                              <span className="underline decoration-current/40 underline-offset-3">
+                                {t('เปิดโปรไฟล์ Instagram', 'Open Instagram profile')}
+                              </span>
+                              <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
                             </a>
                           </li>
                         );
@@ -901,11 +966,24 @@ export function ResultsScreen({
                     </ul>
                   ) : (
                     <>
-                      <div className="mt-4 hidden overflow-hidden rounded-[10px] border border-rule md:block">
-                        <table className="w-full border-collapse text-left text-sm">
+                      <div className="results-table-wrap mt-4 hidden overflow-hidden rounded-[10px] border md:block">
+                        <table className="results-table w-full table-fixed border-collapse text-left text-sm">
+                          <colgroup>
+                            <col className="w-[5%]" />
+                            <col className={isMutualTab ? 'w-[29%]' : 'w-[33%]'} />
+                            {isMutualTab ? (
+                              <>
+                                <col className="w-[19%]" />
+                                <col className="w-[19%]" />
+                              </>
+                            ) : (
+                              <col className="w-[27%]" />
+                            )}
+                            <col className={isMutualTab ? 'w-[28%]' : 'w-[35%]'} />
+                          </colgroup>
                           <thead>
-                            <tr className="border-b border-rule bg-paper-3 text-xs font-medium text-muted">
-                              <th className="w-16 px-4 py-3">#</th>
+                            <tr className="text-xs">
+                              <th className="px-4 py-3">#</th>
                               <th className="px-4 py-3">
                                 {t('ชื่อบัญชี (@username)', 'Username (@username)')}
                               </th>
@@ -924,16 +1002,13 @@ export function ResultsScreen({
                               <th className="px-4 py-3 text-right">{t('เปิดดูโปรไฟล์', 'Profile')}</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-rule">
+                          <tbody>
                             {pagedList.map((acc, idx) => {
                               const singleTs = isFollowingSideTab
                                 ? (acc.followedByUsAt ?? acc.timestamp)
                                 : (acc.followedUsAt ?? acc.timestamp);
                               return (
-                                <tr
-                                  key={acc.handle}
-                                  className={idx % 2 === 0 ? 'bg-paper-2' : 'bg-paper'}
-                                >
+                                <tr key={acc.handle}>
                                   <td className="measured px-4 py-2.5 text-xs text-muted">
                                     {pageStart + idx + 1}
                                   </td>
@@ -942,15 +1017,15 @@ export function ResultsScreen({
                                   </td>
                                   {isMutualTab ? (
                                     <>
-                                      <td className="measured px-4 py-2.5 text-xs text-ok">
+                                      <td className="measured px-4 py-2.5 text-xs text-ink-2">
                                         {formatDateOrEmpty(acc.followedUsAt ?? acc.timestamp)}
                                       </td>
-                                      <td className="measured px-4 py-2.5 text-xs text-cool">
+                                      <td className="measured px-4 py-2.5 text-xs text-ink-2">
                                         {formatDateOrEmpty(acc.followedByUsAt ?? acc.timestamp)}
                                       </td>
                                     </>
                                   ) : (
-                                    <td className="measured px-4 py-2.5 text-xs text-cool">
+                                    <td className="measured px-4 py-2.5 text-xs text-ink-2">
                                       {formatDateOrEmpty(singleTs)}
                                     </td>
                                   )}
@@ -959,10 +1034,15 @@ export function ResultsScreen({
                                       href={acc.href}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="inline-flex min-h-9 items-center gap-1.5 rounded border border-rule-2 bg-paper-3 px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-accent hover:text-accent"
+                                      className="inline-flex min-h-9 items-center gap-1.5 rounded-sm px-1 text-xs font-medium text-cool hover:text-ink"
                                     >
-                                      {t('เปิดบน Instagram', 'Open on Instagram')}
-                                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                      <span className="underline decoration-current/40 underline-offset-3">
+                                        {t('เปิดบน Instagram', 'Open on Instagram')}
+                                      </span>
+                                      <ExternalLink
+                                        className="size-3.5 shrink-0"
+                                        aria-hidden="true"
+                                      />
                                     </a>
                                   </td>
                                 </tr>
@@ -972,15 +1052,18 @@ export function ResultsScreen({
                         </table>
                       </div>
 
-                      <div className="mt-4 space-y-2.5 md:hidden">
+                      <ul
+                        role="list"
+                        className="results-table-wrap mt-4 divide-y divide-rule overflow-hidden rounded-[10px] border md:hidden"
+                      >
                         {pagedList.map((acc, idx) => {
                           const singleTs = isFollowingSideTab
                             ? (acc.followedByUsAt ?? acc.timestamp)
                             : (acc.followedUsAt ?? acc.timestamp);
                           return (
-                            <div
+                            <li
                               key={acc.handle}
-                              className="flex items-center justify-between gap-3 rounded-[10px] border border-rule bg-paper-3 p-3.5"
+                              className="flex items-center justify-between gap-3 px-3.5 py-2.5"
                             >
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium text-ink">
@@ -993,19 +1076,19 @@ export function ResultsScreen({
                                   <div className="measured mt-1 space-y-0.5 text-xs text-muted">
                                     <p>
                                       {t('เขาติดตามคุณ:', 'They followed you:')}{' '}
-                                      <span className="text-ok">
+                                      <span className="text-ink-2">
                                         {formatDateOrEmpty(acc.followedUsAt ?? acc.timestamp)}
                                       </span>
                                     </p>
                                     <p>
                                       {t('คุณติดตามเขา:', 'You followed them:')}{' '}
-                                      <span className="text-cool">
+                                      <span className="text-ink-2">
                                         {formatDateOrEmpty(acc.followedByUsAt ?? acc.timestamp)}
                                       </span>
                                     </p>
                                   </div>
                                 ) : (
-                                  <p className="measured mt-0.5 text-xs text-cool">
+                                  <p className="measured mt-0.5 text-xs text-ink-2">
                                     {singleTs
                                       ? `${singleDateMobilePrefix}: ${formatDate(new Date(singleTs * 1000), locale)}`
                                       : t('ไม่มีข้อมูลวันที่ในไฟล์', 'No dates in this export')}
@@ -1016,15 +1099,17 @@ export function ResultsScreen({
                                 href={acc.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded border border-rule-2 bg-paper-2 px-3 text-xs font-medium text-accent"
+                                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-sm px-1 text-xs font-medium text-cool hover:text-ink"
                               >
-                                {t('เปิด IG', 'Open Instagram')}
-                                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span className="underline decoration-current/40 underline-offset-3">
+                                  {t('เปิด IG', 'Open Instagram')}
+                                </span>
+                                <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
                               </a>
-                            </div>
+                            </li>
                           );
                         })}
-                      </div>
+                      </ul>
                     </>
                   )}
 

@@ -30,7 +30,10 @@ export function DemoHistoryScreen({ samples, onOpenResults }: DemoHistoryScreenP
 
   return (
     <div className="product-wrap py-9 lg:py-14">
-      <BackButton onClick={() => onOpenResults()} target="results" />
+      <BackButton
+        onClick={() => onOpenResults()}
+        label={t('กลับไปหน้าผลตัวอย่าง', 'Back to sample results')}
+      />
       <header className="border-b border-rule pb-6">
         <h1 className="page-heading">{t('ประวัติการวิเคราะห์ตัวอย่าง', 'Sample analysis history')}</h1>
         <p className="text-sm leading-relaxed text-muted sm:text-base">

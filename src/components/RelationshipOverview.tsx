@@ -1,16 +1,18 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import {
+  formatRelationshipPercentage,
   getRelationshipMetrics,
+  getRelationshipTotal,
   RELATIONSHIP_ORDER,
+  RELATIONSHIP_SEGMENTS,
   type RelationshipKey,
 } from '../data/relationshipMetrics';
 import { useLanguage } from '../lib/language';
 import type { FollowCounts } from '../types/analyzer';
+import { PercentageCalculationDetails } from './PercentageCalculationDetails';
 
-const segments = ['mutual', 'notFollowingBack', 'notFollowedBack'] as const;
-
-type Segment = (typeof segments)[number];
+type Segment = (typeof RELATIONSHIP_SEGMENTS)[number];
 
 interface OverviewProps {
   counts: FollowCounts;
@@ -70,12 +72,14 @@ export function RelationshipOverview({ counts, selected, onSelect }: OverviewPro
   const metrics = getRelationshipMetrics(t);
   const [hovered, setHovered] = useState<Segment | null>(null);
   const [pinned, setPinned] = useState<Segment | null>(null);
-  const total = counts.mutual + counts.notFollowingBack + counts.notFollowedBack;
+  const total = getRelationshipTotal(counts);
   const share = (count: number) => (total ? count / total : 0);
-  const percent = (count: number) => (share(count) * 100).toFixed(1);
   const current = hovered ?? pinned;
-  const slices = segments.map((key, index) => {
-    const start = segments.slice(0, index).reduce((sum, earlierKey) => sum + counts[earlierKey], 0);
+  const slices = RELATIONSHIP_SEGMENTS.map((key, index) => {
+    const start = RELATIONSHIP_SEGMENTS.slice(0, index).reduce(
+      (sum, earlierKey) => sum + counts[earlierKey],
+      0,
+    );
     return { key, path: ringPath(share(start), share(start + counts[key])) };
   });
   const togglePinned = (key: Segment) => setPinned((previous) => (previous === key ? null : key));
@@ -122,7 +126,7 @@ export function RelationshipOverview({ counts, selected, onSelect }: OverviewPro
             className="relationship-legend"
             aria-label={t('สัดส่วนในกราฟความสัมพันธ์', 'Relationship chart breakdown')}
           >
-            {segments.map((key) => (
+            {RELATIONSHIP_SEGMENTS.map((key) => (
               <li key={key}>
                 <button
                   type="button"
@@ -140,7 +144,7 @@ export function RelationshipOverview({ counts, selected, onSelect }: OverviewPro
                   <span>{metrics[key].label}</span>
                   <span className="relationship-value">
                     <strong>{counts[key].toLocaleString(locale)}</strong>
-                    <small>{percent(counts[key])}%</small>
+                    <small>{formatRelationshipPercentage(counts[key], total)}%</small>
                   </span>
                 </button>
               </li>
@@ -148,6 +152,7 @@ export function RelationshipOverview({ counts, selected, onSelect }: OverviewPro
           </ul>
         </div>
       </div>
+      <PercentageCalculationDetails counts={counts} />
     </div>
   );
 }

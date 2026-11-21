@@ -5,8 +5,9 @@ import { FeedbackForm } from '../components/FeedbackForm';
 import { NormalButton } from '../components/NormalButton';
 import { BackButton } from '../components/BackButton';
 import { ReviewForm } from '../components/ReviewForm';
+import { type FaqItem, getComparisonFaqs } from '../data/comparisonFaqs';
 import { useLanguage } from '../lib/language';
-import { getReviewEndpoint, isReviewIntakePaused } from '../lib/review';
+import { getReviewEndpoint, loadReviewIntakeStatus } from '../lib/review';
 import { pageHref, type PrivacyTopic } from '../lib/routes';
 
 export function TermsAndFaqScreen({
@@ -106,7 +107,7 @@ export function TermsAndFaqScreen({
     },
   ];
 
-  const faqs: { q: string; a: string; link?: { page: PageId; label: string } }[] = [
+  const faqs: FaqItem[] = [
     {
       q: t(
         'ต้องกรอกรหัสผ่าน Instagram หรือเสี่ยงโดนระงับบัญชีไหม?',
@@ -165,22 +166,15 @@ export function TermsAndFaqScreen({
         'Why does my follower count differ from my Instagram profile?',
       ),
       a: t(
-        'มักเกิดจาก 3 สาเหตุหลัก: (1) ตอนขอไฟล์ไม่ได้เปลี่ยนช่วงเวลาเป็น “ตลอดเวลา (All time)” ค่าเริ่มต้นของ Instagram จะส่งมาเฉพาะ 1 ปีล่าสุดทำให้ยอดหายไปเยอะ (2) บัญชีที่ปิดใช้งานชั่วคราว ถูกลบ หรือถูกระงับ อาจยังถูกนับบนหน้าโปรไฟล์แต่ไม่ติดมาในไฟล์ .zip และ (3) ไฟล์เป็นข้อมูล ณ เวลาที่กดส่งคำขอ ไม่ใช่แบบ Real-time หากยอดต่างกันมาก แนะนำขอไฟล์ใหม่โดยเลือกช่วงเวลา “ตลอดเวลา”',
-        'There are three common reasons: (1) the export date range was left at Instagram’s default (“Last year”) instead of “All time,” which omits older followers; (2) deactivated, deleted, or suspended accounts may still be counted on your live profile but excluded from the ZIP; and (3) the ZIP is a snapshot from the moment you requested it, not live data. If the gap is large, request a new export set to “All time.”',
+        'ช่วงวันที่จำกัด เช่น 3 เดือนหรือช่วงที่กำหนดเอง อาจทำให้บางบัญชีไม่อยู่ใน ZIP และยอดบนโปรไฟล์อาจเปลี่ยนไปหลังวันที่ส่งออก หากยอดต่างกัน ให้ตรวจช่วงวันที่และลองขอไฟล์ใหม่โดยเลือก “ตลอดเวลา (All time)”',
+        'A limited date range, such as three months or custom dates, can leave accounts out of the ZIP. The profile count can also change after the export. If the counts differ, check the date range and try requesting a fresh ZIP with “All time.”',
       ),
       link: {
         page: 'how-it-works',
         label: t('ดูวิธีตั้งค่าช่วงเวลา “ตลอดเวลา”', 'See how to select “All time”'),
       },
     },
-    {
-      q: t('จะรู้ได้อย่างไรว่าใครเพิ่งเลิกติดตามเราไป?', 'How can I see who recently unfollowed me?'),
-      a: t(
-        'เปิดทั้งสองสวิตช์ในหน้า “ประวัติบนเครื่อง” แล้ววิเคราะห์ ZIP รอบแรกเพื่อบันทึกรายชื่อ เมื่ออัปโหลด ZIP ใหม่ของบัญชีเดิมในเบราว์เซอร์เดิม ระบบจะเทียบกับรอบก่อนให้อัตโนมัติและแสดงชื่อ ZIP ทั้งคู่ ถ้ามีรายชื่อบันทึกไว้หลายรอบ ให้กด “เปลี่ยนไฟล์ย้อนหลัง” ในหน้าผลล่าสุด แล้วดูว่ามีใครติดตามใหม่หรือหายจากรายชื่อระหว่างสองไฟล์',
-        'Turn on both History settings and analyze your first ZIP to save its account lists. When you upload a newer ZIP for the same account in the same browser, the app compares it with the previous export and shows both filenames. If you have several earlier lists, select “Change previous export” in your latest results to see new and missing followers between the two exports.',
-      ),
-      link: { page: 'history', label: t('ไปที่หน้าประวัติบนเครื่อง', 'Open History settings') },
-    },
+    ...getComparisonFaqs(t),
     {
       q: t(
         'ใช้ตรวจหลายบัญชี Instagram ในเครื่องเดียวกันได้ไหม?',
@@ -323,17 +317,29 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
   const { t } = useLanguage();
   const reviewEndpoint = getReviewEndpoint();
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewPaused, setReviewPaused] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<'checking' | 'open' | 'paused' | 'unavailable'>(
+    reviewEndpoint ? 'checking' : 'open',
+  );
 
   useEffect(() => {
     if (!reviewEndpoint) return;
     const request = new AbortController();
-    void isReviewIntakePaused(reviewEndpoint, request.signal)
-      .then((paused) => {
-        if (paused && !request.signal.aborted) setReviewPaused(true);
+    const timeout = window.setTimeout(() => {
+      request.abort();
+      setReviewStatus('unavailable');
+    }, 20_000);
+    void loadReviewIntakeStatus(reviewEndpoint, request.signal)
+      .then((status) => {
+        if (!request.signal.aborted) setReviewStatus(status);
       })
-      .catch(() => {});
-    return () => request.abort();
+      .catch(() => {
+        if (!request.signal.aborted) setReviewStatus('unavailable');
+      })
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      window.clearTimeout(timeout);
+      request.abort();
+    };
   }, [reviewEndpoint]);
 
   return (
@@ -440,16 +446,24 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
                 aria-live="polite"
                 className="mt-1 max-w-[48ch] text-sm leading-relaxed text-muted"
               >
-                {reviewPaused
-                  ? t('พักรับรีวิวชั่วคราว', 'Review submissions are temporarily paused.')
-                  : t(
-                      'ให้คะแนน 1–5 ดาวและกรอกชื่อแสดงผล เขียนข้อความเพิ่มเติมได้ตามสะดวก',
-                      'Give a rating from 1 to 5 stars and enter a display name. You can also leave a comment.',
-                    )}
+                {reviewStatus === 'checking' &&
+                  t('กำลังตรวจสอบสถานะการรับรีวิว…', 'Checking whether reviews are open…')}
+                {reviewStatus === 'paused' &&
+                  t('ขณะนี้ปิดรับรีวิวใหม่ชั่วคราว', 'New review submissions are temporarily paused.')}
+                {reviewStatus === 'unavailable' &&
+                  t(
+                    'ตรวจสอบสถานะการรับรีวิวไม่ได้ ลองโหลดหน้านี้ใหม่',
+                    'Could not check whether reviews are open. Try reloading this page.',
+                  )}
+                {reviewStatus === 'open' &&
+                  t(
+                    'ให้คะแนน 1–5 ดาวและกรอกชื่อแสดงผล เขียนข้อความเพิ่มเติมได้ตามสะดวก',
+                    'Give a rating from 1 to 5 stars and enter a display name. You can also leave a comment.',
+                  )}
               </p>
             </div>
           </div>
-          {!reviewPaused && (
+          {reviewStatus === 'open' && (
             <button
               type="button"
               className="btn btn--secondary shrink-0"
@@ -465,9 +479,9 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
             </button>
           )}
         </div>
-        {!reviewPaused && (
+        {reviewStatus === 'open' && (
           <div id="review-form" hidden={!reviewOpen} className="border-t border-rule p-6 sm:p-8">
-            <ReviewForm endpoint={reviewEndpoint} onPaused={() => setReviewPaused(true)} />
+            <ReviewForm endpoint={reviewEndpoint} onPaused={() => setReviewStatus('paused')} />
           </div>
         )}
       </section>

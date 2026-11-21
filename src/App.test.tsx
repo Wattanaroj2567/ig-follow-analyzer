@@ -5,6 +5,7 @@ import { buildDemoAnalysisResult } from './data/demoAnalysis';
 import { verifyFollowSetInvariants } from './data/mockFixture';
 import { THEME_STORAGE_KEY } from './lib/theme';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { ResultsScreen } from './screens/ResultsScreen';
 import type { HistoryRecord } from './types/analyzer';
 
 function stubZipReaders() {
@@ -64,6 +65,14 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(second);
     expect(second).toHaveAttribute('aria-expanded', 'false');
     expect(first).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(faq.getByRole('button', { name: 'เคยเก็บรายชื่อไว้แล้ว จะเทียบกับ ZIP รอบใหม่ยังไง?' }));
+    expect(faq.getByRole('link', { name: 'ไปหน้าประวัติบนเครื่อง' })).toHaveAttribute(
+      'href',
+      '#/history',
+    );
+    fireEvent.click(faq.getByRole('button', { name: 'ยอดผู้ติดตามเท่าเดิม รายชื่อเปลี่ยนได้ไหม?' }));
+    expect(faq.getByText(/ติดตามใหม่ 1.*หายจากรายชื่อผู้ติดตาม 1/)).toBeVisible();
   });
 
   it('keeps the feedback draft when hiding and reopening the form', async () => {
@@ -109,6 +118,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
   it('keeps a review draft when changing theme or hiding the form', async () => {
     vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ acceptingReviews: true }) }),
+    );
     window.history.replaceState(null, '', '/#/about');
     render(<App />);
 
@@ -139,6 +152,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
   it('clears the rating when the same star is selected again', async () => {
     vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ acceptingReviews: true }) }),
+    );
     window.history.replaceState(null, '', '/#/about');
     render(<App />);
 
@@ -174,18 +191,37 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
   it('hides the review form when intake is paused while keeping feedback available', async () => {
     const endpoint = 'https://script.google.com/macros/s/test-review/exec';
     vi.stubEnv('VITE_REVIEW_ENDPOINT', endpoint);
+    let resolveStatus!: (status: { acceptingReviews: boolean }) => void;
+    const status = new Promise<{ acceptingReviews: boolean }>((resolve) => {
+      resolveStatus = resolve;
+    });
     const fetchReview = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ acceptingReviews: false }),
+      json: () => status,
     });
     vi.stubGlobal('fetch', fetchReview);
     window.history.replaceState(null, '', '/#/about');
     render(<App />);
 
-    expect(await screen.findByText('พักรับรีวิวชั่วคราว')).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'รีวิวการใช้งาน' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'เขียนรีวิว' })).not.toBeInTheDocument();
+    expect(screen.getByText('กำลังตรวจสอบสถานะการรับรีวิว…')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'เปิดแบบฟอร์มแจ้งปัญหา' })).toBeEnabled();
+
+    resolveStatus({ acceptingReviews: false });
+    expect(await screen.findByText('ขณะนี้ปิดรับรีวิวใหม่ชั่วคราว')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'เขียนรีวิว' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'เปิดแบบฟอร์มแจ้งปัญหา' })).toBeEnabled();
     expect(fetchReview).toHaveBeenCalledWith(`${endpoint}?status=1`, expect.anything());
+  });
+
+  it('shows a reload hint when the review status cannot be checked', async () => {
+    vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    expect(await screen.findByText('ตรวจสอบสถานะการรับรีวิวไม่ได้ ลองโหลดหน้านี้ใหม่')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'เขียนรีวิว' })).not.toBeInTheDocument();
   });
 
   it('shows the paused message when intake closes after the form was loaded', async () => {
@@ -207,7 +243,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       target: { value: 'ผู้ทดสอบ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ส่งรีวิว' }));
-    expect(await screen.findByText('พักรับรีวิวชั่วคราว')).toBeVisible();
+    expect(await screen.findByText('ขณะนี้ปิดรับรีวิวใหม่ชั่วคราว')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'ส่งรีวิว' })).not.toBeInTheDocument();
   });
 
@@ -230,7 +266,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     render(<App />);
 
     const review = within(await screen.findByRole('region', { name: 'รีวิวการใช้งาน' }));
-    fireEvent.click(review.getByRole('button', { name: 'เขียนรีวิว' }));
+    fireEvent.click(await review.findByRole('button', { name: 'เขียนรีวิว' }));
     expect(review.getByRole('link', { name: 'อ่านวิธีที่เราใช้ข้อมูลรีวิว' })).toHaveAttribute(
       'href',
       '#/terms?section=review-data',
@@ -440,8 +476,14 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(document.documentElement.lang).toBe('en');
     expect(screen.getByRole('searchbox', { name: 'Search by username' })).toBe(search);
     expect(search).toHaveValue('bkk.cafe.hopper');
-    const exportDates = within(screen.getByRole('status', { name: 'Comparison export dates' }));
-    expect(exportDates.getByText('19 Oct 2026')).toBeVisible();
+    const exportDates = within(
+      screen.getByRole('region', { name: 'How did your follower list change?' }),
+    );
+    expect(exportDates.getByText('ZIP you’re viewing')).toBeVisible();
+    expect(exportDates.getByText('Comparison ZIP')).toBeVisible();
+    expect(exportDates.getByRole('status', { name: 'Comparison ZIP' })).toHaveTextContent(
+      '19 Oct 2026',
+    );
     expect(exportDates.getByText('19 Nov 2026')).toBeVisible();
     expect(window.location.hash).toBe('#/results?demo');
 
@@ -629,6 +671,10 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const preview = within(screen.getByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' }));
     expect(preview.getByRole('heading', { name: 'เปิดประวัติ แล้วอัปโหลด ZIP 1 ไฟล์' })).toBeVisible();
     expect(preview.getByRole('heading', { name: 'อัปโหลด ZIP ใหม่ 1 ไฟล์' })).toBeVisible();
+    expect(preview.getByRole('note')).toHaveTextContent('ลองจดยอดผู้ติดตามบนโปรไฟล์ Instagram');
+    expect(preview.getByRole('note')).toHaveTextContent(
+      'ถ้าจำยอดเดิมไม่ได้ ก็ใช้ ZIP รอบก่อนที่บันทึกไว้เทียบได้เลย',
+    );
     expect(preview.getByRole('note')).toHaveTextContent('ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น');
     expect(preview.getByText('@demo_account_014')).toBeVisible();
     expect(preview.getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
@@ -643,8 +689,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     );
     expect(englishPreview.getByRole('heading', { name: 'Recently unfollowed' })).toBeVisible();
     expect(englishPreview.getByRole('note')).toHaveTextContent(
-      'request a fresh ZIP the next day or later',
+      'follower count on your Instagram profile',
     );
+    expect(englishPreview.getByRole('note')).toHaveTextContent('a fresh ZIP the next day or later');
     fireEvent.click(englishPreview.getByRole('link', { name: 'Set up local history' }));
 
     expect(window.location.hash).toBe('#/history');
@@ -666,6 +713,11 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const missingFollowers = screen.getByRole('button', { name: /หายจากรายชื่อ/ });
     fireEvent.click(missingFollowers);
     const row = screen.getByText('@demo_account_014').closest('details');
+    const profile = screen.getByRole('link', {
+      name: 'เปิดโปรไฟล์ Instagram ของ @demo_account_014',
+    });
+    expect(profile).toHaveAttribute('href', 'https://www.instagram.com/demo_account_014/');
+    expect(profile).toHaveAttribute('target', '_blank');
     expect(row).not.toHaveAttribute('open');
     fireEvent.click(within(row!).getByText('ดูไทม์ไลน์'));
     expect(row).toHaveAttribute('open');
@@ -696,20 +748,24 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const comparison = within(
       await screen.findByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' }),
     );
-    const exportDateStatus = { name: 'วันที่ของไฟล์ที่ใช้เปรียบเทียบ' };
-    expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
-    expect(comparison.getByText('ไฟล์ล่าสุด')).toBeVisible();
-    const followers = within(comparison.getByRole('region', { name: 'ผู้ติดตามทั้งหมด' }));
-    const notFollowingBack = within(comparison.getByRole('region', { name: 'ไม่ติดตามคุณกลับ' }));
-    expect(followers.getByText('1,192')).toBeVisible();
-    expect(followers.getByText('1,248')).toBeVisible();
-    expect(followers.getByText('+56')).toBeVisible();
-    expect(followers.getByText('เพิ่มสุทธิ')).toBeVisible();
-    expect(followers.getByText('วิธีคิด 1,248 − 1,192 = +56 บัญชี')).toBeVisible();
-    expect(notFollowingBack.getByText('124')).toBeVisible();
-    expect(notFollowingBack.getByText('150')).toBeVisible();
-    expect(notFollowingBack.getByText('+26')).toBeVisible();
-    expect(notFollowingBack.getByText('วิธีคิด 150 − 124 = +26 บัญชี')).toBeVisible();
+    const selectedExport = comparison.getByRole('status', { name: 'ไฟล์ที่ใช้เทียบ' });
+    expect(comparison.getByText('รอบก่อนหน้า', { selector: 'dt span' })).toBeVisible();
+    expect(comparison.getByText('ไฟล์ที่กำลังดู')).toBeVisible();
+    expect(screen.getAllByText('19 พ.ย. 2569')).toHaveLength(1);
+    expect(screen.getAllByText('instagram-demo-2026-11-19.zip')).toHaveLength(1);
+    expect(selectedExport).not.toHaveTextContent('วิเคราะห์เวลา');
+    expect(screen.getByText('ใช้ข้อมูลสมมติและไม่บันทึกลงประวัติ')).toBeVisible();
+    expect(screen.queryByText('วิเคราะห์เสร็จสมบูรณ์')).not.toBeInTheDocument();
+    expect(comparison.getByRole('button', { name: /ติดตามใหม่ 57/ })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /หายจากรายชื่อผู้ติดตาม 1/ })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /ติดตามใหม่ 57/ })).toHaveAccessibleDescription(
+      'ไฟล์ที่ใช้เทียบไม่มีชื่อ → ไฟล์ที่กำลังดูมีชื่อ',
+    );
+    expect(
+      comparison.getByRole('button', { name: /หายจากรายชื่อผู้ติดตาม 1/ }),
+    ).toHaveAccessibleDescription('ไฟล์ที่ใช้เทียบมีชื่อ → ไฟล์ที่กำลังดูไม่มีชื่อ');
+    expect(comparison.queryByRole('region', { name: 'ผู้ติดตามทั้งหมด' })).not.toBeInTheDocument();
+    expect(comparison.queryByRole('region', { name: 'ไม่ติดตามคุณกลับ' })).not.toBeInTheDocument();
     fireEvent.click(comparison.getByText('เปลี่ยนไฟล์ย้อนหลัง'));
     expect(
       comparison.getByRole('radio', { name: /instagram-demo-2026-10-19.zip.*รอบก่อนหน้า/ }),
@@ -717,22 +773,16 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(
       comparison.getByRole('radio', { name: /instagram-demo-2026-09-19.zip.*รอบเก่ากว่า/ }),
     );
-    expect(comparison.getByText('เทียบกับ · เลือกเอง')).toBeVisible();
-    expect(comparison.getByText('รอบเก่ากว่า', { selector: 'dt span' })).toBeVisible();
-    expect(followers.getByText('1,155')).toBeVisible();
-    expect(followers.getByText('1,248')).toBeVisible();
-    expect(followers.getByText('+93')).toBeVisible();
-    expect(notFollowingBack.getByText('94')).toBeVisible();
-    expect(notFollowingBack.getByText('150')).toBeVisible();
-    expect(notFollowingBack.getByText('+56')).toBeVisible();
-    expect(notFollowingBack.getByText('วิธีคิด 150 − 94 = +56 บัญชี')).toBeVisible();
+    expect(comparison.getByText('เลือกเอง', { selector: 'dt span' })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /ติดตามใหม่ 94/ })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /หายจากรายชื่อผู้ติดตาม 1/ })).toBeVisible();
     expect(comparison.getByText(/เว็บจะแสดงบัญชี A ในหมวด/)).toBeVisible();
     expect(
       comparison.getByText('instagram-demo-2026-11-19.zip', { selector: 'dd span' }),
     ).toBeVisible();
-    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
-      /19 ก.ย. 2569.*19 พ.ย. 2569/,
-    );
+    expect(selectedExport).toHaveTextContent('19 ก.ย. 2569');
+    expect(selectedExport).toHaveTextContent('instagram-demo-2026-09-19.zip');
+    expect(comparison.getByText('19 พ.ย. 2569')).toBeVisible();
 
     fireEvent.click(comparison.getByRole('button', { name: /หายจากรายชื่อ/ }));
     fireEvent.click(screen.getByText('@demo_account_014', { exact: true }));
@@ -742,21 +792,20 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(screen.queryByText('@demo_account_014', { exact: true })).not.toBeInTheDocument();
 
     fireEvent.click(comparison.getByRole('button', { name: 'กลับไปเทียบรอบก่อนหน้า' }));
-    expect(comparison.getByText('เทียบกับ · อัตโนมัติ')).toBeVisible();
-    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
-      /19 ต.ค. 2569.*19 พ.ย. 2569/,
-    );
+    expect(comparison.getByText('รอบก่อนหน้า', { selector: 'dt span' })).toBeVisible();
+    expect(selectedExport).toHaveTextContent('19 ต.ค. 2569');
 
     fireEvent.click(comparison.getByRole('radio', { name: /instagram-demo-2026-09-19.zip/ }));
     fireEvent.click(screen.getByRole('button', { name: 'สร้างรายงาน PDF ตัวอย่าง' }));
-    const pdfTitle = await screen.findByRole('heading', {
+    const pdfTitle = screen.getByRole('heading', {
       name: 'รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram',
     });
     const sheet = pdfTitle.closest('[lang]');
     expect(sheet).toHaveTextContent('เทียบกับ instagram-demo-2026-09-19.zip');
     expect(screen.queryByRole('region', { name: 'ไฟล์ที่ใช้เทียบในรายงาน' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'เปลี่ยนไฟล์ย้อนหลัง' })).not.toBeInTheDocument();
-    expect(sheet).toHaveTextContent('หายจากรายชื่อ 1');
+    expect(sheet).toHaveTextContent('ติดตามใหม่ 94 บัญชี · หายจากรายชื่อผู้ติดตาม 1 บัญชี');
+    expect(sheet).not.toHaveTextContent(/ผู้ติดตามสุทธิ|ส่วนต่าง \(กำลังติดตาม/);
     fireEvent.click(screen.getByRole('button', { name: 'หน้าถัดไป' }));
     expect(screen.getByText(/ติดตามใหม่ \(94 บัญชี\)/)).toBeVisible();
     const includeComparison = screen.getByRole('checkbox', { name: 'สรุปผลเทียบสองไฟล์' });
@@ -772,18 +821,23 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(includeSummary);
     expect(sheet).toHaveTextContent('รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram');
 
-    const estimateBefore = screen.getByText(/หน้า A4 · .*บัญชี|A4 pages · .*accounts/).textContent;
+    const estimateBefore = screen.getByText(/^ทั้งหมด [\d,]+ หน้า$/).textContent;
     fireEvent.click(
       screen.getByRole('checkbox', {
         name: /รายชื่อผู้ติดตามทั้งหมด/,
       }),
     );
-    const estimateAfter = screen.getByText(/หน้า A4 · .*บัญชี|A4 pages · .*accounts/).textContent;
+    const estimateAfter = screen.getByText(/^ทั้งหมด [\d,]+ หน้า$/).textContent;
     expect(estimateAfter).not.toBe(estimateBefore);
-    fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }));
-    expect(screen.getByRole('status', exportDateStatus)).toHaveTextContent(
-      /19 ก.ย. 2569.*19 พ.ย. 2569/,
-    );
+    const breadcrumb = within(screen.getByRole('navigation', { name: 'เส้นทางหน้ารายงาน' }));
+    expect(breadcrumb.getByText('รายงาน PDF')).toHaveAttribute('aria-current', 'page');
+    const resultsLink = breadcrumb.getByRole('link');
+    expect(resultsLink).toHaveAttribute('href', '#/results?demo');
+    fireEvent.click(resultsLink);
+    const restoredExport = await screen.findByRole('status', { name: 'ไฟล์ที่ใช้เทียบ' });
+    expect(restoredExport).toHaveTextContent('19 ก.ย. 2569');
+    expect(restoredExport).toHaveTextContent('instagram-demo-2026-09-19.zip');
+    expect(screen.getByText('19 พ.ย. 2569')).toBeVisible();
     expect(openDatabase).not.toHaveBeenCalled();
   });
 
@@ -809,7 +863,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
   it('shows a mobile back control outside the home page', async () => {
     const home = render(<App />);
-    expect(screen.queryByRole('button', { name: 'ย้อนกลับ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'กลับหน้าแรก' })).not.toBeInTheDocument();
     home.unmount();
 
     window.history.replaceState(null, '', '/#/upload');
@@ -817,7 +871,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       render(<App />);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ย้อนกลับ' }));
+    fireEvent.click(screen.getByRole('button', { name: 'กลับหน้าแรก' }));
     expect(window.location.hash).toBe('#/');
   });
 
@@ -836,6 +890,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(desktop);
     expect(desktop).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/มุมซ้ายล่างของแถบเมนู/)).toBeInTheDocument();
+  });
+
+  it('focuses the date range step when opening its guide link', async () => {
+    window.history.replaceState(null, '', '/#/how-it-works?section=date-range');
+    render(<App />);
+    const heading = await screen.findByRole('heading', { name: /เลือกช่วงวันที่ ตั้งแต่ต้น/ });
+    expect(heading.closest('li')).toHaveFocus();
   });
 
   it('keeps downloaded-file help collapsed and links to the Instagram export guide', async () => {
@@ -858,6 +919,67 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(await screen.findByRole('heading', { name: 'วิธีขอไฟล์ ZIP จาก Instagram' })).toBeVisible();
   });
 
+  it.each([90, 180])(
+    'warns about a possible limited date range with a %i-day follower span',
+    (days) => {
+      const result = buildDemoAnalysisResult();
+      const day = 86400;
+      const oldest = 1_700_000_000;
+      render(
+        <ResultsScreen
+          result={{
+            ...result,
+            isDemoData: false,
+            followers: result.followers.map((entry, index) => ({
+              ...entry,
+              timestamp: oldest + (index === 0 ? 0 : days * day),
+            })),
+            following: [{ ...result.following[0], timestamp: oldest - 181 * day }],
+          }}
+          diff={null}
+          comparison={null}
+          comparisonStatus="off"
+          onNavigate={vi.fn()}
+          onSelectComparison={vi.fn()}
+        />,
+      );
+      const warning = screen.getByRole('note');
+      expect(warning).toHaveTextContent('รายชื่อผู้ติดตามใน ZIP อาจครอบคลุมแค่บางช่วง');
+      expect(warning).toHaveTextContent('วันที่ติดตามใน ZIP บอกไม่ได้ว่าคุณตั้งช่วงไหน');
+      expect(within(warning).getByRole('link', { name: 'ดูขั้นตอนเลือกช่วงตลอดเวลา' })).toHaveAttribute(
+        'href',
+        '#/how-it-works?section=date-range',
+      );
+    },
+  );
+
+  it('offers the next comparison action for each history state', () => {
+    const onNavigate = vi.fn();
+    const props = {
+      result: { ...buildDemoAnalysisResult(), isDemoData: false },
+      diff: null,
+      comparison: null,
+      onNavigate,
+      onSelectComparison: vi.fn(),
+    };
+    const { rerender } = render(<ResultsScreen {...props} comparisonStatus="off" />);
+    const prompt = within(screen.getByRole('region', { name: 'ขั้นตอนถัดไปสำหรับเทียบไฟล์' }));
+    fireEvent.click(prompt.getByRole('button', { name: 'ตั้งค่าประวัติบนเครื่อง' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('history');
+
+    rerender(<ResultsScreen {...props} comparisonStatus="waiting" />);
+    fireEvent.click(prompt.getByRole('button', { name: 'อัปโหลด ZIP เพื่อเก็บรายชื่อ' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('upload');
+
+    rerender(<ResultsScreen {...props} comparisonStatus="unknown-owner" />);
+    expect(prompt.getByRole('button', { name: 'อัปโหลด ZIP ชื่อเดิม' })).toBeVisible();
+
+    rerender(<ResultsScreen {...props} comparisonStatus="ready" />);
+    fireEvent.click(screen.getByRole('button', { name: 'อัปโหลด ZIP เพื่อเทียบ' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('upload');
+    expect(screen.queryByRole('button', { name: 'อัปโหลดไฟล์ใหม่' })).not.toBeInTheDocument();
+  });
+
   it('runs demo analysis through real Dashboard, searchable Account List, and PDF screen', async () => {
     window.history.replaceState(null, '', '/#/results?demo');
     render(<App />);
@@ -866,6 +988,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ดูภาพรวมบัญชีและรายชื่อ' }));
     expect(overview).toHaveFocus();
     expect(screen.queryByText('1,398')).not.toBeInTheDocument();
+    const calculation = screen.getByText('ดูวิธีคำนวณ');
+    expect(calculation.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(calculation);
+    expect(screen.getByText('1,212 + 150 + 36 = 1,398')).toBeVisible();
+    expect(screen.getByText('1,212 ÷ 1,398 × 100 ≈ 86.7%')).toBeVisible();
+    expect(screen.getByText('150 ÷ 1,398 × 100 ≈ 10.7%')).toBeVisible();
+    expect(screen.getByText('36 ÷ 1,398 × 100 ≈ 2.6%')).toBeVisible();
     // Account list stays collapsed until the user clicks a Dashboard metric card
     expect(screen.queryByLabelText(/ค้นหาชื่อบัญชี/i)).toBeNull();
 
@@ -893,6 +1022,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /สร้างรายงาน PDF/i })[0]);
     expect(await screen.findByText(/ดาวน์โหลด PDF ลงเครื่อง/i)).toBeInTheDocument();
+    expect(screen.getByText('1,212 จาก 1,362 บัญชี (89.0%)')).toBeVisible();
+    fireEvent.click(screen.getByText('ดูวิธีคำนวณ'));
+    expect(screen.getByText('1,212 + 150 + 36 = 1,398')).toBeVisible();
+    expect(screen.getByText('1,212 ÷ 1,398 × 100 ≈ 86.7%')).toBeVisible();
+    expect(screen.getByText('1,212 ÷ 1,362 × 100 ≈ 89.0%')).toBeVisible();
+    fireEvent.click(screen.getByRole('checkbox', { name: /หน้าสรุปภาพรวมและกราฟวงกลม/ }));
+    expect(screen.queryByText('ดูวิธีคำนวณ')).not.toBeInTheDocument();
   });
 
   it('distinguishes one-ZIP relationships from changes between two sample exports', async () => {
@@ -943,9 +1079,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(
       await screen.findByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม', level: 1 }),
     ).toBeVisible();
-    expect(screen.getByRole('status', { name: 'วันที่ของไฟล์ที่ใช้เปรียบเทียบ' })).toHaveTextContent(
-      /19 ต.ค. 2569.*19 พ.ย. 2569/,
-    );
+    expect(screen.getByRole('status', { name: 'ไฟล์ที่ใช้เทียบ' })).toHaveTextContent('19 ต.ค. 2569');
     expect(screen.queryByRole('region', { name: 'ตัวอย่างแดชบอร์ด' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'ภาพรวมบัญชี' })).toBeVisible();
     expect(screen.getByRole('button', { name: /หายจากรายชื่อ/ })).toBeVisible();
@@ -1027,6 +1161,8 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const cards = screen.getAllByRole('article');
     expect(within(cards[0]).getByText('ล่าสุด')).toBeVisible();
     expect(within(cards[0]).getByText('168.0 KB')).toBeVisible();
+    fireEvent.click(within(cards[0]).getByRole('button', { name: 'รายละเอียดเพิ่มเติม' }));
+    expect(within(cards[0]).getByText('1,212 จาก 1,362 บัญชี (89.0%)')).toBeVisible();
     expect(within(cards[1]).getByText('ล่าสุด')).toBeVisible();
     expect(within(cards[1]).getByText('2.00 MB')).toBeVisible();
     expect(within(cards[2]).getByText('ก่อนหน้า')).toBeVisible();
@@ -1055,6 +1191,8 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(deleteButton);
     expect(screen.getByRole('alertdialog')).toHaveTextContent('first-4.zip');
     expect(screen.getByRole('alertdialog')).toHaveTextContent('วิเคราะห์เมื่อ');
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('ประวัติที่ลบแล้วกู้คืนไม่ได้');
+    expect(screen.getByRole('alertdialog')).not.toHaveTextContent('ดาวน์โหลดไว้');
     expect(screen.getByRole('button', { name: 'ยกเลิก' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'ยกเลิก' }));
     expect(onDeleteRecord).not.toHaveBeenCalled();

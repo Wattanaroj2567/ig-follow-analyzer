@@ -66,12 +66,16 @@
   --rule-hair: 1px;
   --control-height: 44px;
   --nav-bar-height: 68px;
+  --nav-hover-fill: var(--color-rule);
+  --nav-current-fill: var(--color-accent-soft);
   --container-max: 1240px;
   --gutter: clamp(16px, 4vw, 48px);
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
+  --nav-hover-fill: color-mix(in oklab, var(--color-paper-3) 60%, var(--color-rule));
+  --nav-current-fill: color-mix(in oklab, var(--color-accent) 16%, white);
   --color-paper: oklch(97.8% 0.004 85);
   --color-paper-2: oklch(100% 0 0);
   --color-paper-3: oklch(94.5% 0.006 85);
@@ -418,11 +422,7 @@
 
 :is(.nav__link, .nav__drawer-link):hover:not([aria-current='page']) {
   color: var(--color-ink);
-  background-color: var(--color-paper-2);
-}
-
-:root[data-theme='light'] :is(.nav__link, .nav__drawer-link):hover:not([aria-current='page']) {
-  background-color: color-mix(in oklab, var(--color-paper-3) 60%, var(--color-rule));
+  background-color: var(--nav-hover-fill);
 }
 
 @media (min-width: 72rem) {
@@ -432,14 +432,10 @@
 }
 
 .nav__link[aria-current='page'] {
-  color: var(--color-ink);
-  background-color: var(--color-paper-2);
+  color: var(--color-accent);
+  background-color: var(--nav-current-fill);
   box-shadow: inset 0 -2px 0 var(--color-accent);
   border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-}
-
-:root[data-theme='light'] .nav__link[aria-current='page'] {
-  background-color: color-mix(in oklab, var(--color-paper-3) 65%, var(--color-rule));
 }
 
 .nav__actions {
@@ -541,6 +537,9 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
 .nav__language-button {
@@ -548,15 +547,14 @@
   min-height: 32px;
 }
 
-.nav__language-button:hover,
-.nav__theme-button:hover {
-  background: var(--color-paper-3);
+:is(.nav__language-button, .nav__theme-button):hover:not([aria-pressed='true']) {
+  background: var(--nav-hover-fill);
   color: var(--color-ink);
 }
 
 .nav__language-button[aria-pressed='true'],
 .nav__theme-button[aria-pressed='true'] {
-  background: var(--color-accent-soft);
+  background: var(--nav-current-fill);
   color: var(--color-accent);
 }
 
@@ -640,7 +638,7 @@
 }
 
 .nav__drawer-link[aria-current='page'] {
-  background: var(--color-accent-soft);
+  background: var(--nav-current-fill);
   color: var(--color-accent);
 }
 
@@ -741,6 +739,17 @@
 .btn--secondary:hover:not(:disabled) {
   background-color: var(--color-paper-3);
   border-color: var(--color-ink);
+}
+
+.btn--cool {
+  background-color: var(--color-cool-soft);
+  color: var(--color-cool);
+  border: 1px solid color-mix(in oklab, var(--color-cool) 45%, var(--color-rule));
+}
+
+.btn--cool:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--color-cool-soft) 90%, var(--color-cool));
+  border-color: var(--color-cool);
 }
 
 .btn--ghost {
@@ -844,7 +853,7 @@
 }
 
 .comparison-card {
-  border-color: var(--color-rule);
+  border-color: color-mix(in oklab, currentColor 32%, var(--color-rule));
   background-color: var(--color-paper-2);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
 }
@@ -870,7 +879,7 @@
     ),
     radial-gradient(
       circle at 88% 18%,
-      color-mix(in oklab, var(--color-accent) 8%, transparent),
+      color-mix(in oklab, var(--color-ig-rose) 14%, transparent),
       transparent 30rem
     ),
     var(--color-paper);
@@ -886,7 +895,9 @@
 }
 
 .nav__drawer {
-  background: color-mix(in oklab, var(--color-paper-3) 98%, transparent);
+  background: var(--color-paper-3);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 :is(
@@ -904,14 +915,14 @@
 :root[data-theme='light'] .app-frame {
   background:
     radial-gradient(
-      circle at 10% 0%,
-      color-mix(in oklab, var(--color-cool) 7%, transparent),
-      transparent 34rem
+      ellipse 64% 30rem at 24% 7rem,
+      color-mix(in oklab, var(--color-ig-gold) 14%, var(--color-paper-2)),
+      transparent 100%
     ),
     radial-gradient(
-      circle at 92% 18%,
-      color-mix(in oklab, var(--color-accent) 9%, transparent),
-      transparent 30rem
+      ellipse 52% 27rem at 80% 9rem,
+      color-mix(in oklab, var(--color-ig-rose) 10%, var(--color-paper-2)),
+      transparent 100%
     ),
     var(--color-paper);
   background-attachment: fixed;
@@ -923,7 +934,7 @@
 }
 
 :root[data-theme='light'] .nav__drawer {
-  background: color-mix(in oklab, var(--color-paper-3) 96%, transparent);
+  background: var(--color-paper-3);
   border-inline-start-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
   box-shadow: -16px 12px 32px color-mix(in oklab, var(--color-ink) 14%, transparent);
 }
@@ -942,18 +953,6 @@
     inset 0 1px 0 color-mix(in oklab, white 90%, transparent);
 }
 
-:root[data-theme='light'] .nav__link[aria-current='page'] {
-  background: color-mix(in oklab, var(--color-accent) 16%, white);
-  color: var(--color-accent);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
-}
-
-:root[data-theme='light'] .nav__drawer-link[aria-current='page'] {
-  background: color-mix(in oklab, var(--color-accent) 16%, white);
-  color: var(--color-accent);
-  box-shadow: none;
-}
-
 :root[data-theme='light']
   :is(.nav__language-button[aria-pressed='true'], .nav__theme-button[aria-pressed='true']) {
   background: color-mix(in oklab, var(--color-accent) 18%, white);
@@ -967,6 +966,52 @@
 
 .app-frame .app-subfooter {
   background-color: transparent;
+}
+
+/* ---------------------------------------------------------------- Results Account Table */
+
+.results-table-wrap {
+  border-color: color-mix(in oklab, var(--color-rule-2) 80%, var(--color-rule));
+  background-color: var(--color-paper-2);
+}
+
+.results-table thead tr {
+  background-color: var(--color-paper-3);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-rule-2) 80%, var(--color-rule));
+}
+
+:root[data-theme='light'] .results-table thead tr {
+  background-color: color-mix(in oklab, var(--color-paper-3) 76%, var(--color-rule));
+}
+
+.results-table thead th {
+  color: var(--color-ink-2);
+  font-weight: 600;
+}
+
+.results-table tbody tr {
+  background-color: var(--color-paper-2);
+  transition: background-color 120ms ease;
+}
+
+.results-table tbody tr:hover {
+  background-color: color-mix(in oklab, var(--color-rule) 36%, var(--color-paper-2));
+}
+
+:root[data-theme='light'] .results-table tbody tr:hover {
+  background-color: color-mix(in oklab, var(--color-paper-3) 55%, var(--color-paper-2));
+}
+
+.results-table tbody tr + tr {
+  border-top: 1px solid var(--color-rule);
+}
+
+.results-table :is(th, td) + :is(th, td) {
+  border-left: 1px solid var(--color-rule);
+}
+
+.results-table thead th + th {
+  border-left-color: color-mix(in oklab, var(--color-rule-2) 70%, var(--color-rule));
 }
 
 @media (width < 64rem) {
@@ -1280,6 +1325,24 @@
 .relationship-metric[data-relationship='mutual'] {
   --card-tone: var(--color-ok);
   --card-soft: var(--color-ok-soft);
+}
+
+.relationship-overview
+  .relationship-metric[aria-pressed='false']:is(
+    [data-relationship='notFollowingBack'],
+    [data-relationship='notFollowedBack'],
+    [data-relationship='mutual']
+  ) {
+  background-color: color-mix(in oklab, var(--card-soft) 78%, var(--color-paper-2));
+}
+
+:root[data-theme='light']
+  .relationship-overview
+  .relationship-metric[aria-pressed='false']:is(
+    [data-relationship='followers'],
+    [data-relationship='following']
+  ) {
+  background-color: color-mix(in oklab, var(--color-rule) 32%, var(--color-paper-2));
 }
 
 .relationship-metric:hover {

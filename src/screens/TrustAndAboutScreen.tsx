@@ -368,6 +368,21 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
             <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
           </a>
         </p>
+        <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
+          <span className="measured">
+            {t(`เวอร์ชัน ${__APP_VERSION__}`, `Version ${__APP_VERSION__}`)}
+          </span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://github.com/Wattanaroj2567/ig-follow-analyzer/blob/main/CHANGELOG.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-medium text-cool underline underline-offset-4 hover:text-ink"
+          >
+            {t('ดูบันทึกการอัปเดต (GitHub)', 'View changelog (GitHub)')}
+            <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+          </a>
+        </p>
       </header>
 
       <section className="mt-8" aria-labelledby="about-design-heading">

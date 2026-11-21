@@ -311,6 +311,24 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(review.queryByRole('form')).not.toBeInTheDocument();
   });
 
+  it('shows the current app version and changelog link on the About page', async () => {
+    window.history.replaceState(null, '', '/#/about');
+    render(<App />);
+
+    expect(await screen.findByText(`เวอร์ชัน ${__APP_VERSION__}`)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'ดูบันทึกการอัปเดต (GitHub)' })).toHaveAttribute(
+      'href',
+      'https://github.com/Wattanaroj2567/ig-follow-analyzer/blob/main/CHANGELOG.md',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(screen.getByText(`Version ${__APP_VERSION__}`)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'View changelog (GitHub)' })).toHaveAttribute(
+      'href',
+      'https://github.com/Wattanaroj2567/ig-follow-analyzer/blob/main/CHANGELOG.md',
+    );
+  });
+
   it('shows the rating total and up to six public comments on the landing page', async () => {
     vi.stubGlobal('AbortSignal', undefined);
     vi.stubEnv('VITE_REVIEW_ENDPOINT', 'https://script.google.com/macros/s/test-review/exec');

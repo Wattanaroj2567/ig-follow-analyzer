@@ -4,6 +4,8 @@
 
 This documentation summarizes how each feature of the application works based on the current implementation in `src/`.
 
+- [App screenshots by page and state](screenshots/README.md) (desktop and mobile)
+
 ## Feature Index
 
 1. [ZIP Parser & Set Engine](features/zip-parser-and-set-engine.en.md) — Local ZIP upload, Web Worker extraction, JSON/HTML parsing, safety limits, and follow relationship set math.

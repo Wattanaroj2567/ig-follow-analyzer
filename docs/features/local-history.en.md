@@ -12,22 +12,32 @@ The results page shows **New followers** and **Missing from the list** cards. Se
 
 Latest results show both ZIP names, export dates, and analysis times. The app automatically compares the latest export with the preceding export for the same account that has saved lists. If several earlier exports are available, choose **Change previous export** to update the counts and timelines, or **Reset to previous export** to restore the automatic pairing. Exports from the same day are ordered by analysis time.
 
-In local history, choose **Compare with latest in PDF** on an earlier entry to preview the selected pair. The button appears when saving account lists is enabled and both that entry and the latest ZIP for the same account have saved lists.
+The top of the results page labels the dates **Earlier ZIP** and **ZIP you’re viewing**. Below the comparison cards, the app shows both totals and the calculation for the net change in followers and accounts that do not follow back. The calculation subtracts the earlier ZIP’s total from the total in the ZIP you’re viewing. **Not following you back** counts accounts you follow that don’t follow you.
 
-Select **View sample history** on the landing page or sample dashboard to see the two latest sample files or browse the full list four at a time. Open each file's sample dashboard or create a comparison PDF from an earlier entry. Sample pages use built-in fictitious data and do not access real history in `IndexedDB`.
+If the open ZIP has at least 30% fewer followers and the drop is at least 10 accounts, the results show a warning above the comparison totals. The drop may reflect an incomplete list or a real change. Request a new ZIP with **All time** as the date range before drawing conclusions about unfollows.
+
+The results also warn when at least 30% of the older list is missing and at least 30% of the open list is new, with at least 10 accounts on each side. The warning works even if the total count stayed the same.
+
+With account-list storage enabled, the app keeps a SHA-256 fingerprint with the saved result. The same ZIP name and bytes reuse the original history entry. Exports with the same fingerprint are skipped when selecting a comparison. Saved results from before fingerprints were added still reopen normally.
+
+To create a comparison PDF, open the latest saved result for the account, select an earlier ZIP in the results, then open the PDF report.
+
+On the landing page, select **Try comparing two sample ZIPs** to explore the dashboard and choose earlier sample exports. The sample comparison uses built-in fictitious data.
 
 ## Key Capabilities
 
-- **OFF by Default:** Nothing is persisted until the user explicitly opts in.
+- **OFF by Default:** Analysis history is saved only after opt-in.
 - **2-Tier Explicit Opt-In:**
   - **Tier 1 (`tier1SummaryOptIn`):** Saves summary counts, ZIP metadata, and PDF export history.
   - **Tier 2 (`tier2HandlesOptIn`):** Saves account lists with each history entry for reopening results and comparing exports. Counts-only entries remain available in history.
 - **Per-Account Isolation:** Identifies the owner from the original Instagram ZIP filename. Comparing real exports requires a matching owner, and sample mode uses its own fictitious data.
+- **Revoking consent:** Turning off account list storage removes saved lists and keeps summaries. Turning off summary storage also disables list storage. **Clear all history** deletes the summaries and lists and turns both settings off. Changes apply to every open tab of the updated app.
+  A result reopened from history becomes unavailable if its saved account list is removed. A ZIP analyzed in the current tab remains available until the tab closes or reloads.
 - **Full Control & Pagination:** Paginates saved history cards (5 items per page) to keep long histories compact, with per-record deletion and 1-click full clear behind confirmation dialogs.
 
 ## Related Source Files
 
-- [`src/lib/historyStore.ts`](../../src/lib/historyStore.ts) — `IndexedDB` persistence (`ig-follow-analyzer-local-db`) via `idb` (`preferences`, `records`, `snapshots`)
+- [`src/lib/historyStore.ts`](../../src/lib/historyStore.ts) — `IndexedDB` persistence (`ig-follow-analyzer-local-db`) via `idb` (`preferences`, `records`)
 - [`src/screens/HistoryScreen.tsx`](../../src/screens/HistoryScreen.tsx) — 2-tier opt-in controls, paginated history list, account filter, and full clear UI
 - [`src/screens/DemoHistoryScreen.tsx`](../../src/screens/DemoHistoryScreen.tsx) — Sample history and links to earlier sample analyses
 - [`src/screens/LocalHistoryPreview.tsx`](../../src/screens/LocalHistoryPreview.tsx) — Landing page example of the local history workflow

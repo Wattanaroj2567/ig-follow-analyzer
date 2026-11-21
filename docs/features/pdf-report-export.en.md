@@ -13,8 +13,8 @@ Generates an A4 follower relationship PDF report directly inside the browser and
   - Preview and export share the site's background, text, chart, and table colors in Dark, Light, and System themes. A downloaded PDF keeps the theme shown when the download starts.
   - Subpath-safe font loading for both root deployments (Cloudflare Pages) and subpath previews (GitHub Pages).
   - Quick presets (`Recommended`, `Doesn't follow back`, `All categories`) with live page and account count estimates.
-  - When a comparison is available, the report uses the pair selected on the dashboard. From the latest result, use **Change previous export** on the PDF screen to update the preview and download. The optional comparison summary shows the earlier ZIP and the new, missing, and net follower counts.
-  - In history, select **Compare with latest in PDF** on an earlier entry to preview that export alongside the latest ZIP for the same account. Check both filenames before downloading.
+  - Choose the earlier ZIP in the latest results before opening the PDF report. The preview and download use that pair. The optional comparison summary shows the earlier ZIP and the new, missing, and net follower counts.
+    When a comparison changes unusually, its summary includes a date-range warning in both the preview and downloaded PDF.
   - Responsive A4 preview that fits mobile and desktop viewports, supports continuous multi-page scrolling, and zooms from `60%–180%`.
   - Donut chart legend displays counts and percentages for all three relationship segments in both the preview and exported PDF.
   - High-contrast summary cards and color-coded tables per category.

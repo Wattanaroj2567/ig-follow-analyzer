@@ -27,7 +27,7 @@
 - **Dashboard & Account Table:** Summarizes Followers, Following, Mutuals, Not Following Back, and Not Followed Back with interactive charts, search, filters, sorting, and pagination.
 - **Report Export:** Optionally download an A4 PDF (Thai or English) to read or print later. Create a comparison report when account lists are available for both exports.
 - **Opt-In Local History:** Automatically compare the latest ZIP with the preceding export, or choose an older export for the same account. See new and missing followers plus account timelines. History stays in the browser (`IndexedDB`), is off by default, and can be cleared after confirmation.
-- **Sample Mode:** Preview a single ZIP or compare two fictitious exports, then browse sample history and reopen past results before uploading your own file.
+- **Sample Mode:** Preview a single ZIP or compare two fictitious exports, with a choice of earlier sample ZIPs before uploading your own file.
 - **Bilingual & Themed UI:** Supports Thai and English, plus System (default), Dark, and Light themes.
 - **Feedback and Reviews:** Report issues, suggest features, or leave a rating from the About page. When you submit a review, Google Apps Script receives the review data for storage in Google Forms and management in Google Sheets.
 
@@ -101,6 +101,7 @@ See the [owner's guide to enabling and managing reviews](docs/features/i18n-them
 ## Documentation
 
 - [Feature Documentation](docs/README.en.md) (`docs/features/`)
+- [Screenshots by page and state](docs/screenshots/README.md) (desktop and mobile)
 - [Changelog](CHANGELOG.md)
 - [Project Agent Instructions](AGENTS.md)
 

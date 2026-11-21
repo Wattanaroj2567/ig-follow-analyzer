@@ -4,8 +4,11 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
 ### Added
 
+- Show the current app version and a link to the GitHub changelog on the About page, and add the MIT License.
 - Add practical comparison questions to the landing and Terms FAQs, with a fictitious example of changes when the follower total stays the same.
 - Explain relationship percentages on the results and PDF report pages, including how the three relationship counts add up to the chart denominator. Describe follower changes from the comparison ZIP to the ZIP being viewed on both cards.
 - Pause reviews from the review spreadsheet and tell visitors on the About page that new review submissions are temporarily paused.
@@ -37,7 +40,6 @@ Notable changes to IG Follow Analyzer are documented here.
 - Pair the blue background glow in Dark theme with a soft rose glow.
 - Add a breadcrumb to desktop PDF reports and label the return destinations on mobile. Returning from the report preserves the selected ZIP comparison.
 - Show each ZIP’s date and filename once on the results page, label both files, and place a two-way arrow between them.
-
 - Set English as the default `README.md` and move the Thai translation to `README.th.md`. Put the feature overview and ZIP workflow near the top of both versions and add tables for the app components and development commands.
 - Improve both README layouts on mobile with a standalone app link, shorter tables, and a separate guide section for optional export comparisons.
 - Add `npm run setup:env` to create a local environment file from the safe example without overwriting an existing file and clarify Cloudflare Pages setup.
@@ -45,7 +47,6 @@ Notable changes to IG Follow Analyzer are documented here.
 - Show a bilingual confirmation after feedback is submitted.
 - Replace the operating system styled account sort select with a theme-matched accessible menu.
 - Add a conventional commit message template (`.gitmessage`), a `git ci` alias, and an npm `prepare` script to encourage atomic, conventional commits.
-
 - Refresh the share preview image to the current landing page, captured in the System theme.
 - Use theme-aware background tints to distinguish sections on the landing page.
 - Show only new and missing follower counts in the ZIP comparison summary and its PDF. Simplify the PDF overview by removing the difference between following and follower totals.

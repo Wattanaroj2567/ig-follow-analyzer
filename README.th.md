@@ -102,4 +102,4 @@ npm run dev
 
 หากเว็บเปิดรับรีวิว คุณแจ้งปัญหาหรือเสนอแนะได้จากแบบฟอร์มในหน้า **เกี่ยวกับเรา**
 
-สร้างโดย [Wattanaroj Butdee](https://github.com/Wattanaroj2567) · © 2026 IG Follow Analyzer เป็นเครื่องมืออิสระที่ไม่มีส่วนเกี่ยวข้องกับ Instagram หรือ Meta
+สร้างโดย [Wattanaroj Butdee](https://github.com/Wattanaroj2567) · เผยแพร่ภายใต้ [MIT License](LICENSE) · © 2026 IG Follow Analyzer เป็นเครื่องมืออิสระที่ไม่มีส่วนเกี่ยวข้องกับ Instagram หรือ Meta

@@ -102,4 +102,4 @@ Use `npm run build` as the build command and `dist` as the output directory. For
 
 If reviews are enabled, use the feedback form on the app’s **About** page to report a problem or suggest an improvement.
 
-Created by [Wattanaroj Butdee](https://github.com/Wattanaroj2567). © 2026 IG Follow Analyzer. Independent tool, not affiliated with Instagram or Meta.
+Created by [Wattanaroj Butdee](https://github.com/Wattanaroj2567). Released under the [MIT License](LICENSE). © 2026 IG Follow Analyzer. Independent tool, not affiliated with Instagram or Meta.

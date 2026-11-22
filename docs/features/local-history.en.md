@@ -30,7 +30,7 @@ On the landing page, select **Try comparing two sample ZIPs** to explore the das
 
 ## Key Capabilities
 
-- **OFF by Default:** Analysis history is saved only after opt-in.
+- **OFF by Default:** Analysis history is saved only after opt-in, and the History page explains why it starts off (explicit consent first, safer on shared devices, and two-tier control with 1-click removal).
 - **2-Tier Explicit Opt-In:**
   - **Tier 1 (`tier1SummaryOptIn`):** Saves summary counts, ZIP metadata, and PDF export history.
   - **Tier 2 (`tier2HandlesOptIn`):** Saves account lists with each history entry for reopening results and comparing exports. Counts-only entries remain available in history.

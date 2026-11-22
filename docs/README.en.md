@@ -4,7 +4,7 @@
 
 This documentation summarizes how each feature of the application works based on the current implementation in `src/`.
 
-- [App screenshots by page and state](screenshots/README.md) (desktop and mobile)
+- [App screenshots by page and state](screenshots/README.en.md) (desktop and mobile)
 
 ## Feature Index
 

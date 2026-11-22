@@ -96,7 +96,7 @@ Use `npm run build` as the build command and `dist` as the output directory. For
 ## Documentation
 
 - [Feature documentation](docs/README.en.md)
-- [Desktop and mobile screenshots](docs/screenshots/README.md)
+- [Desktop and mobile screenshots](docs/screenshots/README.en.md)
 - [Changelog](CHANGELOG.md)
 - [AI agent guidelines](AGENTS.md)
 

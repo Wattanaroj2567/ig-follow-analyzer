@@ -14,6 +14,7 @@ Presents the complete follower relationship breakdown on one screen with summary
   - `Not Following Back`
   - `Not Followed Back`
   - `Mutual`
+  - Select **Why can counts in the ZIP differ from my Instagram profile?** directly below the summary cards to see why ZIP totals can be higher (Instagram exports still include deactivated accounts and deleted placeholders such as `__deleted__*` that the Instagram app subtracts from profile totals without marking their status in the ZIP) or lower (limited export date ranges or changes after the export).
 - **Interactive Donut Chart:** Displays category counts and percentages; hovering or tapping highlights a segment and shows its exact count in the center, and tapping again clears the selection.
   - Select **How percentages are calculated** below the chart to see how the three relationship counts add up to the chart denominator. Each account belongs to just one category.
 - **Account Table:**

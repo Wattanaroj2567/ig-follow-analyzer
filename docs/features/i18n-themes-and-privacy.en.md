@@ -15,13 +15,14 @@ Covers the cross-cutting bilingual system, appearance themes, Add to Home Screen
 
 ## Theme System (System / Light / Dark)
 
-- The navigation stays at the top while page content scrolls. The footer appears at the end of the page, and **Back to top** returns the content to its start.
+- The navigation stays at the top while page content scrolls, using a hamburger menu drawer below `1024px` (including phone landscape and tablet portrait). The footer appears at the end of the page, and **Back to top** returns the content to its start.
+- Every sub-page shows a clickable breadcrumb trail at `640px` and above, and a context-aware back link to the previous screen on narrow portrait screens, keeping forward and back flows loop-free.
 - The theme switcher lists **System (default)**, **Light**, and **Dark** from left to right.
 - Persists preference in `localStorage` (`ig-follow-analyzer-theme`) and automatically updates `data-theme` and `<meta name="theme-color">` when OS appearance changes under `System`.
 - Built on Tailwind CSS v4 tokens in `src/index.css` with `Plus Jakarta Sans` + `IBM Plex Sans Thai` typography and `prefers-reduced-motion` support.
 - The landing page uses neutral surfaces for the feature summary, FAQ, and reviews, a cool tint for history comparison, and a warm tint for the closing analysis prompt. Each tint adapts to the active theme.
-- The background stays fixed while scrolling. Light pairs pale gold with rose, and Dark pairs blue with soft rose.
-- On mobile, the navigation bar and fullscreen PDF preview toolbar share the same height, theme surface, and control size.
+- The background stays fixed while scrolling on desktop pointers and uses lightweight non-blurred surfaces on touch devices for smooth mobile scrolling and zoom. Light pairs pale gold with rose, and Dark pairs blue with soft rose.
+- On mobile, pages render edge-to-edge with `safe-area-inset` support and native document scrolling so content flows smoothly beneath iOS Safari’s floating bottom toolbar while guarding pull-to-refresh on active real-ZIP results and PDF pages. The navigation bar and fullscreen PDF preview toolbar share the same height, theme surface, and control size.
 
 ## Add to Home Screen & Desktop Pinning
 
@@ -77,6 +78,7 @@ The edit link appears after the first successful submission. Respondents should 
 
 - [`src/lib/language.ts`](../../src/lib/language.ts) — Language context and translator helpers (`useLanguage`, `readLanguage`)
 - [`src/lib/theme.ts`](../../src/lib/theme.ts) — `useThemePreference` hook
-- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — Top navigation, mobile back control, language/theme switchers, mobile drawer, back-to-top button, and footer
+- [`src/components/AppShell.tsx`](../../src/components/AppShell.tsx) — Top navigation, language/theme switchers, mobile drawer, back-to-top button, and footer
+- [`src/components/PageBreadcrumb.tsx`](../../src/components/PageBreadcrumb.tsx) and [`src/lib/navigationTrail.ts`](../../src/lib/navigationTrail.ts) — Context-aware breadcrumb trail and mobile back navigation across sub-pages
 - [`src/screens/TrustAndAboutScreen.tsx`](../../src/screens/TrustAndAboutScreen.tsx) — Terms/Privacy, FAQ, and About screens
 - [`src/index.css`](../../src/index.css) — Tailwind CSS v4 theme tokens for Dark/Light modes

@@ -4,6 +4,32 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-22
+
+### Added
+
+- Add context-aware breadcrumb navigation on screens `640px` and wider and a previous-page back link on narrow mobile viewports across every sub-page (`PageBreadcrumb.tsx`, `navigationTrail.ts`), preserving forward and back flows without looping.
+- Explain on the History page why local history is off by default (explicit consent first, safer on shared devices, and two-tier control with 1-click removal) in Thai and English.
+- Explain below the account overview cards and in the FAQs why follower and following totals in an Instagram ZIP can be higher than on the live profile (deactivated accounts and `__deleted__*` placeholders remain in the export without a status flag) or lower (limited export date range).
+
+### Changed
+
+- Promote IG Follow Analyzer to its first stable `1.0.0` public release.
+- Use the hamburger menu drawer on all viewports narrower than `1024px` (including phone landscape and tablet portrait) with a compact side-by-side theme and language row for short landscape viewports and outside-tap dismissal.
+- Make `instagram.com/...` profile URLs in the A4 PDF report preview real clickable external links that open in a new tab without triggering the fullscreen lightbox.
+- Refresh `public/share.jpg` and the desktop and mobile landing and results screenshots to reflect the updated hero gradient underline, preview table grid lines, sample comparison button label, and profile count explanation.
+- Add vertical column grid lines to the landing page dashboard preview table and match the hero crayon underline stroke gradient (`gold → coral → rose`) to the accented heading text.
+- Clarify the Thai sample comparison button on the landing page as “ลองดูผลเทียบตัวอย่าง 2 ไฟล์” to match “Try comparing two sample ZIPs” and make it clear that it opens sample data.
+- Add a down-arrow icon to the mobile “See saved entries” jump button on the History page to match the results page jump button.
+
+### Fixed
+
+- Remove opacity-hiding `.scroll-reveal` delays on the landing page (while keeping the stat number count-up animation) so every section renders immediately without flashing a gray box in Safari or showing blank gaps during fast scrolling on Android Chrome.
+- Optimize mobile scroll rasterization on Android Chrome and iOS Safari by scoping the hero SVG `feTurbulence` crayon filter and large 24px-blur Light-theme shadows to fine-pointer desktop devices, capping mobile `.app-frame` ambient gradients to the upper hero band, switching root sizing to `100svh` to prevent URL-bar resize invalidation during fast flings, and clearing the default iOS Safari gray tap highlight on interactive controls.
+- Remove the legacy `420px` mobile frame cap, side borders, and gray `body` background (`--color-rule-2`), switch to native document scrolling (`min-h-svh`) with safe-area inset padding, and guard pull-to-refresh only while viewing an active real-ZIP result or PDF so pages render edge-to-edge and flow smoothly beneath iOS Safari’s floating bottom toolbar.
+- Prevent mobile Safari crashes and pinch-zoom stutter in the PDF report preview by windowing rendered fullscreen A4 sheets (`±1` around the active page), memoizing page rendering and date formatters, disabling GPU-heavy `backdrop-filter` and `background-attachment: fixed` on touch devices and inside PDF sheets/dialogs, and guarding preview resize observers during active pinch-zoom.
+- Fix an iPad Pro portrait (`1024px`) breakpoint gap where both the desktop navigation bar and the mobile menu button could be hidden at once.
+
 ## [0.2.0] - 2026-11-21
 
 ### Added

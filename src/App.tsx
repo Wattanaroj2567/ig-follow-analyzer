@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell, type PageId } from './components/AppShell';
+import { PageBreadcrumb } from './components/PageBreadcrumb';
 import { demoHref, pageHref, PRIVACY_TOPICS, type PrivacyTopic } from './lib/routes';
+import {
+  advanceTrail,
+  canonicalTrailForPage,
+  isValidTrail,
+  LANDING_ENTRY,
+  type NavigationMode,
+  PAGE_IDS,
+  sliceTrailToIndex,
+  type TrailEntry,
+} from './lib/navigationTrail';
 import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
 import { RELATIONSHIP_ORDER, type RelationshipKey } from './data/relationshipMetrics';
 import { getComparisonExports } from './lib/comparison';
@@ -31,29 +42,20 @@ import { AboutScreen, TermsAndFaqScreen } from './screens/TrustAndAboutScreen';
 import { UploadScreen } from './screens/UploadScreen';
 import type { AnalysisResult, HistoryPreferences, HistoryRecord } from './types/analyzer';
 
-const PAGE_IDS: PageId[] = [
-  'landing',
-  'how-it-works',
-  'export-comparison',
-  'upload',
-  'results',
-  'pdf',
-  'history',
-  'terms',
-  'about',
-];
-
 const demoAnalysis = buildDemoAnalysisResult();
 
-function readHash(): {
+interface ParsedRoute {
   page: PageId;
+  href: string;
   demo: boolean;
   category?: RelationshipKey;
   record?: string;
   privacyTopic?: PrivacyTopic;
   focusExportDateRange: boolean;
-} {
-  const raw = window.location.hash.replace(/^#\/?/, '');
+}
+
+function parseHash(hash: string): ParsedRoute {
+  const raw = hash.replace(/^#\/?/, '');
   const [name, query = ''] = raw.split('?');
   const page = PAGE_IDS.find((id) => id === name) ?? 'landing';
   const params = new URLSearchParams(query);
@@ -65,7 +67,29 @@ function readHash(): {
   const privacyTopic =
     page === 'terms' ? PRIVACY_TOPICS.find((topic) => topic === params.get('section')) : undefined;
   const focusExportDateRange = page === 'how-it-works' && params.get('section') === 'date-range';
-  return { page, demo, category, record, privacyTopic, focusExportDateRange };
+  const href = query && page !== 'landing' ? `${pageHref(page)}?${query}` : pageHref(page);
+  return { page, href, demo, category, record, privacyTopic, focusExportDateRange };
+}
+
+function readHash(): ParsedRoute {
+  return parseHash(window.location.hash);
+}
+
+function readTrailFromHistoryState(route: ParsedRoute): TrailEntry[] | null {
+  const state = window.history.state as { trail?: unknown } | null;
+  if (!state || !isValidTrail(state.trail)) return null;
+  const last = state.trail.at(-1);
+  if (!last || last.page !== route.page || last.demo !== route.demo) return null;
+  return state.trail;
+}
+
+function getInitialTrail(route: ParsedRoute): TrailEntry[] {
+  const saved = readTrailFromHistoryState(route);
+  if (saved) return saved;
+  const resultsHref = route.demo
+    ? demoHref('results', route.category, route.record)
+    : pageHref('results');
+  return canonicalTrailForPage(route.page, route.href, route.demo, resultsHref);
 }
 
 export function App() {
@@ -94,16 +118,54 @@ export function App() {
 function AppContent() {
   const { t } = useLanguage();
   const [route, setRoute] = useState(readHash);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [trail, setTrail] = useState<TrailEntry[]>(() => getInitialTrail(route));
+  const trailRef = useRef(trail);
   const activePage = route.page;
-  const navigate = useCallback((next: string) => {
-    if (window.location.hash !== next) {
-      window.history.pushState(null, '', next);
+
+  useEffect(() => {
+    if (!readTrailFromHistoryState(route)) {
+      window.history.replaceState({ trail: trailRef.current }, '', window.location.href);
     }
-    setRoute(readHash());
-    contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
+    // Only seed the initial history entry once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const setActivePage = useCallback((id: PageId) => navigate(pageHref(id)), [navigate]);
+
+  const navigate = useCallback((next: string, mode: NavigationMode = 'contextual') => {
+    const nextRoute = parseHash(next);
+    const nextTrail = advanceTrail(
+      trailRef.current,
+      { page: nextRoute.page, href: nextRoute.href, demo: nextRoute.demo },
+      mode,
+    );
+    trailRef.current = nextTrail;
+    if (window.location.hash !== next) {
+      window.history.pushState({ trail: nextTrail }, '', next);
+    } else {
+      window.history.replaceState({ trail: nextTrail }, '', next);
+    }
+    setRoute(nextRoute);
+    setTrail(nextTrail);
+    window.scrollTo?.({ top: 0, behavior: 'instant' });
+  }, []);
+
+  const navigateToTrailIndex = useCallback((index: number) => {
+    const nextTrail = sliceTrailToIndex(trailRef.current, index);
+    const target = nextTrail.at(-1) ?? LANDING_ENTRY;
+    trailRef.current = nextTrail;
+    if (window.location.hash !== target.href) {
+      window.history.pushState({ trail: nextTrail }, '', target.href);
+    } else {
+      window.history.replaceState({ trail: nextTrail }, '', target.href);
+    }
+    setRoute(parseHash(target.href));
+    setTrail(nextTrail);
+    window.scrollTo?.({ top: 0, behavior: 'instant' });
+  }, []);
+
+  const setActivePage = useCallback(
+    (id: PageId, mode: NavigationMode = 'contextual') => navigate(pageHref(id), mode),
+    [navigate],
+  );
   const navigateFromResult = (id: PageId) => {
     if (route.demo && (id === 'results' || id === 'pdf')) {
       navigate(demoHref(id, route.category, route.record));
@@ -117,8 +179,22 @@ function AppContent() {
   useEffect(() => {
     const onHash = () => {
       const next = readHash();
+      const restored = readTrailFromHistoryState(next);
+      if (restored) {
+        trailRef.current = restored;
+        setTrail(restored);
+      } else {
+        const nextTrail = advanceTrail(
+          trailRef.current,
+          { page: next.page, href: next.href, demo: next.demo },
+          'contextual',
+        );
+        trailRef.current = nextTrail;
+        window.history.replaceState({ trail: nextTrail }, '', window.location.href);
+        setTrail(nextTrail);
+      }
       if (!next.privacyTopic && !next.focusExportDateRange) {
-        contentRef.current?.scrollTo?.({ top: 0, behavior: 'instant' });
+        window.scrollTo?.({ top: 0, behavior: 'instant' });
       }
       setRoute(next);
     };
@@ -236,7 +312,7 @@ function AppContent() {
     if (!isSessionRecord && !record.savedAnalysis) return;
     setOpenedRecordId(isSessionRecord ? null : record.id);
     setComparisonSelection(null);
-    setActivePage('results');
+    navigate(pageHref('results'), 'history-record');
   };
 
   const handleClearAllHistory = async () => {
@@ -323,13 +399,31 @@ function AppContent() {
   const resultKey = route.demo
     ? `demo-${sampleAnalysis.sourceFileName}-${route.category ?? ''}`
     : activeAnalysisKey;
+  const displayTrail =
+    (activePage === 'results' || activePage === 'pdf') && !activeAnalysis
+      ? [LANDING_ENTRY, { page: 'upload' as const, href: pageHref('upload'), demo: false }]
+      : trail;
+
+  const protectFromPullRefresh =
+    !route.demo && Boolean(currentAnalysis) && (activePage === 'results' || activePage === 'pdf');
+
+  useEffect(() => {
+    if (protectFromPullRefresh) {
+      document.documentElement.dataset.preventPullRefresh = 'true';
+    } else {
+      delete document.documentElement.dataset.preventPullRefresh;
+    }
+    return () => {
+      delete document.documentElement.dataset.preventPullRefresh;
+    };
+  }, [protectFromPullRefresh]);
 
   return (
     <AppShell
       activePage={activePage}
-      contentRef={contentRef}
       onNavigate={setActivePage}
       hasAnalysis={!route.demo && Boolean(currentAnalysis)}
+      breadcrumb={<PageBreadcrumb trail={displayTrail} onNavigateToIndex={navigateToTrailIndex} />}
     >
       {activePage === 'landing' && (
         <LandingScreen
@@ -407,9 +501,6 @@ function AppContent() {
             result={activeAnalysis}
             diff={diff}
             onPdfSaved={handlePdfSaved}
-            resultsHref={
-              route.demo ? demoHref('results', route.category, route.record) : pageHref('results')
-            }
           />
         ) : (
           <UploadScreen
@@ -421,7 +512,9 @@ function AppContent() {
         (route.demo ? (
           <DemoHistoryScreen
             samples={sampleAnalyses}
-            onOpenResults={(record) => navigate(demoHref('results', undefined, record))}
+            onOpenResults={(record) =>
+              navigate(demoHref('results', undefined, record), 'history-record')
+            }
           />
         ) : (
           <HistoryScreen
@@ -434,7 +527,6 @@ function AppContent() {
             onOpenRecord={handleOpenHistoryRecord}
             onDeleteRecord={handleDeleteRecord}
             onClearAll={handleClearAllHistory}
-            onNavigate={setActivePage}
           />
         ))}
       {activePage === 'terms' && (

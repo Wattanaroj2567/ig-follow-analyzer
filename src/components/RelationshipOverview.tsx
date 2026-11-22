@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { useState } from 'react';
 import {
   formatRelationshipPercentage,
@@ -9,6 +9,7 @@ import {
   type RelationshipKey,
 } from '../data/relationshipMetrics';
 import { useLanguage } from '../lib/language';
+import { exportDateRangeHref } from '../lib/routes';
 import type { FollowCounts } from '../types/analyzer';
 import { PercentageCalculationDetails } from './PercentageCalculationDetails';
 
@@ -18,6 +19,64 @@ interface OverviewProps {
   counts: FollowCounts;
   selected: RelationshipKey | null;
   onSelect: (key: RelationshipKey) => void;
+}
+
+function ProfileCountDifferenceDetails() {
+  const { t } = useLanguage();
+  return (
+    <details className="group/profile-counts mt-3 min-w-0 rounded-lg border border-cool/35 bg-cool-soft/65">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2.5 rounded-lg px-3.5 py-2.5 text-sm font-semibold text-ink hover:bg-cool-soft [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          <Info className="size-4 shrink-0 text-cool" aria-hidden="true" />
+          <span>
+            {t(
+              'ทำไมยอดในไฟล์ ZIP อาจมากกว่าหรือต่างจากหน้าโปรไฟล์ Instagram?',
+              'Why can counts in the ZIP differ from my Instagram profile?',
+            )}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-cool transition-transform group-open/profile-counts:rotate-180"
+        />
+      </summary>
+      <div className="space-y-3 border-t border-cool/25 bg-paper-2 px-3.5 py-3.5 text-sm leading-relaxed text-ink-2">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-md border border-rule bg-paper-3 p-3">
+            <p className="font-semibold text-ink">
+              {t('1. ยอดใน ZIP มากกว่าหน้าโปรไฟล์', '1. Count in the ZIP is higher')}
+            </p>
+            <p className="mt-1">
+              {t(
+                'ไฟล์ที่ส่งออกจาก Instagram ยังคงมีรายชื่อ “บัญชีที่ถูกปิดใช้งาน” (Deactivated) และบัญชีที่ถูกลบ (เช่น __deleted__*) รวมอยู่ด้วย ในขณะที่แอป Instagram หักบัญชีเหล่านี้ออกจากตัวเลขบนหน้าโปรไฟล์แล้ว แต่ไม่ได้ระบุสถานะแยกไว้ในไฟล์ ZIP',
+                'Instagram exports still include deactivated accounts and deleted placeholders (such as __deleted__*). The Instagram app subtracts those from your profile total without marking their status in the ZIP.',
+              )}
+            </p>
+          </div>
+          <div className="rounded-md border border-rule bg-paper-3 p-3">
+            <p className="font-semibold text-ink">
+              {t(
+                '2. ยอดใน ZIP น้อยกว่าหรือเปลี่ยนหลังขอไฟล์',
+                '2. Count in the ZIP is lower or changed later',
+              )}
+            </p>
+            <p className="mt-1">
+              {t(
+                'หากเลือกช่วงวันที่จำกัดตอนขอไฟล์ บางบัญชีจะไม่ถูกใส่มาใน ZIP หรืออาจมีคนกดติดตาม/เลิกติดตามหลังจากเวลาที่ Instagram สร้างไฟล์เสร็จ',
+                'A limited export date range leaves older follows out of the ZIP, or accounts may have followed or unfollowed you after Instagram generated the file.',
+              )}
+            </p>
+            <a
+              href={exportDateRangeHref}
+              className="mt-2 inline-block font-medium text-cool underline underline-offset-4 hover:text-ink"
+            >
+              {t('ดูวิธีเลือกช่วงเวลา “ตลอดเวลา (All time)”', 'See how to select “All time”')}
+            </a>
+          </div>
+        </div>
+      </div>
+    </details>
+  );
 }
 
 export function RelationshipMetrics({
@@ -87,6 +146,7 @@ export function RelationshipOverview({ counts, selected, onSelect }: OverviewPro
   return (
     <div className="relationship-overview">
       <RelationshipMetrics counts={counts} selected={selected} onSelect={onSelect} />
+      <ProfileCountDifferenceDetails />
       <div className="relationship-chart">
         <div className="relationship-ring">
           <svg viewBox="0 0 200 200" aria-hidden="true">

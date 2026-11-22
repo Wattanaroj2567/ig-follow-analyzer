@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -13,7 +12,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NormalButton } from '../components/NormalButton';
 import { PercentageCalculationDetails } from '../components/PercentageCalculationDetails';
 import {
@@ -47,12 +46,13 @@ import './pdf-report.css';
 const A4_WIDTH = 560;
 const A4_HEIGHT = 792;
 const MAX_PREVIEW_PAGES = 60;
+const LIGHTBOX_PAGE_GAP = 24;
+const LIGHTBOX_RENDER_RADIUS = 1;
 
 interface PdfReportScreenProps {
   result: AnalysisResult;
   diff: HistoryDiff | null;
   onPdfSaved: (savedTo: 'device' | 'google_drive', fileName: string) => void;
-  resultsHref: string;
 }
 
 type PresetId = 'recommended' | 'unfollowers' | 'complete';
@@ -72,7 +72,300 @@ type PreviewPageDescriptor =
       rows: AccountEntry[];
     };
 
-export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfReportScreenProps) {
+interface A4PreviewPageProps {
+  page: PreviewPageDescriptor;
+  reportLanguage: Language;
+  reportLocale: string;
+  report: ReturnType<typeof getPdfReportLabels>;
+  continuedLabel: string;
+  result: AnalysisResult;
+  snapshotDate: string;
+  includeSummary: boolean;
+  includeDiffSection: boolean;
+  includeTimestamps: boolean;
+  comparisonSummary: ReturnType<typeof getPdfComparisonSummary> | null;
+  donutArcs: ReturnType<typeof buildPdfDonutArcs>;
+  mutualPct: string;
+  notBackPct: string;
+  notFollowedPct: string;
+  followBack: ReturnType<typeof getFollowBackSummary>;
+  totalDocumentPages: number;
+}
+
+const A4PreviewPage = memo(function A4PreviewPage({
+  page,
+  reportLanguage,
+  reportLocale,
+  report,
+  continuedLabel,
+  result,
+  snapshotDate,
+  includeSummary,
+  includeDiffSection,
+  includeTimestamps,
+  comparisonSummary,
+  donutArcs,
+  mutualPct,
+  notBackPct,
+  notFollowedPct,
+  followBack,
+  totalDocumentPages,
+}: A4PreviewPageProps) {
+  const { counts } = result;
+
+  if (page.kind === 'summary') {
+    return (
+      <div
+        lang={reportLanguage}
+        className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
+        style={{ width: A4_WIDTH, height: A4_HEIGHT }}
+      >
+        <div>
+          <div className="h-1.5 w-full bg-accent" />
+
+          <div className="p-7">
+            <div className="flex items-start justify-between gap-3 border-b border-rule pb-3.5">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold leading-tight text-accent">{report.eyebrow}</p>
+                <h3 className="mt-0.5 text-[18px] font-bold leading-tight text-ink">
+                  {report.title}
+                </h3>
+                <p className="mt-1 text-[11px] leading-snug wrap-anywhere text-ink-2">
+                  {result.ownerHandle && (
+                    <>
+                      <strong className="font-bold text-ink">@{result.ownerHandle}</strong> •{' '}
+                    </>
+                  )}
+                  {report.source} {result.sourceFileName}
+                  {result.isDemoData ? ` (${report.demo})` : ''}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[11px] font-bold leading-tight text-ink">
+                  {report.asOf} {snapshotDate}
+                </p>
+              </div>
+            </div>
+
+            {includeSummary && (
+              <>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {getPdfSummaryMetrics(counts, report).map(({ label, count, ink, fill }) => (
+                    <div
+                      key={label}
+                      className="rounded border border-rule px-1.5 py-2.5 text-center"
+                      style={{ backgroundColor: fill, color: ink }}
+                    >
+                      <p className="text-[11px] leading-tight font-bold">{label}</p>
+                      <p className="mt-0.5 text-[23px] leading-none font-bold">
+                        {count.toLocaleString(reportLocale)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 grid grid-cols-12 items-center gap-4 rounded border border-rule bg-paper-3 px-4 py-3.5">
+                  <div className="col-span-4 flex justify-center">
+                    <svg viewBox="0 0 180 180" className="h-33 w-33" aria-hidden="true">
+                      <circle
+                        cx="90"
+                        cy="90"
+                        r="64"
+                        fill="none"
+                        stroke={PDF_PREVIEW_PALETTE.rule}
+                        strokeWidth="22"
+                      />
+                      {donutArcs.map((arc) => (
+                        <path
+                          key={arc.color}
+                          d={arc.d}
+                          fill="none"
+                          stroke={arc.color}
+                          strokeWidth="22"
+                        />
+                      ))}
+                    </svg>
+                  </div>
+
+                  <div className="col-span-8">
+                    <p className="text-[14px] font-bold text-ink">{report.chart}</p>
+                    <div className="mt-1.5 divide-y divide-rule text-[11px] font-bold">
+                      <div className="flex items-center justify-between py-1">
+                        <span className="inline-flex items-center gap-1.5 text-ink-2">
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ backgroundColor: PDF_PREVIEW_PALETTE.ok }}
+                          />
+                          {report.mutual}
+                        </span>
+                        <strong style={{ color: PDF_PREVIEW_PALETTE.ok }}>
+                          {counts.mutual.toLocaleString(reportLocale)} ({mutualPct}%)
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="inline-flex items-center gap-1.5 text-ink-2">
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ backgroundColor: PDF_PREVIEW_PALETTE.accent }}
+                          />
+                          {report.notFollowingBack}
+                        </span>
+                        <strong style={{ color: PDF_PREVIEW_PALETTE.accent }}>
+                          {counts.notFollowingBack.toLocaleString(reportLocale)} ({notBackPct}%)
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="inline-flex items-center gap-1.5 text-ink-2">
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ backgroundColor: PDF_PREVIEW_PALETTE.cool }}
+                          />
+                          {report.notFollowedBack}
+                        </span>
+                        <strong style={{ color: PDF_PREVIEW_PALETTE.cool }}>
+                          {counts.notFollowedBack.toLocaleString(reportLocale)} ({notFollowedPct}%)
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3.5 divide-y divide-rule border-y border-rule text-[11px]">
+                  <div className="flex items-center justify-between py-1.5">
+                    <span className="text-ink-2">{report.mutualDetail}</span>
+                    <strong className="font-bold text-ok">
+                      {counts.mutual.toLocaleString(reportLocale)} {report.accounts} ({mutualPct}%)
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="text-ink-2">{followBack.label}</span>
+                    <strong className="text-right font-bold text-cool">{followBack.value}</strong>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {includeDiffSection && comparisonSummary && (
+              <div className="mt-3 rounded border border-rule bg-accent-soft px-3 py-2 text-[11px]">
+                <p className="font-bold text-accent">{report.comparisonTitle}</p>
+                <p className="wrap-anywhere text-ink-2">{comparisonSummary.reference}</p>
+                <p className="text-ink-2">{comparisonSummary.counts}</p>
+                {comparisonSummary.caution && (
+                  <p className="mt-1 font-semibold text-ink">{comparisonSummary.caution}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
+          <span>
+            © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
+          </span>
+          <span className="shrink-0 font-bold text-ink">
+            {report.page} {page.pageNumber} / {totalDocumentPages}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const isContinuation = page.startIndex > 0;
+
+  return (
+    <div
+      lang={reportLanguage}
+      className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
+      style={{ width: A4_WIDTH, height: A4_HEIGHT }}
+    >
+      <div>
+        <div className="h-1.5 w-full" style={{ backgroundColor: page.accent }} />
+        <div className="px-6 pt-5 pb-3">
+          <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
+            <h3 className="text-[15px] font-bold leading-tight" style={{ color: page.accent }}>
+              {page.sectionNumber}. {page.title} (
+              {page.totalInCategory.toLocaleString(reportLocale)}{' '}
+              {page.totalInCategory === 1 ? report.account : report.accounts})
+              {isContinuation ? continuedLabel : ''}
+            </h3>
+            <span className="shrink-0 text-[10px] text-muted">
+              {report.asOf} {snapshotDate}
+            </span>
+          </div>
+
+          {page.rows.length === 0 ? (
+            <p className="mt-4 text-[11px] text-muted">{report.empty}</p>
+          ) : (
+            <div className="mt-2.5">
+              <table className="w-full table-fixed border-collapse border border-rule-2 text-left text-[10px] leading-tight wrap-anywhere [&_tr>*+*]:border-l [&_tr>*+*]:border-rule-2">
+                <colgroup>
+                  <col className="w-[10%]" />
+                  <col />
+                  {includeTimestamps && <col className="w-[19%]" />}
+                  <col className="w-[41%]" />
+                </colgroup>
+                <thead className="border-b border-rule-2">
+                  <tr
+                    className="text-[10px]"
+                    style={{ backgroundColor: page.fill, color: page.accent }}
+                  >
+                    <th className="whitespace-nowrap px-1.5 py-1.5 text-center font-bold">
+                      {report.rank}
+                    </th>
+                    <th className="px-2 py-1.5 font-bold">{report.username}</th>
+                    {includeTimestamps && (
+                      <th className="px-2 py-1.5 font-bold">{page.dateHeader}</th>
+                    )}
+                    <th className="px-2 py-1.5 font-bold">{report.profileLink}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-rule">
+                  {page.rows.map((acc, idx) => (
+                    <tr key={acc.handle} className={idx % 2 === 1 ? 'bg-paper-3' : 'bg-paper-2'}>
+                      <td className="measured whitespace-nowrap px-1.5 py-[3.5px] text-center text-muted">
+                        {page.startIndex + idx + 1}
+                      </td>
+                      <td className="px-2 py-[3.5px] font-bold text-ink">@{acc.handle}</td>
+                      {includeTimestamps && (
+                        <td className="px-2 py-[3.5px] text-ink-2">
+                          {acc.timestamp
+                            ? formatDate(new Date(acc.timestamp * 1000), reportLocale)
+                            : '—'}
+                        </td>
+                      )}
+                      <td className="px-2 py-[3.5px]">
+                        <a
+                          href={acc.href || buildSafeProfileHref(acc.handle)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-cool underline hover:text-ink"
+                        >
+                          instagram.com/{acc.handle}
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
+        <span>
+          © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
+        </span>
+        <span className="shrink-0 font-bold text-ink">
+          {report.page} {page.pageNumber} / {totalDocumentPages}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+export function PdfReportScreen({ result, diff, onPdfSaved }: PdfReportScreenProps) {
   const { language, locale, t } = useLanguage();
   const [reportLanguage, setReportLanguage] = useState<Language>(language);
   useEffect(() => {
@@ -80,7 +373,11 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
   }, [language]);
   const { t: reportT, locale: reportLocale } = getLanguageFormat(reportLanguage);
   const report = useMemo(() => getPdfReportLabels(reportT), [reportT]);
-  const comparisonSummary = diff && getPdfComparisonSummary(result, diff, report, reportLocale);
+  const continuedLabel = reportLanguage === 'th' ? ' — ต่อ' : ' — continued';
+  const comparisonSummary = useMemo(
+    () => (diff ? getPdfComparisonSummary(result, diff, report, reportLocale) : null),
+    [result, diff, report, reportLocale],
+  );
   const snapshotDate = formatSnapshotDate(result.snapshotDateLabel, reportLocale);
   const [options, setOptions] = useState<PdfReportOptions>({
     includeSummary: true,
@@ -128,6 +425,8 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
   const lightboxDialogRef = useRef<HTMLDialogElement>(null);
   const lightboxScrollRef = useRef<HTMLDivElement>(null);
   const lightboxPageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lightboxScrollRaf = useRef<number | null>(null);
+  const lightboxLastWidth = useRef(0);
   const lightboxScale = (lightboxFitScale * zoomPercent) / 100;
 
   const { counts } = result;
@@ -135,7 +434,10 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
   const mutualPct = formatRelationshipPercentage(counts.mutual, totalUnique);
   const notBackPct = formatRelationshipPercentage(counts.notFollowingBack, totalUnique);
   const notFollowedPct = formatRelationshipPercentage(counts.notFollowedBack, totalUnique);
-  const followBack = getFollowBackSummary(counts, reportT, reportLocale);
+  const followBack = useMemo(
+    () => getFollowBackSummary(counts, reportT, reportLocale),
+    [counts, reportT, reportLocale],
+  );
 
   const previewFileName = useMemo(() => buildReportFileName(), []);
   const donutArcs = useMemo(() => buildPdfDonutArcs(counts), [counts]);
@@ -276,9 +578,12 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
   useEffect(() => {
     const el = previewContainerRef.current;
     if (!el) return;
+    let lastWidth = 0;
     const updateScale = () => {
+      if ((window.visualViewport?.scale ?? 1) > 1.02) return;
       const width = el.clientWidth;
-      if (width > 0) {
+      if (width > 0 && Math.abs(width - lastWidth) >= 2) {
+        lastWidth = width;
         setInlineScale(Math.min(1, width / A4_WIDTH));
       }
     };
@@ -295,18 +600,29 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
     if (!dialog || !container) return;
     if (!dialog.open) dialog.showModal();
     container.focus({ preventScroll: true });
+    lightboxLastWidth.current = 0;
 
     const updateScale = () => {
+      if ((window.visualViewport?.scale ?? 1) > 1.02) return;
       const { paddingLeft, paddingRight } = getComputedStyle(container);
       const width = container.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
-      if (width > 0) setLightboxFitScale(Math.min(1, width / A4_WIDTH));
+      if (width > 0 && Math.abs(width - lightboxLastWidth.current) >= 2) {
+        lightboxLastWidth.current = width;
+        setLightboxFitScale(Math.min(1, width / A4_WIDTH));
+      }
     };
 
     updateScale();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(updateScale);
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (lightboxScrollRaf.current !== null) {
+        window.cancelAnimationFrame(lightboxScrollRaf.current);
+        lightboxScrollRaf.current = null;
+      }
+    };
   }, [isZoomOpen, hasAnySection]);
 
   const scrollLightboxToPage = (targetPage: number) => {
@@ -332,24 +648,20 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
   };
 
   const handleLightboxScroll = () => {
-    const container = lightboxScrollRef.current;
-    if (!container) return;
-    const containerRect = container.getBoundingClientRect();
-    const midY = containerRect.top + containerRect.height * 0.35;
-    let closest = 1;
-    let bestDist = Infinity;
-    for (let i = 0; i < totalPreviewPages; i += 1) {
-      const node = lightboxPageRefs.current[i];
-      if (!node) continue;
-      const rect = node.getBoundingClientRect();
-      const centerY = rect.top + rect.height / 2;
-      const dist = Math.abs(centerY - midY);
-      if (dist < bestDist) {
-        bestDist = dist;
-        closest = i + 1;
-      }
-    }
-    setLightboxPage(closest);
+    if (lightboxScrollRaf.current !== null) return;
+    lightboxScrollRaf.current = window.requestAnimationFrame(() => {
+      lightboxScrollRaf.current = null;
+      const container = lightboxScrollRef.current;
+      if (!container) return;
+      const pageStep = Math.round(A4_HEIGHT * lightboxScale) + LIGHTBOX_PAGE_GAP;
+      if (pageStep <= 0) return;
+      const midY = container.scrollTop + container.clientHeight * 0.35 - 8;
+      const closest = Math.max(
+        1,
+        Math.min(totalPreviewPages, Math.floor(Math.max(0, midY) / pageStep) + 1),
+      );
+      setLightboxPage((prev) => (prev === closest ? prev : closest));
+    });
   };
 
   const activePreset: PresetId | null = (() => {
@@ -439,281 +751,27 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
     setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const renderA4Page = (page: PreviewPageDescriptor) => {
-    if (page.kind === 'summary') {
-      return (
-        <div
-          lang={reportLanguage}
-          className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
-          style={{ width: A4_WIDTH, height: A4_HEIGHT }}
-        >
-          <div>
-            <div className="h-1.5 w-full bg-accent" />
-
-            <div className="p-7">
-              <div className="flex items-start justify-between gap-3 border-b border-rule pb-3.5">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold leading-tight text-accent">
-                    {report.eyebrow}
-                  </p>
-                  <h3 className="mt-0.5 text-[18px] font-bold leading-tight text-ink">
-                    {report.title}
-                  </h3>
-                  <p className="mt-1 text-[11px] leading-snug wrap-anywhere text-ink-2">
-                    {result.ownerHandle && (
-                      <>
-                        <strong className="font-bold text-ink">@{result.ownerHandle}</strong> •{' '}
-                      </>
-                    )}
-                    {report.source} {result.sourceFileName}
-                    {result.isDemoData ? ` (${report.demo})` : ''}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[11px] font-bold leading-tight text-ink">
-                    {report.asOf} {snapshotDate}
-                  </p>
-                </div>
-              </div>
-
-              {options.includeSummary && (
-                <>
-                  <div className="mt-4 grid grid-cols-4 gap-2">
-                    {getPdfSummaryMetrics(counts, report).map(({ label, count, ink, fill }) => (
-                      <div
-                        key={label}
-                        className="rounded border border-rule px-1.5 py-2.5 text-center"
-                        style={{ backgroundColor: fill, color: ink }}
-                      >
-                        <p className="text-[11px] leading-tight font-bold">{label}</p>
-                        <p className="mt-0.5 text-[23px] leading-none font-bold">
-                          {count.toLocaleString(reportLocale)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-12 items-center gap-4 rounded border border-rule bg-paper-3 px-4 py-3.5">
-                    <div className="col-span-4 flex justify-center">
-                      <svg viewBox="0 0 180 180" className="h-33 w-33" aria-hidden="true">
-                        <circle
-                          cx="90"
-                          cy="90"
-                          r="64"
-                          fill="none"
-                          stroke={PDF_PREVIEW_PALETTE.rule}
-                          strokeWidth="22"
-                        />
-                        {donutArcs.map((arc) => (
-                          <path
-                            key={arc.color}
-                            d={arc.d}
-                            fill="none"
-                            stroke={arc.color}
-                            strokeWidth="22"
-                          />
-                        ))}
-                      </svg>
-                    </div>
-
-                    <div className="col-span-8">
-                      <p className="text-[14px] font-bold text-ink">{report.chart}</p>
-                      <div className="mt-1.5 divide-y divide-rule text-[11px] font-bold">
-                        <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-ink-2">
-                            <span
-                              className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.ok }}
-                            />
-                            {report.mutual}
-                          </span>
-                          <strong style={{ color: PDF_PREVIEW_PALETTE.ok }}>
-                            {counts.mutual.toLocaleString(reportLocale)} ({mutualPct}%)
-                          </strong>
-                        </div>
-                        <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-ink-2">
-                            <span
-                              className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.accent }}
-                            />
-                            {report.notFollowingBack}
-                          </span>
-                          <strong style={{ color: PDF_PREVIEW_PALETTE.accent }}>
-                            {counts.notFollowingBack.toLocaleString(reportLocale)} ({notBackPct}%)
-                          </strong>
-                        </div>
-                        <div className="flex items-center justify-between py-1">
-                          <span className="inline-flex items-center gap-1.5 text-ink-2">
-                            <span
-                              className="size-2.5 rounded-full"
-                              style={{ backgroundColor: PDF_PREVIEW_PALETTE.cool }}
-                            />
-                            {report.notFollowedBack}
-                          </span>
-                          <strong style={{ color: PDF_PREVIEW_PALETTE.cool }}>
-                            {counts.notFollowedBack.toLocaleString(reportLocale)} ({notFollowedPct}
-                            %)
-                          </strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3.5 divide-y divide-rule border-y border-rule text-[11px]">
-                    <div className="flex items-center justify-between py-1.5">
-                      <span className="text-ink-2">{report.mutualDetail}</span>
-                      <strong className="font-bold text-ok">
-                        {counts.mutual.toLocaleString(reportLocale)} {report.accounts} ({mutualPct}
-                        %)
-                      </strong>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 py-1.5">
-                      <span className="text-ink-2">{followBack.label}</span>
-                      <strong className="text-right font-bold text-cool">{followBack.value}</strong>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {options.includeDiffSection && comparisonSummary && (
-                <div className="mt-3 rounded border border-rule bg-accent-soft px-3 py-2 text-[11px]">
-                  <p className="font-bold text-accent">{report.comparisonTitle}</p>
-                  <p className="wrap-anywhere text-ink-2">{comparisonSummary.reference}</p>
-                  <p className="text-ink-2">{comparisonSummary.counts}</p>
-                  {comparisonSummary.caution && (
-                    <p className="mt-1 font-semibold text-ink">{comparisonSummary.caution}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
-            <span>
-              © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
-            </span>
-            <span className="shrink-0 font-bold text-ink">
-              {report.page} {page.pageNumber} / {totalDocumentPages}
-            </span>
-          </div>
-        </div>
-      );
-    }
-
-    const isContinuation = page.startIndex > 0;
-
-    return (
-      <div
-        lang={reportLanguage}
-        className="pdf-sheet-font flex flex-col justify-between overflow-hidden rounded-lg border border-rule bg-paper-2 text-ink shadow-sm"
-        style={{ width: A4_WIDTH, height: A4_HEIGHT }}
-      >
-        <div>
-          <div className="h-1.5 w-full" style={{ backgroundColor: page.accent }} />
-          <div className="px-6 pt-5 pb-3">
-            <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
-              <h3 className="text-[15px] font-bold leading-tight" style={{ color: page.accent }}>
-                {page.sectionNumber}. {page.title} (
-                {page.totalInCategory.toLocaleString(reportLocale)}{' '}
-                {page.totalInCategory === 1 ? report.account : report.accounts})
-                {isContinuation ? reportT(' — ต่อ', ' — continued') : ''}
-              </h3>
-              <span className="shrink-0 text-[10px] text-muted">
-                {report.asOf} {snapshotDate}
-              </span>
-            </div>
-
-            {page.rows.length === 0 ? (
-              <p className="mt-4 text-[11px] text-muted">{report.empty}</p>
-            ) : (
-              <div className="mt-2.5">
-                <table className="w-full table-fixed border-collapse border border-rule-2 text-left text-[10px] leading-tight wrap-anywhere [&_tr>*+*]:border-l [&_tr>*+*]:border-rule-2">
-                  <colgroup>
-                    <col className="w-[10%]" />
-                    <col />
-                    {options.includeTimestamps && <col className="w-[19%]" />}
-                    <col className="w-[41%]" />
-                  </colgroup>
-                  <thead className="border-b border-rule-2">
-                    <tr
-                      className="text-[10px]"
-                      style={{ backgroundColor: page.fill, color: page.accent }}
-                    >
-                      <th className="whitespace-nowrap px-1.5 py-1.5 text-center font-bold">
-                        {report.rank}
-                      </th>
-                      <th className="px-2 py-1.5 font-bold">{report.username}</th>
-                      {options.includeTimestamps && (
-                        <th className="px-2 py-1.5 font-bold">{page.dateHeader}</th>
-                      )}
-                      <th className="px-2 py-1.5 font-bold">{report.profileLink}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-rule">
-                    {page.rows.map((acc, idx) => (
-                      <tr key={acc.handle} className={idx % 2 === 1 ? 'bg-paper-3' : 'bg-paper-2'}>
-                        <td className="measured whitespace-nowrap px-1.5 py-[3.5px] text-center text-muted">
-                          {page.startIndex + idx + 1}
-                        </td>
-                        <td className="px-2 py-[3.5px] font-bold text-ink">@{acc.handle}</td>
-                        {options.includeTimestamps && (
-                          <td className="px-2 py-[3.5px] text-ink-2">
-                            {acc.timestamp
-                              ? formatDate(new Date(acc.timestamp * 1000), reportLocale)
-                              : '—'}
-                          </td>
-                        )}
-                        <td className="px-2 py-[3.5px] text-cool underline">
-                          instagram.com/{acc.handle}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-rule bg-paper-3 px-6 py-2 text-[9px] text-muted">
-          <span>
-            © 2026 IG Follow Analyzer • {report.affiliation} • {report.snapshotNotice}
-          </span>
-          <span className="shrink-0 font-bold text-ink">
-            {report.page} {page.pageNumber} / {totalDocumentPages}
-          </span>
-        </div>
-      </div>
-    );
+  const pageRenderProps = {
+    reportLanguage,
+    reportLocale,
+    report,
+    continuedLabel,
+    result,
+    snapshotDate,
+    includeSummary: options.includeSummary,
+    includeDiffSection: options.includeDiffSection,
+    includeTimestamps: options.includeTimestamps,
+    comparisonSummary,
+    donutArcs,
+    mutualPct,
+    notBackPct,
+    notFollowedPct,
+    followBack,
+    totalDocumentPages,
   };
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <nav
-        aria-label={t('เส้นทางหน้ารายงาน', 'Report breadcrumb')}
-        className="-mt-5 mb-2 lg:-mt-2 lg:mb-3"
-      >
-        <ol className="flex flex-wrap items-center gap-x-2 text-sm">
-          <li>
-            <a
-              href={resultsHref}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-medium text-muted hover:text-ink hover:underline lg:min-h-8"
-            >
-              <ArrowLeft className="size-4 shrink-0 lg:hidden" aria-hidden="true" />
-              <span className="lg:hidden">{t('กลับไปหน้าผลวิเคราะห์', 'Back to results')}</span>
-              <span className="hidden lg:inline">{t('ผลวิเคราะห์', 'Results')}</span>
-            </a>
-          </li>
-          <li
-            aria-current="page"
-            className="hidden items-center gap-2 font-semibold text-ink lg:flex"
-          >
-            <ChevronRight className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
-            {t('รายงาน PDF', 'PDF report')}
-          </li>
-        </ol>
-      </nav>
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="flex flex-col justify-between gap-4 border-b border-rule pb-6 sm:flex-row sm:items-center">
         <div>
           <h1 className="page-heading">
@@ -1040,19 +1098,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
               ) : (
                 <div className="relative">
                   <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={t(
-                      'แตะเพื่อขยายดูตัวอย่างเอกสาร PDF ครบทุกหน้าแบบเต็มจอ',
-                      'Open the full PDF preview',
-                    )}
                     onClick={() => openLightboxAtPage(safeInlineIndex + 1)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openLightboxAtPage(safeInlineIndex + 1);
-                      }
-                    }}
                     className="group relative mx-auto cursor-zoom-in overflow-hidden rounded-lg"
                     style={{
                       width: Math.round(A4_WIDTH * inlineScale),
@@ -1067,7 +1113,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
                         transformOrigin: 'top left',
                       }}
                     >
-                      {renderA4Page(currentInlinePage)}
+                      <A4PreviewPage page={currentInlinePage} {...pageRenderProps} />
                     </div>
                   </div>
                   <p className="mt-2.5 text-center text-xs text-muted">
@@ -1090,7 +1136,7 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
           ref={lightboxDialogRef}
           onClose={() => setIsZoomOpen(false)}
           aria-label={t('ตัวอย่างเอกสาร PDF ขนาด A4 แบบขยายครบทุกหน้า', 'Full A4 report preview')}
-          className="pdf-preview-dialog fixed inset-0 m-0 flex h-dvh max-h-none w-full max-w-none flex-col bg-paper/95 text-ink backdrop-blur-xs"
+          className="pdf-preview-dialog fixed inset-0 m-0 flex h-full max-h-none w-full max-w-none flex-col bg-paper text-ink"
         >
           {/* Minimal Top Bar: Filename + Close */}
           <header className="pdf-preview-toolbar mobile-top-bar flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -1122,30 +1168,44 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
             }}
           >
             <div className="flex w-max min-w-full flex-col items-center gap-6">
-              {previewPages.map((page, idx) => (
-                <div
-                  key={`${page.kind}-${page.pageNumber}`}
-                  ref={(el) => {
-                    lightboxPageRefs.current[idx] = el;
-                  }}
-                  className="scroll-mt-4 overflow-hidden rounded-lg"
-                  style={{
-                    width: A4_WIDTH * lightboxScale,
-                    height: A4_HEIGHT * lightboxScale,
-                  }}
-                >
+              {previewPages.map((page, idx) => {
+                const scaledWidth = Math.round(A4_WIDTH * lightboxScale);
+                const scaledHeight = Math.round(A4_HEIGHT * lightboxScale);
+                const shouldRender = Math.abs(idx - (lightboxPage - 1)) <= LIGHTBOX_RENDER_RADIUS;
+                return (
                   <div
+                    key={`${page.kind}-${page.pageNumber}`}
+                    ref={(el) => {
+                      lightboxPageRefs.current[idx] = el;
+                    }}
+                    className="scroll-mt-4 overflow-hidden rounded-lg contain-content"
                     style={{
-                      width: A4_WIDTH,
-                      height: A4_HEIGHT,
-                      transform: `scale(${lightboxScale})`,
-                      transformOrigin: 'top left',
+                      width: scaledWidth,
+                      height: scaledHeight,
                     }}
                   >
-                    {renderA4Page(page)}
+                    {shouldRender ? (
+                      <div
+                        style={{
+                          width: A4_WIDTH,
+                          height: A4_HEIGHT,
+                          transform: `scale(${lightboxScale})`,
+                          transformOrigin: 'top left',
+                        }}
+                      >
+                        <A4PreviewPage page={page} {...pageRenderProps} />
+                      </div>
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="flex h-full w-full items-center justify-center rounded-lg border border-rule bg-paper-2 text-xs text-muted"
+                      >
+                        {report.page} {page.pageNumber} / {totalDocumentPages}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {truncatedPages > 0 && (
                 <p
@@ -1168,8 +1228,8 @@ export function PdfReportScreen({ result, diff, onPdfSaved, resultsHref }: PdfRe
           </div>
 
           {/* Floating Bottom-Center Preview Controls */}
-          <div className="pointer-events-none fixed inset-x-0 bottom-5 z-10 flex justify-center px-4">
-            <div className="pointer-events-auto inline-flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-rule-2 bg-paper-2/95 px-2.5 py-1.5 shadow-2xl backdrop-blur-md">
+          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-10 flex justify-center px-4">
+            <div className="pointer-events-auto inline-flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-rule-2 bg-paper-2 px-2.5 py-1.5 shadow-xl">
               <div className="inline-flex items-center gap-0.5">
                 <button
                   type="button"

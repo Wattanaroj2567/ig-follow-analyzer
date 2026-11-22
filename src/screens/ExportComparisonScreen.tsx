@@ -1,5 +1,4 @@
 import { ArrowRight, ExternalLink } from 'lucide-react';
-import { BackButton } from '../components/BackButton';
 import { NormalButton } from '../components/NormalButton';
 import type { PageId } from '../components/AppShell';
 import { useLanguage } from '../lib/language';
@@ -8,8 +7,7 @@ export function ExportComparisonScreen({ onNavigate }: { onNavigate: (id: PageId
   const { t } = useLanguage();
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="max-w-[68ch]">
         <h1 id="export-comparison" className="page-heading">
           {t('ล็อกอิน Instagram กับใช้ไฟล์ ZIP ต่างกันอย่างไร?', 'Instagram Login or ZIP export?')}

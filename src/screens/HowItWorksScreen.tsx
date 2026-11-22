@@ -1,6 +1,5 @@
 import { AlertTriangle, ExternalLink, Laptop, Smartphone, Upload } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
-import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import {
   DesktopConfirmExportMockup,
@@ -596,8 +595,7 @@ export function HowItWorksScreen({ onNavigate, focusDateRange }: HowItWorksScree
   }, [focusDateRange, dateRangeStep]);
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="border-b border-rule pb-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-[66ch]">

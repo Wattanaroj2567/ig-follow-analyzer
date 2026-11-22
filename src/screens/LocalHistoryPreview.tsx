@@ -147,7 +147,7 @@ export function LocalHistoryPreview({ onOpenDemo, onOpenHistory }: LocalHistoryP
               onOpenDemo();
             }}
           >
-            {t('ลองดูผลเทียบ 2 ไฟล์', 'Try comparing two sample ZIPs')}
+            {t('ลองดูผลเทียบตัวอย่าง 2 ไฟล์', 'Try comparing two sample ZIPs')}
             <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
           </a>
           <a className="btn btn--primary" href={pageHref('history')} onClick={onOpenHistory}>

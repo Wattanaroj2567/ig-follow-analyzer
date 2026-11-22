@@ -1,13 +1,7 @@
 import { ArrowUp, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
-import {
-  type MouseEvent,
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { type Translator, useLanguage } from '../lib/language';
+import type { NavigationMode } from '../lib/navigationTrail';
 import { pageHref } from '../lib/routes';
 import { type ThemePreference, useThemePreference } from '../lib/theme';
 
@@ -24,9 +18,9 @@ export type PageId =
 
 interface AppShellProps {
   activePage: PageId;
-  contentRef: RefObject<HTMLDivElement | null>;
-  onNavigate: (id: PageId) => void;
+  onNavigate: (id: PageId, mode?: NavigationMode) => void;
   hasAnalysis: boolean;
+  breadcrumb?: ReactNode;
   children: ReactNode;
 }
 
@@ -110,27 +104,30 @@ function LanguageSwitcher() {
 
 export function AppShell({
   activePage,
-  contentRef,
   onNavigate,
   hasAnalysis,
+  breadcrumb,
   children,
 }: AppShellProps) {
   const { t } = useLanguage();
   const navItems = getNavItems(t);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const drawerToggleRef = useRef<HTMLButtonElement>(null);
   const theme = useThemePreference();
   const showLatestAnalysis = hasAnalysis && activePage !== 'results';
   const getNavigationTarget = (id: PageId) => (id === 'upload' && hasAnalysis ? 'results' : id);
 
-  const link = (id: PageId) => (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    setDrawerOpen(false);
-    onNavigate(getNavigationTarget(id));
-  };
+  const link =
+    (id: PageId, mode: NavigationMode = 'top-nav') =>
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      setDrawerOpen(false);
+      onNavigate(mode === 'top-nav' ? getNavigationTarget(id) : id, mode);
+    };
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -144,22 +141,38 @@ export function AppShell({
         drawerToggleRef.current?.focus();
       }
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        setDrawerOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
   }, [drawerOpen]);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 480);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const scrollToTop = () => {
     const reduced =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    contentRef.current?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    window.scrollTo?.({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
   };
 
   const current = (ids: PageId[]) => (ids.includes(activePage) ? 'page' : undefined);
 
   return (
-    <div className="app-frame flex h-dvh flex-col">
-      <header className="nav mobile-top-bar shrink-0">
+    <div className="app-frame flex min-h-svh flex-col">
+      <header ref={headerRef} className="nav mobile-top-bar shrink-0">
         <div className="product-wrap nav__bar">
           <a
             className="skip-link"
@@ -167,7 +180,7 @@ export function AppShell({
             onClick={(event) => {
               event.preventDefault();
               mainRef.current?.focus({ preventScroll: true });
-              contentRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+              window.scrollTo?.({ top: 0, behavior: 'instant' });
             }}
           >
             {t('ข้ามไปที่เนื้อหาหลัก', 'Skip to main content')}
@@ -255,7 +268,7 @@ export function AppShell({
                 </a>
               )}
             </div>
-            <div className="mt-3 grid gap-2 border-t border-rule px-3 pt-3">
+            <div className="nav__drawer-controls mt-3 grid gap-2 border-t border-rule px-3 pt-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-muted">{t('ธีม', 'Theme')}</span>
                 <ThemeSwitcher {...theme} />
@@ -269,50 +282,39 @@ export function AppShell({
         )}
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        <div
-          ref={contentRef}
-          role="region"
-          aria-label={t('พื้นที่เนื้อหา', 'Page content')}
-          tabIndex={0}
-          className="app-content relative flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
-          onScroll={(event) => setShowBackToTop(event.currentTarget.scrollTop > 480)}
-        >
-          <main id="top" ref={mainRef} tabIndex={-1} className="relative flex-1">
-            {children}
-          </main>
-          <footer role="contentinfo" className="app-subfooter shrink-0">
-            <div className="product-wrap app-subfooter__inner">
-              <div>
-                <p className="app-subfooter__copy">© 2026 IG Follow Analyzer</p>
-                <p>
-                  {t(
-                    'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
-                    'An independent tool with no affiliation with Instagram or Meta.',
-                  )}
-                </p>
-              </div>
-              <nav
-                className="app-subfooter__links"
-                aria-label={t('ข้อมูลเว็บไซต์', 'Site information')}
-              >
-                <a href={pageHref('terms')} onClick={link('terms')}>
-                  {t('เงื่อนไขและความเป็นส่วนตัว', 'Terms and privacy')}
-                </a>
-                <a href={pageHref('about')} onClick={link('about')}>
-                  {t('เกี่ยวกับเรา', 'About')}
-                </a>
-              </nav>
+      <div className="relative flex flex-1 flex-col">
+        <main id="top" ref={mainRef} tabIndex={-1} className="relative flex-1">
+          {breadcrumb}
+          {children}
+        </main>
+        <footer role="contentinfo" className="app-subfooter shrink-0">
+          <div className="product-wrap app-subfooter__inner">
+            <div>
+              <p className="app-subfooter__copy">© 2026 IG Follow Analyzer</p>
+              <p>
+                {t(
+                  'เครื่องมืออิสระ ไม่เกี่ยวข้องกับ Instagram หรือ Meta',
+                  'An independent tool with no affiliation with Instagram or Meta.',
+                )}
+              </p>
             </div>
-          </footer>
-        </div>
+            <nav className="app-subfooter__links" aria-label={t('ข้อมูลเว็บไซต์', 'Site information')}>
+              <a href={pageHref('terms')} onClick={link('terms', 'contextual')}>
+                {t('เงื่อนไขและความเป็นส่วนตัว', 'Terms and privacy')}
+              </a>
+              <a href={pageHref('about')} onClick={link('about', 'contextual')}>
+                {t('เกี่ยวกับเรา', 'About')}
+              </a>
+            </nav>
+          </div>
+        </footer>
         {showBackToTop && !drawerOpen && (
           <button
             type="button"
             onClick={scrollToTop}
             aria-label={t('กลับขึ้นด้านบน', 'Back to top')}
             title={t('กลับขึ้นด้านบน', 'Back to top')}
-            className="absolute right-5 bottom-4 z-30 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule-2 bg-paper-2/95 text-ink shadow-md backdrop-blur-xs transition-colors hover:border-accent hover:text-accent sm:right-7 sm:bottom-6"
+            className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule-2 bg-paper-2/95 text-ink shadow-md transition-colors hover:border-accent hover:text-accent sm:right-7 sm:bottom-6"
           >
             <ArrowUp className="h-5 w-5" aria-hidden="true" />
           </button>

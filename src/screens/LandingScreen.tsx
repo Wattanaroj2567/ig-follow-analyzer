@@ -33,7 +33,7 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function useRevealOnScroll<T extends HTMLElement>() {
+function useInViewOnce<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [visible, setVisible] = useState(
     () =>
@@ -54,7 +54,7 @@ function useRevealOnScroll<T extends HTMLElement>() {
           observer.disconnect();
         }
       },
-      { threshold: 0.18 },
+      { threshold: 0.05 },
     );
 
     observer.observe(node);
@@ -77,17 +77,18 @@ function AnimatedStatNumber({
 
   useEffect(() => {
     if (!visible || target === 0) return;
-    if (prefersReducedMotion()) {
+    if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
       setValue(target);
       return;
     }
 
     let frameId = 0;
     const duration = 900;
-    const start = performance.now();
+    let start: number | null = null;
 
     const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / duration);
+      start ??= now;
+      const progress = Math.max(0, Math.min(1, (now - start) / duration));
       const eased = 1 - (1 - progress) ** 3;
       setValue(Math.round(eased * target));
       if (progress < 1) {
@@ -109,6 +110,20 @@ function AnimatedStatNumber({
 
 const getLandingFaqs = (t: Translator): FaqItem[] => [
   ...getComparisonFaqs(t),
+  {
+    q: t(
+      'ทำไมยอดในไฟล์ ZIP อาจมากกว่าหรือต่างจากหน้าโปรไฟล์ Instagram?',
+      'Why can counts in the ZIP differ from my Instagram profile?',
+    ),
+    a: t(
+      'หากยอดใน ZIP มากกว่าหน้าโปรไฟล์ เป็นเพราะไฟล์ที่ส่งออกจาก Instagram ยังคงมีรายชื่อ “บัญชีที่ถูกปิดใช้งาน” (Deactivated) และบัญชีที่ถูกลบ (เช่น __deleted__*) รวมอยู่ด้วย ในขณะที่แอป Instagram หักบัญชีเหล่านี้ออกจากยอดบนหน้าโปรไฟล์แล้วแต่ไม่ได้ระบุสถานะแยกไว้ในไฟล์ ZIP ส่วนถ้ายอดใน ZIP น้อยกว่า อาจเกิดจากเลือกช่วงวันที่จำกัดตอนขอไฟล์แทน “ตลอดเวลา (All time)”',
+      'If the ZIP count is higher than on your profile, Instagram exports still include deactivated accounts and deleted placeholders (such as __deleted__*) that the app subtracts from your profile total without marking their status in the ZIP. If the count is lower, the export may have used a limited date range instead of “All time.”',
+    ),
+    link: {
+      page: 'how-it-works',
+      label: t('ดูวิธีเลือกช่วงเวลา “ตลอดเวลา”', 'See how to select “All time”'),
+    },
+  },
   {
     q: t('ทำไมไม่แสดงรูปโปรไฟล์ของแต่ละบัญชี?', 'Why are profile pictures missing?'),
     a: t(
@@ -145,9 +160,7 @@ const getLandingFaqs = (t: Translator): FaqItem[] => [
 export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: LandingScreenProps) {
   const { t } = useLanguage();
   const [openFaqs, setOpenFaqs] = useState(() => new Set([0]));
-  const useCasesReveal = useRevealOnScroll<HTMLUListElement>();
-  const statsReveal = useRevealOnScroll<HTMLDivElement>();
-  const closingReveal = useRevealOnScroll<HTMLDivElement>();
+  const statsInView = useInViewOnce<HTMLDivElement>();
 
   const go = (id: PageId) => (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -240,6 +253,18 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                     aria-hidden="true"
                   >
                     <defs>
+                      <linearGradient
+                        id="hero-wave-gradient"
+                        x1="4"
+                        y1="7"
+                        x2="356"
+                        y2="7"
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop offset="0%" stopColor="var(--color-ig-gold)" />
+                        <stop offset="48%" stopColor="var(--color-ig-coral)" />
+                        <stop offset="100%" stopColor="var(--color-ig-rose)" />
+                      </linearGradient>
                       <filter
                         id="hero-crayon"
                         filterUnits="userSpaceOnUse"
@@ -274,7 +299,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                     </defs>
                     <path
                       className="landing-hero__ig-wave-runner"
-                      filter="url(#hero-crayon)"
+                      stroke="url(#hero-wave-gradient)"
                       d="M 4 8 C 46 2, 88 13, 134 7 C 180 1, 224 13, 270 7 C 304 3, 332 9, 356 6"
                       pathLength={100}
                     />
@@ -349,10 +374,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
             </p>
           </div>
 
-          <ul
-            ref={useCasesReveal.ref}
-            className={`mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 scroll-reveal ${useCasesReveal.visible ? 'scroll-reveal--in' : ''}`}
-          >
+          <ul className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
               {
                 icon: ListChecks,
@@ -441,10 +463,10 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
             </p>
           </div>
 
-          <div ref={statsReveal.ref} className="panels mt-7 md:grid-cols-3">
-            <div className={`p-6 scroll-reveal ${statsReveal.visible ? 'scroll-reveal--in' : ''}`}>
+          <div ref={statsInView.ref} className="panels mt-7 md:grid-cols-3">
+            <div className="p-6">
               <p className="reading text-4xl text-accent sm:text-5xl">
-                <AnimatedStatNumber target={0} visible={statsReveal.visible} />
+                <AnimatedStatNumber target={0} visible={statsInView.visible} />
               </p>
               <p className="mt-2 text-sm font-semibold text-ink">
                 {t('รหัสผ่านที่ต้องกรอก', 'Passwords required')}
@@ -456,11 +478,9 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                 )}
               </p>
             </div>
-            <div
-              className={`p-6 scroll-reveal scroll-reveal--delay-1 ${statsReveal.visible ? 'scroll-reveal--in' : ''}`}
-            >
+            <div className="p-6">
               <p className="reading text-4xl text-cool sm:text-5xl">
-                <AnimatedStatNumber target={100} suffix="%" visible={statsReveal.visible} />
+                <AnimatedStatNumber target={100} suffix="%" visible={statsInView.visible} />
               </p>
               <p className="mt-2 text-sm font-semibold text-ink">
                 {t('คำนวณในเบราว์เซอร์', 'In-browser processing')}
@@ -469,11 +489,9 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
                 {t('ไม่ส่งรายชื่อผู้ติดตามเข้าเซิร์ฟเวอร์ภายนอก', 'Follower lists stay off external servers.')}
               </p>
             </div>
-            <div
-              className={`p-6 scroll-reveal scroll-reveal--delay-2 ${statsReveal.visible ? 'scroll-reveal--in' : ''}`}
-            >
+            <div className="p-6">
               <p className="reading text-4xl text-ok sm:text-5xl">
-                <AnimatedStatNumber target={200} suffix=" MB" visible={statsReveal.visible} />
+                <AnimatedStatNumber target={200} suffix=" MB" visible={statsInView.visible} />
               </p>
               <p className="mt-2 text-sm font-semibold text-ink">
                 {t('รองรับขนาดไฟล์สูงสุด', 'Maximum file size')}
@@ -551,12 +569,7 @@ export function LandingScreen({ demo, previousDemo, onNavigate, onOpenDemo }: La
 
       {/* 5. Closing Band */}
       <section className="landing-section landing-section--closing" aria-labelledby="closing-h">
-        <div
-          ref={closingReveal.ref}
-          className={`product-wrap flex flex-col items-start justify-between gap-4 rounded-(--radius-card) border border-rule bg-paper-2 p-5 scroll-reveal sm:p-6 lg:flex-row lg:items-center ${
-            closingReveal.visible ? 'scroll-reveal--in' : ''
-          }`}
-        >
+        <div className="product-wrap flex flex-col items-start justify-between gap-4 rounded-(--radius-card) border border-rule bg-paper-2 p-5 sm:p-6 lg:flex-row lg:items-center">
           <h2 id="closing-h" className="text-2xl font-semibold text-ink sm:text-3xl">
             {t('มีไฟล์ ZIP แล้วใช่ไหม?', 'Have your ZIP file?')}
           </h2>

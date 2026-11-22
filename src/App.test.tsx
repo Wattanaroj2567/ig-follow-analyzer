@@ -666,6 +666,49 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(window.location.hash).toBe('#/pdf?demo');
   });
 
+  it('renders clickable Instagram profile links and windows lightbox pages in PDF preview', async () => {
+    window.history.replaceState(null, '', '/#/pdf?demo');
+    const { container } = render(<App />);
+    await screen.findByRole('heading', { name: 'รายงานสรุปความสัมพันธ์ผู้ติดตาม Instagram' });
+
+    // Enable all followers so the report spans many A4 pages
+    fireEvent.click(screen.getByRole('checkbox', { name: /รายชื่อผู้ติดตามทั้งหมด/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'หน้าถัดไป' }));
+
+    const profileLinks = screen.getAllByRole('link', { name: /^instagram\.com\// });
+    expect(profileLinks.length).toBeGreaterThan(0);
+    expect(profileLinks[0]).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^https:\/\/www\.instagram\.com\/.+\/$/),
+    );
+    expect(profileLinks[0]).toHaveAttribute('target', '_blank');
+    expect(profileLinks[0]).toHaveAttribute('rel', 'noopener noreferrer');
+
+    // Clicking a profile link on the inline sheet should not open the fullscreen lightbox
+    fireEvent.click(profileLinks[0]);
+    expect(container.querySelector('dialog.pdf-preview-dialog')).toBeNull();
+
+    // Open fullscreen lightbox and confirm pages are windowed (not all rendered at once)
+    const openLightbox = screen.getByRole('button', { name: /ขยายดูตัวอย่างเอกสาร A4/ });
+    const origShowModal = HTMLDialogElement.prototype.showModal;
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute('open', '');
+    };
+    try {
+      fireEvent.click(openLightbox);
+      const dialog = container.querySelector('dialog.pdf-preview-dialog');
+      expect(dialog).not.toBeNull();
+      const renderedSheets = dialog!.querySelectorAll('.pdf-sheet-font');
+      expect(renderedSheets.length).toBeGreaterThan(0);
+      expect(renderedSheets.length).toBeLessThanOrEqual(5);
+      expect(
+        within(dialog as HTMLElement).getAllByRole('link', { name: /^instagram\.com\// }).length,
+      ).toBeGreaterThan(0);
+    } finally {
+      HTMLDialogElement.prototype.showModal = origShowModal;
+    }
+  });
+
   it('computes mathematically consistent demo fixture counts via real set engine', () => {
     const demo = buildDemoAnalysisResult();
     expect(verifyFollowSetInvariants(demo.counts)).toBe(true);
@@ -696,7 +739,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(preview.getByRole('note')).toHaveTextContent('ลองขอ ZIP ใหม่วันถัดไปหรือหลังจากนั้น');
     expect(preview.getByText('@demo_account_014')).toBeVisible();
     expect(preview.getByText('ไม่พบในรายชื่อรอบล่าสุด')).toBeVisible();
-    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' })).toHaveAttribute(
+    expect(preview.getByRole('link', { name: 'ลองดูผลเทียบตัวอย่าง 2 ไฟล์' })).toHaveAttribute(
       'href',
       '#/results?demo',
     );
@@ -748,12 +791,12 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     render(<App />);
 
     const section = await screen.findByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' });
-    expect(within(section).getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' })).toHaveAttribute(
+    expect(within(section).getByRole('link', { name: 'ลองดูผลเทียบตัวอย่าง 2 ไฟล์' })).toHaveAttribute(
       'href',
       '#/results?demo',
     );
     expect(within(section).queryByRole('link', { name: 'ดูประวัติตัวอย่าง' })).not.toBeInTheDocument();
-    fireEvent.click(within(section).getByRole('link', { name: 'ลองดูผลเทียบ 2 ไฟล์' }));
+    fireEvent.click(within(section).getByRole('link', { name: 'ลองดูผลเทียบตัวอย่าง 2 ไฟล์' }));
     expect(await screen.findByRole('heading', { name: 'ตัวอย่างผลการวิเคราะห์ผู้ติดตาม' })).toBeVisible();
   });
 
@@ -847,9 +890,12 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     );
     const estimateAfter = screen.getByText(/^ทั้งหมด [\d,]+ หน้า$/).textContent;
     expect(estimateAfter).not.toBe(estimateBefore);
-    const breadcrumb = within(screen.getByRole('navigation', { name: 'เส้นทางหน้ารายงาน' }));
-    expect(breadcrumb.getByText('รายงาน PDF')).toHaveAttribute('aria-current', 'page');
-    const resultsLink = breadcrumb.getByRole('link');
+    const breadcrumb = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    expect(breadcrumb.getByText('รายงาน PDF ตัวอย่าง').closest('li')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const resultsLink = breadcrumb.getByRole('link', { name: /ผลวิเคราะห์ตัวอย่าง/ });
     expect(resultsLink).toHaveAttribute('href', '#/results?demo');
     fireEvent.click(resultsLink);
     const restoredExport = await screen.findByRole('status', { name: 'ไฟล์ที่ใช้เทียบ' });
@@ -879,18 +925,114 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(screen.getByRole('heading', { name: 'ภาพรวม 3 ขั้นตอน: ขอไฟล์จนเลือก ZIP' })).toBeVisible();
   });
 
-  it('shows a mobile back control outside the home page', async () => {
+  it('shows context-aware breadcrumb navigation across flows without looping', async () => {
     const home = render(<App />);
-    expect(screen.queryByRole('button', { name: 'กลับหน้าแรก' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'เส้นทางหน้า' })).not.toBeInTheDocument();
     home.unmount();
 
+    // Direct entry to Upload -> back goes to Home
     window.history.replaceState(null, '', '/#/upload');
-    await act(async () => {
-      render(<App />);
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'กลับหน้าแรก' }));
+    const app = render(<App />);
+    const uploadNav = within(await screen.findByRole('navigation', { name: 'เส้นทางหน้า' }));
+    const homeLink = uploadNav.getByRole('link', { name: /กลับหน้าแรก/ });
+    expect(homeLink).toHaveAttribute('href', '#/');
+    fireEvent.click(homeLink);
     expect(window.location.hash).toBe('#/');
+    expect(screen.queryByRole('navigation', { name: 'เส้นทางหน้า' })).not.toBeInTheDocument();
+
+    // Landing -> Export comparison -> How it works -> Back -> Export comparison -> Back -> Home
+    fireEvent.click(screen.getByRole('link', { name: 'ทำไมต้องใช้ไฟล์ ZIP?' }));
+    expect(window.location.hash).toBe('#/export-comparison');
+    fireEvent.click(screen.getByRole('button', { name: 'ดูวิธีขอไฟล์ ZIP' }));
+    expect(window.location.hash).toBe('#/how-it-works');
+    const guideNav = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    const comparisonBack = guideNav.getByRole('link', { name: /ทำไมต้องใช้ไฟล์ ZIP/ });
+    expect(comparisonBack).toHaveAttribute('href', '#/export-comparison');
+    fireEvent.click(comparisonBack);
+    expect(window.location.hash).toBe('#/export-comparison');
+    const comparisonNav = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    expect(comparisonNav.queryByRole('link', { name: /วิธีขอไฟล์/ })).not.toBeInTheDocument();
+    fireEvent.click(comparisonNav.getByRole('link', { name: /หน้าแรก/ }));
+    expect(window.location.hash).toBe('#/');
+
+    // About -> History -> Back -> About, then Top-nav switch resets trail to Home -> About
+    fireEvent.click(screen.getAllByRole('link', { name: 'เกี่ยวกับเรา' })[0]);
+    expect(window.location.hash).toBe('#/about');
+    fireEvent.click(screen.getByRole('button', { name: 'ตั้งค่าประวัติบนเครื่อง' }));
+    expect(window.location.hash).toBe('#/history');
+    const historyFromAbout = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    expect(historyFromAbout.getByRole('link', { name: /เกี่ยวกับเรา/ })).toHaveAttribute(
+      'href',
+      '#/about',
+    );
+    fireEvent.click(historyFromAbout.getByRole('link', { name: /เกี่ยวกับเรา/ }));
+    expect(window.location.hash).toBe('#/about');
+    expect(
+      within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' })).queryByRole('link', {
+        name: /ประวัติบนเครื่อง/,
+      }),
+    ).not.toBeInTheDocument();
+
+    // Real analysis flow: Upload -> Results -> History -> Back returns to Results
+    fireEvent.click(screen.getAllByRole('link', { name: 'วิเคราะห์ไฟล์' })[0]);
+    const readers = stubZipReaders();
+    const workers: {
+      onmessage?: (event: {
+        data: { type: string; result: ReturnType<typeof buildDemoAnalysisResult> };
+      }) => void;
+      terminate: ReturnType<typeof vi.fn>;
+      postMessage: ReturnType<typeof vi.fn>;
+    }[] = [];
+    class FlowWorker {
+      onmessage?: (event: {
+        data: { type: string; result: ReturnType<typeof buildDemoAnalysisResult> };
+      }) => void;
+      terminate = vi.fn();
+      postMessage = vi.fn();
+      constructor() {
+        workers.push(this);
+      }
+    }
+    vi.stubGlobal('Worker', FlowWorker);
+    const input = app.container.querySelector('input[type="file"]')!;
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { files: [new File(['zip'], 'instagram-user-2026-11-20.zip')] },
+      });
+      readers.at(-1)?.finish();
+    });
+    const realResult = { ...buildDemoAnalysisResult(), isDemoData: false };
+    await act(async () => {
+      workers.at(-1)?.onmessage?.({ data: { type: 'success', result: realResult } });
+    });
+    expect(window.location.hash).toBe('#/results');
+    expect(document.documentElement.dataset.preventPullRefresh).toBe('true');
+
+    // Click "Set up local history" prompt on Results -> History
+    fireEvent.click(screen.getByRole('button', { name: 'ตั้งค่าประวัติบนเครื่อง' }));
+    expect(window.location.hash).toBe('#/history');
+    expect(document.documentElement.dataset.preventPullRefresh).toBeUndefined();
+    const historyFromResults = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    const backToResults = historyFromResults.getByRole('link', { name: /กลับไปหน้าผลวิเคราะห์/ });
+    expect(backToResults).toHaveAttribute('href', '#/results');
+    fireEvent.click(backToResults);
+    expect(window.location.hash).toBe('#/results');
+    expect(document.documentElement.dataset.preventPullRefresh).toBe('true');
+    expect(screen.getByRole('heading', { name: 'ผลการวิเคราะห์ผู้ติดตาม' })).toBeVisible();
+
+    // Results -> Upload ("Analyze another ZIP") -> Back returns to Results
+    fireEvent.click(screen.getByRole('button', { name: 'อัปโหลดไฟล์ใหม่' }));
+    expect(window.location.hash).toBe('#/upload');
+    const uploadFromResults = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    fireEvent.click(uploadFromResults.getByRole('link', { name: /กลับไปหน้าผลวิเคราะห์/ }));
+    expect(window.location.hash).toBe('#/results');
+
+    // Top-nav click resets trail cleanly to Home -> History (no stale Results parent)
+    fireEvent.click(screen.getAllByRole('link', { name: 'ประวัติบนเครื่อง' })[0]);
+    expect(window.location.hash).toBe('#/history');
+    const historyFromNav = within(screen.getByRole('navigation', { name: 'เส้นทางหน้า' }));
+    expect(historyFromNav.queryByRole('link', { name: /ผลวิเคราะห์/ })).not.toBeInTheDocument();
+    expect(historyFromNav.getByRole('link', { name: /กลับหน้าแรก/ })).toHaveAttribute('href', '#/');
   });
 
   it('shows the export menu locations for mobile and desktop', async () => {
@@ -1005,6 +1147,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     const overview = await screen.findByRole('heading', { name: 'ภาพรวมบัญชี' });
     fireEvent.click(screen.getByRole('button', { name: 'ดูภาพรวมบัญชีและรายชื่อ' }));
     expect(overview).toHaveFocus();
+    const profileCountsExplanation = screen.getByText(
+      'ทำไมยอดในไฟล์ ZIP อาจมากกว่าหรือต่างจากหน้าโปรไฟล์ Instagram?',
+    );
+    expect(profileCountsExplanation.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(profileCountsExplanation);
+    expect(screen.getByText('1. ยอดใน ZIP มากกว่าหน้าโปรไฟล์')).toBeVisible();
+    expect(screen.getByText(/บัญชีที่ถูกปิดใช้งาน/)).toBeVisible();
     expect(screen.queryByText('1,398')).not.toBeInTheDocument();
     const calculation = screen.getByText('ดูวิธีคำนวณ');
     expect(calculation.closest('details')).not.toHaveAttribute('open');
@@ -1054,6 +1203,8 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       render(<App />);
     });
     const preview = within(screen.getByRole('region', { name: 'ตัวอย่างแดชบอร์ด' }));
+    const wavePath = document.querySelector('.landing-hero__ig-wave-runner');
+    expect(wavePath).toHaveAttribute('stroke', 'url(#hero-wave-gradient)');
     const single = preview.getByRole('button', { name: 'ไฟล์เดียว' });
     const compare = preview.getByRole('button', { name: 'เทียบ 2 ไฟล์' });
     expect(single).toHaveAttribute('aria-pressed', 'true');
@@ -1085,7 +1236,7 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
 
     const trigger = within(screen.getByRole('region', { name: 'ดูว่าใครเพิ่งเลิกติดตาม' })).getByRole(
       'link',
-      { name: 'ลองดูผลเทียบ 2 ไฟล์' },
+      { name: 'ลองดูผลเทียบตัวอย่าง 2 ไฟล์' },
     );
     expect(
       screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '#/results?demo'),
@@ -1173,10 +1324,13 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
         onOpenRecord={vi.fn()}
         onDeleteRecord={onDeleteRecord}
         onClearAll={onClearAll}
-        onNavigate={vi.fn()}
       />,
     );
     const cards = screen.getAllByRole('article');
+    const jumpToSavedEntries = screen.getByRole('button', { name: 'ดูรายการประวัติ' });
+    expect(jumpToSavedEntries.querySelector('svg')).not.toBeNull();
+    fireEvent.click(jumpToSavedEntries);
+    expect(screen.getByRole('heading', { name: /รายการประวัติที่บันทึกไว้บนเครื่องนี้/ })).toHaveFocus();
     expect(within(cards[0]).getByText('ล่าสุด')).toBeVisible();
     expect(within(cards[0]).getByText('168.0 KB')).toBeVisible();
     fireEvent.click(within(cards[0]).getByRole('button', { name: 'รายละเอียดเพิ่มเติม' }));
@@ -1243,6 +1397,9 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(switches[0]).toHaveAttribute('aria-checked', 'false');
     expect(switches[1]).toHaveAttribute('aria-checked', 'false');
     expect(switches[1]).toBeDisabled();
+    expect(
+      screen.getByRole('heading', { name: 'ทำไมระบบถึงปิดการบันทึกประวัติเป็นค่าเริ่มต้น?' }),
+    ).toBeVisible();
   });
 
   it('keeps the top bar free of a compare link and a duplicate analyze button', async () => {
@@ -1318,5 +1475,15 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ตามระบบ' }));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
+  });
+
+  it('renders landing page sections immediately without opacity-hiding scroll-reveal wrappers', async () => {
+    render(<App />);
+    const readingsSection = (
+      await screen.findByRole('heading', { name: 'ข้อมูลอยู่บนเครื่องของคุณตั้งแต่ต้นจนจบ' })
+    ).closest('section');
+    expect(readingsSection).not.toBeNull();
+    expect(readingsSection?.querySelector('.panels')).toHaveTextContent(/100%.*200 MB/);
+    expect(document.querySelectorAll('.scroll-reveal')).toHaveLength(0);
   });
 });

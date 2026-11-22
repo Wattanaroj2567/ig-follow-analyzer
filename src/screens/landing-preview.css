@@ -217,12 +217,30 @@
   border-block-start: 1px solid var(--color-rule);
 }
 
+.landing-preview__table thead tr {
+  border-block-end: 1px solid color-mix(in oklab, var(--color-rule-2) 80%, var(--color-rule));
+}
+
 .landing-preview__table thead {
   background: var(--color-paper-3);
 }
 
+:root[data-theme='light'] .landing-preview__table thead {
+  background: color-mix(in oklab, var(--color-paper-3) 76%, var(--color-rule));
+}
+
 .landing-preview__table tbody tr {
   background: var(--color-paper-2);
+}
+
+.landing-preview__table th + td,
+.landing-preview__table td + td,
+.landing-preview__table thead th:not(.landing-preview__rank) + th {
+  border-inline-start: 1px solid var(--color-rule);
+}
+
+.landing-preview__table thead th:not(.landing-preview__rank) + th {
+  border-inline-start-color: color-mix(in oklab, var(--color-rule-2) 70%, var(--color-rule));
 }
 
 .landing-preview__table th,
@@ -300,6 +318,14 @@
 
   .landing-preview__account {
     width: 42%;
+  }
+
+  .landing-preview__table .landing-preview__rank + th {
+    border-inline-start: 1px solid var(--color-rule);
+  }
+
+  .landing-preview__table thead .landing-preview__rank + th {
+    border-inline-start-color: color-mix(in oklab, var(--color-rule-2) 70%, var(--color-rule));
   }
 }
 

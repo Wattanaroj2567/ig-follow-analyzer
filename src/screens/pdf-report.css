@@ -44,6 +44,10 @@ html:has(.pdf-preview-dialog) {
   scrollbar-width: none;
 }
 
+.pdf-preview-dialog::backdrop {
+  background: var(--color-paper);
+}
+
 .pdf-preview-scroll {
   scrollbar-color: var(--color-rule-2) transparent;
   scrollbar-gutter: stable;

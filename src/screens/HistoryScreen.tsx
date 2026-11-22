@@ -1,18 +1,18 @@
 import {
   AlertCircle,
+  ArrowDown,
   ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Info,
+  ShieldCheck,
   Trash2,
   User,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NormalButton } from '../components/NormalButton';
-import { BackButton } from '../components/BackButton';
-import type { PageId } from '../components/AppShell';
 import { getFollowBackSummary } from '../data/relationshipMetrics';
 import { formatSnapshotDate } from '../lib/dates';
 import { formatBytes } from '../lib/fileSize';
@@ -29,7 +29,6 @@ interface HistoryScreenProps {
   onOpenRecord: (record: HistoryRecord) => void;
   onDeleteRecord: (id: string) => Promise<void>;
   onClearAll: () => Promise<void>;
-  onNavigate: (id: PageId) => void;
 }
 
 const HISTORY_PAGE_SIZE = 5;
@@ -56,7 +55,6 @@ export function HistoryScreen({
   onOpenRecord,
   onDeleteRecord,
   onClearAll,
-  onNavigate,
 }: HistoryScreenProps) {
   const { t, locale } = useLanguage();
   const feedbackMessages = {
@@ -195,16 +193,15 @@ export function HistoryScreen({
   const recordToDelete = pendingDeletion?.kind === 'record' ? pendingDeletion.record : null;
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="border-b border-rule pb-7">
         <h1 className="page-heading">
           {t('ประวัติการวิเคราะห์บนเบราว์เซอร์เครื่องนี้', 'Analysis history on this device')}
         </h1>
         <p className="max-w-[66ch] text-base leading-relaxed text-ink-2">
           {t(
-            'ประวัติปิดเป็นค่าเริ่มต้น เปิดสวิตช์ด้านล่างเพื่อเก็บสรุปหรือรายชื่อสำหรับเทียบ ZIP รอบถัดไป ข้อมูลที่บันทึกอยู่ในเบราว์เซอร์นี้',
-            'History is off by default. Use the options below to keep counts or account lists for your next comparison. History stays in this browser.',
+            'ระบบปิดการบันทึกประวัติเป็นค่าเริ่มต้นเพื่อขอความยินยอมจากคุณก่อนเสมอ เลือกเปิดสวิตช์ด้านล่างได้ตามต้องการ โดยข้อมูลทั้งหมดจะเก็บอยู่เฉพาะในเบราว์เซอร์เครื่องนี้เท่านั้น',
+            'History is off by default so nothing is saved without your explicit consent. Turn on either option below if you want to keep summaries or lists — everything stays in this browser.',
           )}
         </p>
         {records.length > 0 && (
@@ -218,6 +215,7 @@ export function HistoryScreen({
                 heading?.scrollIntoView?.({ block: 'start' });
               }}
             >
+              <ArrowDown className="h-4 w-4" aria-hidden="true" />
               {t('ดูรายการประวัติ', 'See saved entries')}
             </NormalButton>
           </div>
@@ -226,7 +224,49 @@ export function HistoryScreen({
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
         <section className="rounded-[10px] border border-rule bg-paper-2 p-6 lg:sticky lg:top-20 lg:col-span-6">
-          <h2 className="text-lg text-ink">{t('ตั้งค่าการบันทึกประวัติ', 'History storage settings')}</h2>
+          <h2 className="text-lg text-ink">
+            {t('ความยินยอมและตั้งค่าการบันทึกประวัติ', 'Consent and history storage')}
+          </h2>
+
+          <div className="mt-4 rounded-lg border border-rule bg-paper-3 px-4 py-3.5 text-xs leading-relaxed text-ink-2 sm:text-sm">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
+              <div className="min-w-0">
+                <h3 className="text-xs font-semibold text-ink sm:text-sm">
+                  {t('ทำไมระบบถึงปิดการบันทึกประวัติเป็นค่าเริ่มต้น?', 'Why is history off by default?')}
+                </h3>
+                <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-ink-2">
+                  <li>
+                    <strong className="font-medium text-ink">
+                      {t('ขอความยินยอมก่อนเก็บข้อมูล:', 'Explicit consent first:')}
+                    </strong>{' '}
+                    {t(
+                      'ข้อมูลผู้ติดตามเป็นข้อมูลส่วนตัว เว็บจึงไม่แอบบันทึกลงเบราว์เซอร์อัตโนมัติจนกว่าคุณจะกดอนุญาตเอง',
+                      'Follower data is personal, so this site never saves anything to your browser automatically until you opt in.',
+                    )}
+                  </li>
+                  <li>
+                    <strong className="font-medium text-ink">
+                      {t('ปลอดภัยเมื่อใช้เครื่องร่วมกับผู้อื่น:', 'Safer on shared devices:')}
+                    </strong>{' '}
+                    {t(
+                      'หากเปิดเช็กบนเครื่องสาธารณะหรือเครื่องที่ไม่ใช่ของคุณ ปิดแท็บแล้วจะไม่มีประวัติหรือรายชื่อตกค้าง',
+                      'If you check an export on a shared or public device, closing the tab leaves no saved history or usernames behind.',
+                    )}
+                  </li>
+                  <li>
+                    <strong className="font-medium text-ink">
+                      {t('เลือกเก็บได้ 2 ระดับและลบได้ทุกเมื่อ:', 'Two-tier control, removable anytime:')}
+                    </strong>{' '}
+                    {t(
+                      'เลือกเก็บเฉพาะตัวเลขสรุป หรือเปิดจำรายชื่อไว้เทียบ ZIP รอบถัดไป และกดปิดหรือล้างข้อมูลทั้งหมดได้ตลอดเวลา',
+                      'Choose summary counts only or add account lists for future ZIP comparisons, and turn off or clear everything in one click.',
+                    )}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-cool/35 bg-cool-soft px-4 py-3 text-xs leading-relaxed text-ink-2 sm:text-sm">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-cool" aria-hidden="true" />

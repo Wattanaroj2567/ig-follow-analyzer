@@ -8,7 +8,6 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { BackButton } from '../components/BackButton';
 import type { PageId } from '../components/AppShell';
 import { NormalButton } from '../components/NormalButton';
 import { UploadFileGuide } from '../components/UploadFileGuide';
@@ -50,8 +49,7 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
   };
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="border-b border-rule pb-7">
         <h1 className="page-heading">
           {isBusy

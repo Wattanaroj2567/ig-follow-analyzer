@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import type { PageId } from '../components/AppShell';
 import { FeedbackForm } from '../components/FeedbackForm';
 import { NormalButton } from '../components/NormalButton';
-import { BackButton } from '../components/BackButton';
 import { ReviewForm } from '../components/ReviewForm';
 import { type FaqItem, getComparisonFaqs } from '../data/comparisonFaqs';
 import { useLanguage } from '../lib/language';
@@ -162,12 +161,12 @@ export function TermsAndFaqScreen({
     },
     {
       q: t(
-        'ทำไมยอดผู้ติดตามต่างจากหน้าโปรไฟล์?',
-        'Why does my follower count differ from my Instagram profile?',
+        'ทำไมยอดผู้ติดตามหรือกำลังติดตามต่างจากหน้าโปรไฟล์?',
+        'Why do my follower or following counts differ from my Instagram profile?',
       ),
       a: t(
-        'ช่วงวันที่จำกัด เช่น 3 เดือนหรือช่วงที่กำหนดเอง อาจทำให้บางบัญชีไม่อยู่ใน ZIP และยอดบนโปรไฟล์อาจเปลี่ยนไปหลังวันที่ส่งออก หากยอดต่างกัน ให้ตรวจช่วงวันที่และลองขอไฟล์ใหม่โดยเลือก “ตลอดเวลา (All time)”',
-        'A limited date range, such as three months or custom dates, can leave accounts out of the ZIP. The profile count can also change after the export. If the counts differ, check the date range and try requesting a fresh ZIP with “All time.”',
+        'หากยอดใน ZIP มากกว่าหน้าโปรไฟล์ เป็นเพราะไฟล์ที่ส่งออกจาก Instagram ยังคงมีรายชื่อ “บัญชีที่ถูกปิดใช้งาน” (Deactivated) และบัญชีที่ถูกลบ (เช่น __deleted__*) รวมอยู่ด้วย ในขณะที่แอป Instagram หักบัญชีเหล่านี้ออกจากยอดบนหน้าโปรไฟล์แล้วแต่ไม่ได้ระบุสถานะแยกไว้ในไฟล์ ZIP ส่วนกรณีที่ยอดใน ZIP น้อยกว่า อาจเกิดจากเลือกช่วงวันที่จำกัดตอนขอไฟล์ หรือยอดบนโปรไฟล์เปลี่ยนไปหลังเวลาที่ส่งออก แนะนำให้ขอไฟล์โดยเลือกช่วงเวลา “ตลอดเวลา (All time)”',
+        'If the ZIP count is higher than on your profile, it is because Instagram exports still include deactivated accounts and deleted placeholders (such as __deleted__*) that the Instagram app subtracts from your profile count without marking their status in the ZIP. If the ZIP count is lower, a limited date range may have excluded older accounts or your profile count changed after the export was generated—always request exports with “All time.”',
       ),
       link: {
         page: 'how-it-works',
@@ -219,8 +218,7 @@ export function TermsAndFaqScreen({
   ];
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <h1 className="page-heading max-w-5xl">
         {t('เงื่อนไขการใช้งาน', 'Terms,')}{' '}
         <span className="whitespace-nowrap">{t('ความเป็นส่วนตัว', 'privacy,')}</span>{' '}
@@ -343,8 +341,7 @@ export function AboutScreen({ onNavigate }: { onNavigate: (id: PageId) => void }
   }, [reviewEndpoint]);
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header className="border-b border-rule pb-8">
         <h1 className="page-heading max-w-[26ch]">
           {t('ทำไมเราถึงสร้าง', 'Why we built')}{' '}

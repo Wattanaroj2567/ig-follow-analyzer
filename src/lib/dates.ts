@@ -3,8 +3,19 @@ const thaiMonths = Array.from({ length: 12 }, (_, month) =>
   thaiShortMonth.format(new Date(2000, month, 1)),
 );
 
+const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
 export function formatDate(date: Date, locale: string): string {
-  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+  let formatter = dateFormatterCache.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    dateFormatterCache.set(locale, formatter);
+  }
+  return formatter.format(date);
 }
 
 export function formatAnalysisTime(iso: string, locale: string, showMilliseconds = false): string {

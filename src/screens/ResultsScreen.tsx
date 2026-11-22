@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
-import { BackButton } from '../components/BackButton';
 import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
 import { FollowerTimeline } from '../components/FollowerTimeline';
 import { NormalButton } from '../components/NormalButton';
@@ -332,8 +331,7 @@ export function ResultsScreen({
   const hasHtmlLimitation = result.detectedFiles.format !== 'json';
 
   return (
-    <div className="product-wrap py-9 lg:py-14">
-      <BackButton onNavigate={onNavigate} target="landing" />
+    <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
       <header>
         <h1 className="page-heading">
           {result.isDemoData

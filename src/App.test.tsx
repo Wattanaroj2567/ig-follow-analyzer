@@ -345,14 +345,33 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
       }),
     });
     vi.stubGlobal('fetch', fetchReview);
-    render(<App />);
+    const { unmount } = render(<App />);
 
+    expect(screen.getByText('กำลังโหลดรีวิว…')).toBeVisible();
     const summary = within(await screen.findByRole('region', { name: 'รีวิวจากผู้ใช้' }));
     expect(summary.getByText('4.2 / 5')).toBeVisible();
     expect(summary.getByText('จาก 9 คะแนน')).toBeVisible();
     expect(summary.getAllByRole('listitem')).toHaveLength(6);
     expect(summary.getAllByText('ก')).toHaveLength(6);
     expect(summary.queryByText('ข้อความทดสอบ 7')).not.toBeInTheDocument();
+
+    unmount();
+    let finishRefresh!: (response: unknown) => void;
+    fetchReview.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRefresh = resolve;
+      }),
+    );
+    render(<App />);
+    expect(screen.getByText('4.2 / 5')).toBeVisible();
+
+    await act(async () => {
+      finishRefresh({
+        ok: true,
+        json: async () => ({ scoreCount: 0, average: null, reviews: [] }),
+      });
+    });
+    expect(screen.queryByRole('region', { name: 'รีวิวจากผู้ใช้' })).not.toBeInTheDocument();
   });
 
   it.each(['cancel', 'navigate'])('discards a pending ZIP read on %s', async (action) => {

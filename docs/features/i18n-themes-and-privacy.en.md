@@ -45,6 +45,8 @@ Visitors can send a review from **About → Write a review**. A rating of 1–5 
 
 Once ratings exist, the homepage shows their average and count above the footer. It selects up to six consented comments a day after screening for profanity, impersonation, and contact details. Ratings still count when they have no public comment. The homepage counts submissions made via the site after this version of the receiver is enabled.
 
+The homepage shows a loading status while it fetches reviews. If you reopen the homepage in the same tab within one minute, it shows the recently loaded public reviews while checking for updates.
+
 ### First-time setup
 
 1. Open your existing review form. If you need a new form, create it in Google Forms with exactly one of each question type: **Rating** with five stars, **Paragraph** for the optional comment, **Short answer** for the display name, and **Checkboxes** for optional permission to publish. The consent choice must begin with `อนุญาตให้นำข้อความรีวิวและชื่อที่กรอกไว้` so the receiver can recognize it.

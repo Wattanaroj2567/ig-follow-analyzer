@@ -36,16 +36,21 @@ function doGet(event) {
       const id = response.getId();
       const visibility = controls.get(id);
       if (visibility !== 'show' && visibility !== 'hide') continue;
-      const rating = Number(response.getResponseForItem(ratingItem)?.getResponse());
+      const answers = new Map(
+        response
+          .getItemResponses()
+          .map((answer) => [answer.getItem().getId(), answer.getResponse()]),
+      );
+      const rating = Number(answers.get(ratingItem.getId()));
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) continue;
       scoreCount++;
       ratingTotal += rating;
 
-      const consent = response.getResponseForItem(permissionItem)?.getResponse();
+      const consent = answers.get(permissionItem.getId());
       if (visibility !== 'show' || !Array.isArray(consent) || !consent.includes(permission))
         continue;
-      const displayName = String(response.getResponseForItem(nameItem)?.getResponse() ?? '').trim();
-      const comment = String(response.getResponseForItem(commentItem)?.getResponse() ?? '').trim();
+      const displayName = String(answers.get(nameItem.getId()) ?? '').trim();
+      const comment = String(answers.get(commentItem.getId()) ?? '').trim();
       if (!canPublishReview(displayName, comment)) continue;
       cards.push({
         order: dailyReviewOrder(date + id),

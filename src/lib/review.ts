@@ -49,17 +49,7 @@ function isPublicReview(value: unknown): value is PublicReview {
   );
 }
 
-export async function loadReviewSummary(
-  endpoint: string,
-  signal: AbortSignal,
-): Promise<ReviewSummary | null> {
-  const response = await fetch(endpoint, {
-    credentials: 'omit',
-    referrerPolicy: 'no-referrer',
-    cache: 'no-store',
-    signal,
-  });
-  const data: unknown = response.ok ? await response.json() : null;
+function parseReviewSummary(data: unknown): ReviewSummary | null {
   if (
     typeof data !== 'object' ||
     data === null ||
@@ -81,6 +71,47 @@ export async function loadReviewSummary(
     average: data.average,
     reviews: data.reviews.filter(isPublicReview).slice(0, 6),
   };
+}
+
+const reviewCacheLifetime = 60_000;
+
+export function readCachedReviewSummary(endpoint: string): ReviewSummary | null {
+  try {
+    const entry = sessionStorage.getItem('ig-follow-review-summary:' + endpoint);
+    if (!entry) return null;
+    const { savedAt, summary } = JSON.parse(entry);
+    const age = Date.now() - savedAt;
+    return age >= 0 && age < reviewCacheLifetime ? parseReviewSummary(summary) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadReviewSummary(
+  endpoint: string,
+  signal: AbortSignal,
+): Promise<ReviewSummary | null> {
+  const response = await fetch(endpoint, {
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    cache: 'no-store',
+    signal,
+  });
+  const data: unknown = response.ok ? await response.json() : null;
+  const summary = parseReviewSummary(data);
+  if (!signal.aborted) {
+    try {
+      const key = 'ig-follow-review-summary:' + endpoint;
+      if (summary) {
+        sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), summary }));
+      } else {
+        sessionStorage.removeItem(key);
+      }
+    } catch {
+      // The fresh summary still works if session storage is unavailable.
+    }
+  }
+  return summary;
 }
 
 export function getReviewBrowserId(endpoint: string): string {

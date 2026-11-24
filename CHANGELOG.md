@@ -4,6 +4,12 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Show a loading status for homepage reviews and reuse recently loaded reviews on reload while checking for updates.
+
+- Restore homepage reviews by reading Google Forms answers by item ID in the Apps Script receiver.
+
 ## [1.0.0] - 2026-11-22
 
 ### Added

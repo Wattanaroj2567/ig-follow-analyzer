@@ -1,7 +1,7 @@
 import { Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../lib/language';
-import { getReviewEndpoint, loadReviewSummary } from '../lib/review';
+import { getReviewEndpoint, loadReviewSummary, readCachedReviewSummary } from '../lib/review';
 import { pageHref } from '../lib/routes';
 
 function reviewInitial(name: string) {
@@ -12,17 +12,22 @@ function reviewInitial(name: string) {
 export function LandingReviews() {
   const { t } = useLanguage();
   const endpoint = getReviewEndpoint();
-  const [summary, setSummary] = useState<Awaited<ReturnType<typeof loadReviewSummary>>>(null);
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof loadReviewSummary>> | undefined>(
+    () => (endpoint ? (readCachedReviewSummary(endpoint) ?? undefined) : null),
+  );
   useEffect(() => {
     if (!endpoint) return;
     const request = new AbortController();
-    const timeout = window.setTimeout(() => request.abort(), 12_000);
+    const timeout = window.setTimeout(() => {
+      request.abort();
+      setSummary(null);
+    }, 12_000);
     void loadReviewSummary(endpoint, request.signal)
       .then((data) => {
         if (!request.signal.aborted) setSummary(data);
       })
       .catch(() => {
-        // Reviews are optional content. A failed request leaves the landing page usable.
+        if (!request.signal.aborted) setSummary(null);
       })
       .finally(() => window.clearTimeout(timeout));
     return () => {
@@ -31,6 +36,13 @@ export function LandingReviews() {
     };
   }, [endpoint]);
 
+  if (summary === undefined) {
+    return (
+      <div className="product-wrap py-6 text-sm text-muted" role="status">
+        {t('กำลังโหลดรีวิว…', 'Loading reviews…')}
+      </div>
+    );
+  }
   if (!summary) return null;
   const { average, scoreCount, reviews } = summary;
   const locale = t('th-TH', 'en');

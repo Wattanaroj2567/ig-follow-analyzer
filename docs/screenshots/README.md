@@ -2,7 +2,7 @@
 
 **ภาษาไทย** · [English](README.en.md)
 
-152 สถานะ · 338 ภาพ · 21 พฤศจิกายน 2026
+156 สถานะ · 346 ภาพ · 28 พฤศจิกายน 2026
 
 ทุกสถานะมีภาพเดสก์ท็อป **1440 × 960** และมือถือ **390 × 844** แยกกัน กดลิงก์ในตารางเพื่อเปิด PNG ขนาดจริง ภาพใช้ Chrome และข้อมูลสมมติในโปรไฟล์ทดสอบ ภาพหน้าจอยาวจัดเฟรมตามส่วนที่ระบุในแถว คู่มือขอ ZIP มีภาพซูมไปยังส่วนภาพประกอบบนมือถือเพิ่มอีก 34 ภาพ
 
@@ -81,59 +81,63 @@
 
 ## เลือก ZIP ความคืบหน้า และข้อผิดพลาด
 
-| หน้า / สถานะ                        | เดสก์ท็อป                                                        | มือถือ                                                          |
-| ---------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
-| เลือก ZIP                           | [เปิดภาพ](desktop/upload/choose.png)                            | [เปิดภาพ](mobile/upload/choose.png)                            |
-| เปิดคู่มือหา ZIP ที่ดาวน์โหลดไว้           | [เปิดภาพ](desktop/upload/find-zip.png)                          | [เปิดภาพ](mobile/upload/find-zip.png)                          |
-| กำลังอ่านไฟล์ · **จำลอง**             | [เปิดภาพ](desktop/upload/preparing.png)                         | [เปิดภาพ](mobile/upload/preparing.png)                         |
-| ยกเลิกการวิเคราะห์ · **จำลอง**        | [เปิดภาพ](desktop/upload/error-cancelled.png)                   | [เปิดภาพ](mobile/upload/error-cancelled.png)                   |
-| นามสกุล .zip ไม่ถูกต้อง                | [เปิดภาพ](desktop/upload/error-invalid-extension.png)           | [เปิดภาพ](mobile/upload/error-invalid-extension.png)           |
-| เลือกหลายไฟล์                        | [เปิดภาพ](desktop/upload/error-multiple-files.png)              | [เปิดภาพ](mobile/upload/error-multiple-files.png)              |
-| ZIP เกินขนาด · **จำลอง**            | [เปิดภาพ](desktop/upload/error-archive-too-large.png)           | [เปิดภาพ](mobile/upload/error-archive-too-large.png)           |
-| เปิด Worker ไม่สำเร็จ · **จำลอง**     | [เปิดภาพ](desktop/upload/error-worker-error.png)                | [เปิดภาพ](mobile/upload/error-worker-error.png)                |
-| อ่านไฟล์จากอุปกรณ์ไม่สำเร็จ · **จำลอง**  | [เปิดภาพ](desktop/upload/error-read-failed.png)                 | [เปิดภาพ](mobile/upload/error-read-failed.png)                 |
-| ข้อผิดพลาดทั่วไปจาก Worker · **จำลอง** | [เปิดภาพ](desktop/upload/error-unknown-error.png)               | [เปิดภาพ](mobile/upload/error-unknown-error.png)               |
-| JSON ผู้ติดตามเสีย                     | [เปิดภาพ](desktop/upload/error-invalid-followers-json.png)      | [เปิดภาพ](mobile/upload/error-invalid-followers-json.png)      |
-| JSON กำลังติดตามเสีย                  | [เปิดภาพ](desktop/upload/error-invalid-following-json.png)      | [เปิดภาพ](mobile/upload/error-invalid-following-json.png)      |
-| HTML ผู้ติดตามไม่ครบ                   | [เปิดภาพ](desktop/upload/error-invalid-followers-html.png)      | [เปิดภาพ](mobile/upload/error-invalid-followers-html.png)      |
-| HTML กำลังติดตามไม่ครบ                | [เปิดภาพ](desktop/upload/error-invalid-following-html.png)      | [เปิดภาพ](mobile/upload/error-invalid-following-html.png)      |
-| หมายเลขไฟล์ย่อยขาดช่วง                | [เปิดภาพ](desktop/upload/error-incomplete-archive-list.png)     | [เปิดภาพ](mobile/upload/error-incomplete-archive-list.png)     |
-| โครงสร้าง JSON ผู้ติดตามผิด             | [เปิดภาพ](desktop/upload/error-unexpected-followers-schema.png) | [เปิดภาพ](mobile/upload/error-unexpected-followers-schema.png) |
-| โครงสร้าง JSON กำลังติดตามผิด          | [เปิดภาพ](desktop/upload/error-unexpected-following-schema.png) | [เปิดภาพ](mobile/upload/error-unexpected-following-schema.png) |
-| ไฟล์ว่าง                             | [เปิดภาพ](desktop/upload/error-empty-file.png)                  | [เปิดภาพ](mobile/upload/error-empty-file.png)                  |
-| เนื้อหาไม่ใช่ ZIP                      | [เปิดภาพ](desktop/upload/error-not-a-zip.png)                   | [เปิดภาพ](mobile/upload/error-not-a-zip.png)                   |
-| ZIP มีไฟล์ย่อยมากเกินกำหนด · **จำลอง** | [เปิดภาพ](desktop/upload/error-too-many-entries.png)            | [เปิดภาพ](mobile/upload/error-too-many-entries.png)            |
-| Worker ปฏิเสธเส้นทางไฟล์ · **จำลอง**  | [เปิดภาพ](desktop/upload/error-unsafe-path.png)                 | [เปิดภาพ](mobile/upload/error-unsafe-path.png)                 |
-| ข้อมูลหลังแตกไฟล์เกินขนาด · **จำลอง**   | [เปิดภาพ](desktop/upload/error-decompressed-too-large.png)      | [เปิดภาพ](mobile/upload/error-decompressed-too-large.png)      |
-| ZIP ไม่สมบูรณ์                        | [เปิดภาพ](desktop/upload/error-corrupt-zip.png)                 | [เปิดภาพ](mobile/upload/error-corrupt-zip.png)                 |
-| ไม่พบรายชื่อทั้งสองฝั่ง                   | [เปิดภาพ](desktop/upload/error-missing-both-sections.png)       | [เปิดภาพ](mobile/upload/error-missing-both-sections.png)       |
-| ไม่พบรายชื่อผู้ติดตาม                    | [เปิดภาพ](desktop/upload/error-missing-followers.png)           | [เปิดภาพ](mobile/upload/error-missing-followers.png)           |
-| ไม่พบรายชื่อกำลังติดตาม                 | [เปิดภาพ](desktop/upload/error-missing-following.png)           | [เปิดภาพ](mobile/upload/error-missing-following.png)           |
-| กำลังแตกไฟล์ใน Worker · **จำลอง**    | [เปิดภาพ](desktop/upload/worker-progress.png)                   | [เปิดภาพ](mobile/upload/worker-progress.png)                   |
+| หน้า / สถานะ                           | เดสก์ท็อป                                                        | มือถือ                                                          |
+| ------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| เลือก ZIP                              | [เปิดภาพ](desktop/upload/choose.png)                            | [เปิดภาพ](mobile/upload/choose.png)                            |
+| เลือกโหมดวิเคราะห์ (เทียบประวัติ / ไฟล์เดี่ยว) | [เปิดภาพ](desktop/upload/mode-selector.png)                     | [เปิดภาพ](mobile/upload/mode-selector.png)                     |
+| เปิดคู่มือหา ZIP ที่ดาวน์โหลดไว้              | [เปิดภาพ](desktop/upload/find-zip.png)                          | [เปิดภาพ](mobile/upload/find-zip.png)                          |
+| กำลังอ่านไฟล์ · **จำลอง**                | [เปิดภาพ](desktop/upload/preparing.png)                         | [เปิดภาพ](mobile/upload/preparing.png)                         |
+| ยกเลิกการวิเคราะห์ · **จำลอง**           | [เปิดภาพ](desktop/upload/error-cancelled.png)                   | [เปิดภาพ](mobile/upload/error-cancelled.png)                   |
+| นามสกุล .zip ไม่ถูกต้อง                   | [เปิดภาพ](desktop/upload/error-invalid-extension.png)           | [เปิดภาพ](mobile/upload/error-invalid-extension.png)           |
+| เลือกหลายไฟล์                           | [เปิดภาพ](desktop/upload/error-multiple-files.png)              | [เปิดภาพ](mobile/upload/error-multiple-files.png)              |
+| ZIP เกินขนาด · **จำลอง**               | [เปิดภาพ](desktop/upload/error-archive-too-large.png)           | [เปิดภาพ](mobile/upload/error-archive-too-large.png)           |
+| เปิด Worker ไม่สำเร็จ · **จำลอง**        | [เปิดภาพ](desktop/upload/error-worker-error.png)                | [เปิดภาพ](mobile/upload/error-worker-error.png)                |
+| อ่านไฟล์จากอุปกรณ์ไม่สำเร็จ · **จำลอง**     | [เปิดภาพ](desktop/upload/error-read-failed.png)                 | [เปิดภาพ](mobile/upload/error-read-failed.png)                 |
+| ข้อผิดพลาดทั่วไปจาก Worker · **จำลอง**    | [เปิดภาพ](desktop/upload/error-unknown-error.png)               | [เปิดภาพ](mobile/upload/error-unknown-error.png)               |
+| JSON ผู้ติดตามเสีย                        | [เปิดภาพ](desktop/upload/error-invalid-followers-json.png)      | [เปิดภาพ](mobile/upload/error-invalid-followers-json.png)      |
+| JSON กำลังติดตามเสีย                     | [เปิดภาพ](desktop/upload/error-invalid-following-json.png)      | [เปิดภาพ](mobile/upload/error-invalid-following-json.png)      |
+| HTML ผู้ติดตามไม่ครบ                      | [เปิดภาพ](desktop/upload/error-invalid-followers-html.png)      | [เปิดภาพ](mobile/upload/error-invalid-followers-html.png)      |
+| HTML กำลังติดตามไม่ครบ                   | [เปิดภาพ](desktop/upload/error-invalid-following-html.png)      | [เปิดภาพ](mobile/upload/error-invalid-following-html.png)      |
+| หมายเลขไฟล์ย่อยขาดช่วง                   | [เปิดภาพ](desktop/upload/error-incomplete-archive-list.png)     | [เปิดภาพ](mobile/upload/error-incomplete-archive-list.png)     |
+| โครงสร้าง JSON ผู้ติดตามผิด                | [เปิดภาพ](desktop/upload/error-unexpected-followers-schema.png) | [เปิดภาพ](mobile/upload/error-unexpected-followers-schema.png) |
+| โครงสร้าง JSON กำลังติดตามผิด             | [เปิดภาพ](desktop/upload/error-unexpected-following-schema.png) | [เปิดภาพ](mobile/upload/error-unexpected-following-schema.png) |
+| ไฟล์ว่าง                                | [เปิดภาพ](desktop/upload/error-empty-file.png)                  | [เปิดภาพ](mobile/upload/error-empty-file.png)                  |
+| เนื้อหาไม่ใช่ ZIP                         | [เปิดภาพ](desktop/upload/error-not-a-zip.png)                   | [เปิดภาพ](mobile/upload/error-not-a-zip.png)                   |
+| ZIP มีไฟล์ย่อยมากเกินกำหนด · **จำลอง**    | [เปิดภาพ](desktop/upload/error-too-many-entries.png)            | [เปิดภาพ](mobile/upload/error-too-many-entries.png)            |
+| Worker ปฏิเสธเส้นทางไฟล์ · **จำลอง**     | [เปิดภาพ](desktop/upload/error-unsafe-path.png)                 | [เปิดภาพ](mobile/upload/error-unsafe-path.png)                 |
+| ข้อมูลหลังแตกไฟล์เกินขนาด · **จำลอง**      | [เปิดภาพ](desktop/upload/error-decompressed-too-large.png)      | [เปิดภาพ](mobile/upload/error-decompressed-too-large.png)      |
+| ZIP ไม่สมบูรณ์                           | [เปิดภาพ](desktop/upload/error-corrupt-zip.png)                 | [เปิดภาพ](mobile/upload/error-corrupt-zip.png)                 |
+| ไม่พบรายชื่อทั้งสองฝั่ง                      | [เปิดภาพ](desktop/upload/error-missing-both-sections.png)       | [เปิดภาพ](mobile/upload/error-missing-both-sections.png)       |
+| ไม่พบรายชื่อผู้ติดตาม                       | [เปิดภาพ](desktop/upload/error-missing-followers.png)           | [เปิดภาพ](mobile/upload/error-missing-followers.png)           |
+| ไม่พบรายชื่อกำลังติดตาม                    | [เปิดภาพ](desktop/upload/error-missing-following.png)           | [เปิดภาพ](mobile/upload/error-missing-following.png)           |
+| กำลังแตกไฟล์ใน Worker · **จำลอง**       | [เปิดภาพ](desktop/upload/worker-progress.png)                   | [เปิดภาพ](mobile/upload/worker-progress.png)                   |
 
 ## ผลวิเคราะห์ การเปรียบเทียบ และตารางบัญชี
 
-| หน้า / สถานะ                                    | เดสก์ท็อป                                                | มือถือ                                                  |
-| ---------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
-| เปิดหน้าผลโดยยังไม่มีข้อมูล ระบบแสดงหน้าเลือก ZIP       | [เปิดภาพ](desktop/results/no-active-analysis.png)       | [เปิดภาพ](mobile/results/no-active-analysis.png)       |
-| หน้าผลตัวอย่าง                                    | [เปิดภาพ](desktop/results/sample.png)                   | [เปิดภาพ](mobile/results/sample.png)                   |
-| ภาพรวม 5 หมวด                                  | [เปิดภาพ](desktop/results/overview.png)                 | [เปิดภาพ](mobile/results/overview.png)                 |
-| วิธีคำนวณสัดส่วนเปอร์เซ็นต์                           | [เปิดภาพ](desktop/results/percentage-details.png)       | [เปิดภาพ](mobile/results/percentage-details.png)       |
-| ตาราง · ผู้ติดตามของคุณ                            | [เปิดภาพ](desktop/results/table-followers.png)          | [เปิดภาพ](mobile/results/table-followers.png)          |
-| ตาราง · คุณกำลังติดตาม                            | [เปิดภาพ](desktop/results/table-following.png)          | [เปิดภาพ](mobile/results/table-following.png)          |
-| ตาราง · ไม่ติดตามคุณกลับ                           | [เปิดภาพ](desktop/results/table-not-following-back.png) | [เปิดภาพ](mobile/results/table-not-following-back.png) |
-| ตาราง · คุณยังไม่ได้ติดตามกลับ                       | [เปิดภาพ](desktop/results/table-not-followed-back.png)  | [เปิดภาพ](mobile/results/table-not-followed-back.png)  |
-| ตาราง · ติดตามกันทั้งสองฝ่าย                        | [เปิดภาพ](desktop/results/table-mutual.png)             | [เปิดภาพ](mobile/results/table-mutual.png)             |
-| ค้นหาแล้วไม่มีบัญชีตรงกัน                             | [เปิดภาพ](desktop/results/search-empty.png)             | [เปิดภาพ](mobile/results/search-empty.png)             |
-| เลือกรอบก่อนหน้าที่จะเทียบ                           | [เปิดภาพ](desktop/results/comparison-picker.png)        | [เปิดภาพ](mobile/results/comparison-picker.png)        |
-| ยอดติดตามใหม่และหายจากรายชื่อ                      | [เปิดภาพ](desktop/results/comparison-totals.png)        | [เปิดภาพ](mobile/results/comparison-totals.png)        |
-| รายชื่อที่หายและไทม์ไลน์                             | [เปิดภาพ](desktop/results/missing-timeline.png)         | [เปิดภาพ](mobile/results/missing-timeline.png)         |
-| รายชื่อผู้ติดตามใหม่                                 | [เปิดภาพ](desktop/results/new-followers.png)            | [เปิดภาพ](mobile/results/new-followers.png)            |
-| วิเคราะห์ ZIP ครั้งแรก ยังไม่มีคู่เทียบ                  | [เปิดภาพ](desktop/results/without-baseline.png)         | [เปิดภาพ](mobile/results/without-baseline.png)         |
-| ผลจริงจาก ZIP สมมติสองรอบ                        | [เปิดภาพ](desktop/results/actual-comparison.png)        | [เปิดภาพ](mobile/results/actual-comparison.png)        |
-| เตือนยอดลดลง 30% ก่อนสรุปผล                       | [เปิดภาพ](desktop/results/follower-drop.png)            | [เปิดภาพ](mobile/results/follower-drop.png)            |
-| เตือนเมื่อรายชื่อใหม่และรายชื่อที่หายมีมาก แม้ยอดรวมเท่าเดิม | [เปิดภาพ](desktop/results/follower-turnover.png)        | [เปิดภาพ](mobile/results/follower-turnover.png)        |
-| ผลจากประวัติเปิดอยู่แล้วถอนสิทธิ์จากอีกแท็บ               | [เปิดภาพ](desktop/results/history-revoked.png)          | [เปิดภาพ](mobile/results/history-revoked.png)          |
+| หน้า / สถานะ                                    | เดสก์ท็อป                                                          | มือถือ                                                            |
+| ---------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| เปิดหน้าผลโดยยังไม่มีข้อมูล ระบบแสดงหน้าเลือก ZIP       | [เปิดภาพ](desktop/results/no-active-analysis.png)                 | [เปิดภาพ](mobile/results/no-active-analysis.png)                 |
+| หน้าผลตัวอย่าง                                    | [เปิดภาพ](desktop/results/sample.png)                             | [เปิดภาพ](mobile/results/sample.png)                             |
+| ภาพรวม 5 หมวด                                  | [เปิดภาพ](desktop/results/overview.png)                           | [เปิดภาพ](mobile/results/overview.png)                           |
+| วิธีคำนวณสัดส่วนเปอร์เซ็นต์                           | [เปิดภาพ](desktop/results/percentage-details.png)                 | [เปิดภาพ](mobile/results/percentage-details.png)                 |
+| ตาราง · ผู้ติดตามของคุณ                            | [เปิดภาพ](desktop/results/table-followers.png)                    | [เปิดภาพ](mobile/results/table-followers.png)                    |
+| ตาราง · คุณกำลังติดตาม                            | [เปิดภาพ](desktop/results/table-following.png)                    | [เปิดภาพ](mobile/results/table-following.png)                    |
+| ตาราง · ไม่ติดตามคุณกลับ                           | [เปิดภาพ](desktop/results/table-not-following-back.png)           | [เปิดภาพ](mobile/results/table-not-following-back.png)           |
+| ตาราง · คุณยังไม่ได้ติดตามกลับ                       | [เปิดภาพ](desktop/results/table-not-followed-back.png)            | [เปิดภาพ](mobile/results/table-not-followed-back.png)            |
+| ตาราง · ติดตามกันทั้งสองฝ่าย                        | [เปิดภาพ](desktop/results/table-mutual.png)                       | [เปิดภาพ](mobile/results/table-mutual.png)                       |
+| ค้นหาแล้วไม่มีบัญชีตรงกัน                             | [เปิดภาพ](desktop/results/search-empty.png)                       | [เปิดภาพ](mobile/results/search-empty.png)                       |
+| เลือกรอบก่อนหน้าที่จะเทียบ                           | [เปิดภาพ](desktop/results/comparison-picker.png)                  | [เปิดภาพ](mobile/results/comparison-picker.png)                  |
+| ยอดติดตามใหม่และหายจากรายชื่อ                      | [เปิดภาพ](desktop/results/comparison-totals.png)                  | [เปิดภาพ](mobile/results/comparison-totals.png)                  |
+| คลิกสลับดูภาพรวมบัญชีของไฟล์ที่ใช้เทียบ                  | [เปิดภาพ](desktop/results/comparison-inspect-previous.png)        | [เปิดภาพ](mobile/results/comparison-inspect-previous.png)        |
+| รายชื่อที่หายและไทม์ไลน์                             | [เปิดภาพ](desktop/results/missing-timeline.png)                   | [เปิดภาพ](mobile/results/missing-timeline.png)                   |
+| รายชื่อผู้ติดตามใหม่                                 | [เปิดภาพ](desktop/results/new-followers.png)                      | [เปิดภาพ](mobile/results/new-followers.png)                      |
+| วิเคราะห์ ZIP ครั้งแรก ยังไม่มีคู่เทียบ                  | [เปิดภาพ](desktop/results/without-baseline.png)                   | [เปิดภาพ](mobile/results/without-baseline.png)                   |
+| ผลจริงจาก ZIP สมมติสองรอบ                        | [เปิดภาพ](desktop/results/actual-comparison.png)                  | [เปิดภาพ](mobile/results/actual-comparison.png)                  |
+| ผลจริง · คลิกดูภาพรวมบัญชีของไฟล์ที่ใช้เทียบ             | [เปิดภาพ](desktop/results/actual-comparison-inspect-previous.png) | [เปิดภาพ](mobile/results/actual-comparison-inspect-previous.png) |
+| ผลวิเคราะห์ไฟล์เดี่ยวแบบไม่เทียบ (ขณะที่เปิดประวัติอยู่)     | [เปิดภาพ](desktop/results/standalone-single-file.png)             | [เปิดภาพ](mobile/results/standalone-single-file.png)             |
+| เตือนยอดลดลง 30% ก่อนสรุปผล                       | [เปิดภาพ](desktop/results/follower-drop.png)                      | [เปิดภาพ](mobile/results/follower-drop.png)                      |
+| เตือนเมื่อรายชื่อใหม่และรายชื่อที่หายมีมาก แม้ยอดรวมเท่าเดิม | [เปิดภาพ](desktop/results/follower-turnover.png)                  | [เปิดภาพ](mobile/results/follower-turnover.png)                  |
+| ผลจากประวัติเปิดอยู่แล้วถอนสิทธิ์จากอีกแท็บ               | [เปิดภาพ](desktop/results/history-revoked.png)                    | [เปิดภาพ](mobile/results/history-revoked.png)                    |
 
 ## ประวัติและการอนุญาตให้บันทึก
 

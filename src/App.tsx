@@ -39,7 +39,7 @@ import { LandingScreen } from './screens/LandingScreen';
 import { PdfReportScreen } from './screens/PdfReportScreen';
 import { ResultsScreen } from './screens/ResultsScreen';
 import { AboutScreen, TermsAndFaqScreen } from './screens/TrustAndAboutScreen';
-import { UploadScreen } from './screens/UploadScreen';
+import { type UploadMode, UploadScreen } from './screens/UploadScreen';
 import type { AnalysisResult, HistoryPreferences, HistoryRecord } from './types/analyzer';
 
 const demoAnalysis = buildDemoAnalysisResult();
@@ -208,6 +208,8 @@ function AppContent() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [sessionRecordId, setSessionRecordId] = useState<string | null>(null);
   const [openedRecordId, setOpenedRecordId] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<UploadMode>('compare');
+  const [isStandaloneAnalysis, setIsStandaloneAnalysis] = useState(false);
   const [comparisonSelection, setComparisonSelection] = useState<{
     currentKey: string;
     previousId: string;
@@ -229,6 +231,10 @@ function AppContent() {
     if (historyRequest.current.id !== request) return;
     setHistoryPrefs(prefs);
     setHistoryRecords(records);
+    if (!prefs.tier1SummaryOptIn) {
+      setUploadMode('compare');
+      setIsStandaloneAnalysis(false);
+    }
     if (!prefs.tier2HandlesOptIn) setComparisonSelection(null);
     setSessionRecordId((id) => (records.some((record) => record.id === id) ? id : null));
     setOpenedRecordId((id) => (id && records.some((record) => record.id === id) ? id : null));
@@ -259,15 +265,22 @@ function AppContent() {
     await refreshHistory();
   };
 
+  const startUpload = (mode: UploadMode) => {
+    setUploadMode(mode);
+    setActivePage('upload');
+  };
+
   const handleAnalysisComplete = async (result: AnalysisResult) => {
     const request = ++analysisRequest.current;
+    const runStandalone = uploadMode === 'single' && historyPrefs.tier1SummaryOptIn;
     setAnalysis(result);
     setOpenedRecordId(null);
     setSessionRecordId(null);
     setComparisonSelection(null);
+    setIsStandaloneAnalysis(runStandalone);
     setHistorySaveError(false);
     setActivePage('results');
-    if (!historyPrefs.tier1SummaryOptIn) return;
+    if (runStandalone || !historyPrefs.tier1SummaryOptIn) return;
 
     try {
       const saved = await persistAnalysisIfConsented(result, historyPrefs);
@@ -283,13 +296,40 @@ function AppContent() {
     }
   };
 
+  const handleSaveStandaloneToHistory = async () => {
+    if (!analysis || analysis.isDemoData || openedRecordId || !historyPrefs.tier1SummaryOptIn) {
+      return;
+    }
+    const request = ++analysisRequest.current;
+    setIsStandaloneAnalysis(false);
+    setUploadMode('compare');
+    setHistorySaveError(false);
+    try {
+      const saved = await persistAnalysisIfConsented(analysis, historyPrefs);
+      if (analysisRequest.current === request) {
+        setSessionRecordId(saved?.id ?? null);
+        if (saved?.savedAnalysis && saved.analyzedAtIso !== analysis.analyzedAtIso) {
+          setAnalysis(saved.savedAnalysis);
+        }
+      }
+      await refreshChangedHistory();
+    } catch {
+      if (analysisRequest.current === request) setHistorySaveError(true);
+    }
+  };
+
   const handleUpdatePreferences = async (next: HistoryPreferences) => {
     const request = analysisRequest.current;
     try {
       const savedPrefs = await saveHistoryPreferences({ ...next, revision: historyPrefs.revision });
       const enabledSummary = !historyPrefs.tier1SummaryOptIn && savedPrefs.tier1SummaryOptIn;
       const enabledLists = !historyPrefs.tier2HandlesOptIn && savedPrefs.tier2HandlesOptIn;
-      if (!openedRecordId && analysis && (enabledSummary || enabledLists)) {
+      if (
+        !openedRecordId &&
+        !isStandaloneAnalysis &&
+        analysis &&
+        (enabledSummary || enabledLists)
+      ) {
         const saved = await persistAnalysisIfConsented(
           analysis,
           savedPrefs,
@@ -311,6 +351,7 @@ function AppContent() {
     const isSessionRecord = record.id === sessionRecordId && analysis !== null;
     if (!isSessionRecord && !record.savedAnalysis) return;
     setOpenedRecordId(isSessionRecord ? null : record.id);
+    setIsStandaloneAnalysis(false);
     setComparisonSelection(null);
     navigate(pageHref('results'), 'history-record');
   };
@@ -337,6 +378,8 @@ function AppContent() {
   const currentAnalysis = openedRecordId ? openedAnalysis : analysis;
   const activeRecordId = openedAnalysis ? openedRecordId : sessionRecordId;
   const activeAnalysis = route.demo ? sampleAnalysis : currentAnalysis;
+  const activeStandalone =
+    isStandaloneAnalysis && !openedRecordId && !route.demo && historyPrefs.tier1SummaryOptIn;
   const activeAnalysisKey = JSON.stringify([
     activeAnalysis?.isDemoData,
     activeAnalysis?.sourceFileName,
@@ -351,9 +394,18 @@ function AppContent() {
       });
   };
   const comparison = useMemo(() => {
-    if (!activeAnalysis || (!route.demo && !historyPrefs.tier2HandlesOptIn)) return null;
+    if (!activeAnalysis || activeStandalone || (!route.demo && !historyPrefs.tier2HandlesOptIn)) {
+      return null;
+    }
     return getComparisonExports(activeAnalysis, historyRecords, sampleAnalyses);
-  }, [activeAnalysis, route.demo, historyPrefs.tier2HandlesOptIn, historyRecords, sampleAnalyses]);
+  }, [
+    activeAnalysis,
+    activeStandalone,
+    route.demo,
+    historyPrefs.tier2HandlesOptIn,
+    historyRecords,
+    sampleAnalyses,
+  ]);
   const defaultPrevious = comparison?.earlier[0];
   const previous =
     (comparison?.isLatest && comparisonSelection?.currentKey === activeAnalysisKey
@@ -441,6 +493,10 @@ function AppContent() {
         <UploadScreen
           onAnalysisComplete={(res) => void handleAnalysisComplete(res)}
           onNavigate={setActivePage}
+          historyEnabled={historyPrefs.tier1SummaryOptIn}
+          comparisonEnabled={historyPrefs.tier2HandlesOptIn}
+          uploadMode={uploadMode}
+          onUploadModeChange={setUploadMode}
         />
       )}
       {!route.demo &&
@@ -485,6 +541,11 @@ function AppContent() {
             comparison={comparisonFiles}
             comparisonStatus={comparisonStatus}
             onSelectComparison={selectComparison}
+            isStandalone={activeStandalone}
+            onStartUpload={startUpload}
+            onSaveStandaloneToHistory={
+              activeStandalone ? () => void handleSaveStandaloneToHistory() : undefined
+            }
             initialCategory={route.category}
             onNavigate={navigateFromResult}
           />
@@ -492,6 +553,10 @@ function AppContent() {
           <UploadScreen
             onAnalysisComplete={(res) => void handleAnalysisComplete(res)}
             onNavigate={setActivePage}
+            historyEnabled={historyPrefs.tier1SummaryOptIn}
+            comparisonEnabled={historyPrefs.tier2HandlesOptIn}
+            uploadMode={uploadMode}
+            onUploadModeChange={setUploadMode}
           />
         ))}
       {activePage === 'pdf' &&
@@ -506,6 +571,10 @@ function AppContent() {
           <UploadScreen
             onAnalysisComplete={(res) => void handleAnalysisComplete(res)}
             onNavigate={setActivePage}
+            historyEnabled={historyPrefs.tier1SummaryOptIn}
+            comparisonEnabled={historyPrefs.tier2HandlesOptIn}
+            uploadMode={uploadMode}
+            onUploadModeChange={setUploadMode}
           />
         ))}
       {activePage === 'history' &&
@@ -521,7 +590,9 @@ function AppContent() {
             preferences={historyPrefs}
             records={historyRecords}
             activeRecordId={activeRecordId}
-            hasActiveAnalysis={Boolean(analysis && !analysis.isDemoData && !openedRecordId)}
+            hasActiveAnalysis={Boolean(
+              analysis && !analysis.isDemoData && !openedRecordId && !activeStandalone,
+            )}
             hasLatestSnapshot={hasSavedLists}
             onUpdatePreferences={handleUpdatePreferences}
             onOpenRecord={handleOpenHistoryRecord}

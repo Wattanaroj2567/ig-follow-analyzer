@@ -1,8 +1,10 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import 'fake-indexeddb/auto';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { buildDemoAnalysisResult } from './data/demoAnalysis';
+import { buildDemoAnalyses, buildDemoAnalysisResult } from './data/demoAnalysis';
 import { verifyFollowSetInvariants } from './data/mockFixture';
+import { clearAllHistory, loadHistoryState } from './lib/historyStore';
 import { THEME_STORAGE_KEY } from './lib/theme';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ResultsScreen } from './screens/ResultsScreen';
@@ -1504,5 +1506,182 @@ describe('IG Follow Analyzer — Real Client-Side Application', () => {
     expect(readingsSection).not.toBeNull();
     expect(readingsSection?.querySelector('.panels')).toHaveTextContent(/100%.*200 MB/);
     expect(document.querySelectorAll('.scroll-reveal')).toHaveLength(0);
+  });
+
+  it('switches the inspected account overview between compared exports without losing the diff', async () => {
+    window.history.replaceState(null, '', '/#/results?demo');
+    render(<App />);
+
+    const demoAnalyses = buildDemoAnalyses(buildDemoAnalysisResult());
+    const octAnalysis = demoAnalyses[1];
+    const sepAnalysis = demoAnalyses[2];
+
+    const comparison = within(
+      await screen.findByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' }),
+    );
+    const overviewSection = screen.getByRole('heading', { name: 'ภาพรวมบัญชี' }).closest('section')!;
+    const overview = within(overviewSection);
+    const metrics = overview.getByRole('group', { name: 'เลือกหมวดรายชื่อจากการ์ด' });
+    expect(within(metrics).getByRole('button', { name: /ผู้ติดตามของคุณ/ })).toHaveTextContent(
+      demoAnalyses[0].counts.followers.toLocaleString('th-TH'),
+    );
+
+    // Click the Comparison ZIP card inside ComparisonFiles to inspect the Oct 19 snapshot
+    fireEvent.click(comparison.getByRole('button', { name: 'ไฟล์ที่ใช้เทียบ' }));
+    expect(overview.getByRole('button', { name: 'ไฟล์ที่ใช้เทียบ (19 ต.ค. 2569)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(metrics).getByRole('button', { name: /ผู้ติดตามของคุณ/ })).toHaveTextContent(
+      octAnalysis.counts.followers.toLocaleString('th-TH'),
+    );
+    expect(within(metrics).getByRole('button', { name: /ไม่ติดตามคุณกลับ/ })).toHaveTextContent(
+      octAnalysis.counts.notFollowingBack.toLocaleString('th-TH'),
+    );
+
+    // Comparison diff cards stay visible and intact
+    expect(comparison.getByRole('button', { name: /ติดตามใหม่ 57/ })).toBeVisible();
+    expect(comparison.getByRole('button', { name: /หายจากรายชื่อผู้ติดตาม 1/ })).toBeVisible();
+
+    // Open a relationship list and confirm it reflects the Oct 19 export
+    fireEvent.click(within(metrics).getByRole('button', { name: /ผู้ติดตามของคุณ/ }));
+    expect(await screen.findByText('ข้อมูลจากไฟล์ที่ใช้เทียบ (19 ต.ค. 2569)')).toBeVisible();
+    expect(
+      screen.getByText(
+        `พบ ${octAnalysis.counts.followers.toLocaleString('th-TH')} บัญชีในหมวดผู้ติดตามทั้งหมด`,
+      ),
+    ).toBeVisible();
+
+    // Pick an older comparison export (Sep 19) while inspecting the comparison side
+    fireEvent.click(comparison.getByText('เปลี่ยนไฟล์ย้อนหลัง'));
+    fireEvent.click(
+      comparison.getByRole('radio', { name: /instagram-demo-2026-09-19\.zip.*รอบเก่ากว่า/ }),
+    );
+    expect(within(metrics).getByRole('button', { name: /ผู้ติดตามของคุณ/ })).toHaveTextContent(
+      sepAnalysis.counts.followers.toLocaleString('th-TH'),
+    );
+
+    // Switch to English and confirm switcher labels update cleanly
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(overview.getByRole('button', { name: 'Comparison ZIP (19 Sept 2026)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // Switch back to the current ZIP via the Account overview header switcher
+    fireEvent.click(overview.getByRole('button', { name: /Current ZIP \(19 Nov 2026\)/ }));
+    expect(within(metrics).getByRole('button', { name: /Followers/ })).toHaveTextContent(
+      demoAnalyses[0].counts.followers.toLocaleString('en-GB'),
+    );
+  });
+
+  it('supports standalone single-file analysis without comparing or modifying local history', async () => {
+    await clearAllHistory();
+    window.history.replaceState(null, '', '/#/history');
+
+    const readers = stubZipReaders();
+    const workers: {
+      onmessage?: (event: {
+        data: { type: string; result: ReturnType<typeof buildDemoAnalysisResult> };
+      }) => void;
+      terminate: ReturnType<typeof vi.fn>;
+      postMessage: ReturnType<typeof vi.fn>;
+    }[] = [];
+    class StandaloneWorker {
+      onmessage?: (event: {
+        data: { type: string; result: ReturnType<typeof buildDemoAnalysisResult> };
+      }) => void;
+      terminate = vi.fn();
+      postMessage = vi.fn();
+      constructor() {
+        workers.push(this);
+      }
+    }
+    vi.stubGlobal('Worker', StandaloneWorker);
+
+    const { container } = render(<App />);
+
+    // Opt into Tier 1 and Tier 2 local history
+    const switches = await screen.findAllByRole('switch');
+    fireEvent.click(switches[0]);
+    await waitFor(() => expect(switches[1]).toBeEnabled());
+    fireEvent.click(switches[1]);
+    await waitFor(() => expect(switches[1]).toHaveAttribute('aria-checked', 'true'));
+
+    const base = buildDemoAnalysisResult();
+    const demoSeries = buildDemoAnalyses(base);
+    const octExport = {
+      ...demoSeries[1],
+      isDemoData: false,
+      ownerHandle: 'somchai.demo',
+      sourceFileName: 'instagram-somchai.demo-2026-10-19.zip',
+      archiveSha256: 'hash-oct',
+    };
+    const novExport = {
+      ...demoSeries[0],
+      isDemoData: false,
+      ownerHandle: 'somchai.demo',
+      sourceFileName: 'instagram-somchai.demo-2026-11-19.zip',
+      archiveSha256: 'hash-nov',
+    };
+    const thirdExport = {
+      ...demoSeries[2],
+      isDemoData: false,
+      ownerHandle: 'other.account',
+      sourceFileName: 'instagram-other.account-2026-09-19.zip',
+      archiveSha256: 'hash-other',
+    };
+
+    const uploadZip = async (
+      fileName: string,
+      result: ReturnType<typeof buildDemoAnalysisResult>,
+    ) => {
+      const input = container.querySelector('input[type="file"]')!;
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [new File(['zip'], fileName)] } });
+        readers.at(-1)?.finish();
+      });
+      await act(async () => {
+        workers.at(-1)?.onmessage?.({ data: { type: 'success', result } });
+      });
+    };
+
+    // Navigate to Upload and analyze two exports to produce a comparison
+    fireEvent.click(screen.getAllByRole('link', { name: 'วิเคราะห์ไฟล์' })[0]);
+    expect(window.location.hash).toBe('#/upload');
+    await uploadZip(octExport.sourceFileName, octExport);
+    expect(window.location.hash).toBe('#/results');
+    expect(await screen.findByRole('button', { name: 'อัปโหลด ZIP เพื่อเทียบ' })).toBeVisible();
+
+    // Top-nav "วิเคราะห์ไฟล์" always navigates to Upload even when an active analysis exists
+    fireEvent.click(screen.getAllByRole('link', { name: 'วิเคราะห์ไฟล์' })[0]);
+    expect(window.location.hash).toBe('#/upload');
+    expect(screen.getAllByRole('link', { name: 'ผลวิเคราะห์ล่าสุด' })[0]).toBeVisible();
+
+    await uploadZip(novExport.sourceFileName, novExport);
+    expect(await screen.findByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' })).toBeVisible();
+    await waitFor(async () => expect((await loadHistoryState()).records).toHaveLength(2));
+
+    // Click "วิเคราะห์ไฟล์เดี่ยว (ไม่เทียบ)" from Results -> opens Upload in single-file mode
+    fireEvent.click(screen.getByRole('button', { name: 'วิเคราะห์ไฟล์เดี่ยว (ไม่เทียบ)' }));
+    expect(window.location.hash).toBe('#/upload');
+    expect(screen.getByRole('button', { name: /วิเคราะห์ไฟล์เดี่ยว \(ไม่เทียบ\)/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // Upload a ZIP in single-file mode -> shows standalone results without saving or comparing
+    await uploadZip(thirdExport.sourceFileName, thirdExport);
+    expect(window.location.hash).toBe('#/results');
+    expect(
+      screen.queryByRole('region', { name: 'รายชื่อผู้ติดตามเปลี่ยนไปยังไง?' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('กำลังดูผลแบบไฟล์เดี่ยว (ไม่ได้เทียบและไม่ได้บันทึกลงประวัติบนเครื่อง)')).toBeVisible();
+    expect((await loadHistoryState()).records).toHaveLength(2);
+
+    // User can opt to save the standalone analysis afterwards
+    fireEvent.click(screen.getByRole('button', { name: 'บันทึกและเทียบกับประวัติ' }));
+    await waitFor(async () => expect((await loadHistoryState()).records).toHaveLength(3));
+    await clearAllHistory();
   });
 });

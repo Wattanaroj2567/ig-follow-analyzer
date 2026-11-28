@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   FileArchive,
+  GitCompareArrows,
   PlayCircle,
   ShieldCheck,
   Upload,
@@ -17,12 +18,25 @@ import { uploadErrors, uploadProgress } from '../lib/uploadFeedback';
 import { useZipAnalysis } from '../lib/useZipAnalysis';
 import type { AnalysisResult } from '../types/analyzer';
 
+export type UploadMode = 'compare' | 'single';
+
 interface UploadScreenProps {
   onAnalysisComplete: (result: AnalysisResult) => void;
   onNavigate: (id: PageId) => void;
+  historyEnabled?: boolean;
+  comparisonEnabled?: boolean;
+  uploadMode?: UploadMode;
+  onUploadModeChange?: (mode: UploadMode) => void;
 }
 
-export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenProps) {
+export function UploadScreen({
+  onAnalysisComplete,
+  onNavigate,
+  historyEnabled = false,
+  comparisonEnabled = false,
+  uploadMode = 'compare',
+  onUploadModeChange,
+}: UploadScreenProps) {
   const { t, language } = useLanguage();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -150,6 +164,74 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
             </div>
           ) : (
             <>
+              {historyEnabled && (
+                <div
+                  role="group"
+                  aria-label={t('เลือกรูปแบบการวิเคราะห์ไฟล์', 'Choose analysis mode')}
+                  className="mb-5 grid gap-3 sm:grid-cols-2"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={uploadMode === 'compare'}
+                    onClick={() => onUploadModeChange?.('compare')}
+                    className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] border p-3.5 text-left transition-colors ${
+                      uploadMode === 'compare'
+                        ? 'border-cool bg-cool-soft text-ink'
+                        : 'border-rule bg-paper-3 text-ink-2 hover:border-rule-2 hover:text-ink'
+                    }`}
+                  >
+                    <GitCompareArrows
+                      className={`mt-0.5 size-4 shrink-0 ${uploadMode === 'compare' ? 'text-cool' : 'text-muted'}`}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">
+                        {comparisonEnabled
+                          ? t('วิเคราะห์และเทียบกับประวัติ', 'Analyze & compare with history')
+                          : t('วิเคราะห์และบันทึกประวัติ', 'Analyze & save to history')}
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted">
+                        {comparisonEnabled
+                          ? t(
+                              'บันทึกประวัติและเทียบกับ ZIP ก่อนหน้าของบัญชีเดิมอัตโนมัติ',
+                              'Saves to local history and compares with earlier ZIPs from the same account.',
+                            )
+                          : t(
+                              'บันทึกสถิติสรุปลงประวัติบนเครื่องนี้ตามการตั้งค่า',
+                              'Saves summary counts to local history on this device.',
+                            )}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={uploadMode === 'single'}
+                    onClick={() => onUploadModeChange?.('single')}
+                    className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] border p-3.5 text-left transition-colors ${
+                      uploadMode === 'single'
+                        ? 'border-cool bg-cool-soft text-ink'
+                        : 'border-rule bg-paper-3 text-ink-2 hover:border-rule-2 hover:text-ink'
+                    }`}
+                  >
+                    <FileArchive
+                      className={`mt-0.5 size-4 shrink-0 ${uploadMode === 'single' ? 'text-cool' : 'text-muted'}`}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">
+                        {t('วิเคราะห์ไฟล์เดี่ยว (ไม่เทียบ)', 'Analyze single file (no comparison)')}
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted">
+                        {t(
+                          'วิเคราะห์ทีละไฟล์เหมือนครั้งแรก ไม่เทียบและไม่บันทึกลงประวัติเดิม',
+                          'Analyze one file on its own without comparing or saving to history.',
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
+
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -200,10 +282,15 @@ export function UploadScreen({ onAnalysisComplete, onNavigate }: UploadScreenPro
                   </NormalButton>
                 </div>
                 <p className="mt-3 text-sm text-muted">
-                  {t(
-                    'ขอไฟล์แบบ JSON และเลือกช่วง ตลอดเวลา (All time) ให้ทั้งสอง ZIP ก่อนเทียบ ช่วงสั้นหรือช่วงที่กำหนดเองอาจทำให้รายชื่อบางบัญชีหายจากไฟล์',
-                    'Request JSON and set Date range to All time for both ZIPs before comparing. Short or custom ranges may leave accounts out.',
-                  )}
+                  {historyEnabled && uploadMode === 'single'
+                    ? t(
+                        'โหมดไฟล์เดี่ยว: ระบบจะวิเคราะห์เฉพาะไฟล์ที่เลือกโดยไม่เทียบและไม่บันทึกลงประวัติ ประวัติเดิมของคุณจะยังคงอยู่ครบ',
+                        'Single-file mode: analyzes only this ZIP without comparing or saving to history. Your existing history stays untouched.',
+                      )
+                    : t(
+                        'ขอไฟล์แบบ JSON และเลือกช่วง ตลอดเวลา (All time) ให้ทั้งสอง ZIP ก่อนเทียบ ช่วงสั้นหรือช่วงที่กำหนดเองอาจทำให้รายชื่อบางบัญชีหายจากไฟล์',
+                        'Request JSON and set Date range to All time for both ZIPs before comparing. Short or custom ranges may leave accounts out.',
+                      )}
                 </p>
               </div>
 

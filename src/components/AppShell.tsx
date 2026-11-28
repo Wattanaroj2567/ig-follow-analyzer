@@ -118,7 +118,6 @@ export function AppShell({
   const drawerToggleRef = useRef<HTMLButtonElement>(null);
   const theme = useThemePreference();
   const showLatestAnalysis = hasAnalysis && activePage !== 'results';
-  const getNavigationTarget = (id: PageId) => (id === 'upload' && hasAnalysis ? 'results' : id);
 
   const link =
     (id: PageId, mode: NavigationMode = 'top-nav') =>
@@ -126,7 +125,7 @@ export function AppShell({
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       setDrawerOpen(false);
-      onNavigate(mode === 'top-nav' ? getNavigationTarget(id) : id, mode);
+      onNavigate(id, mode);
     };
 
   useEffect(() => {
@@ -197,7 +196,7 @@ export function AppShell({
               <a
                 key={item.id}
                 className="nav__link"
-                href={pageHref(getNavigationTarget(item.id))}
+                href={pageHref(item.id)}
                 aria-current={current(item.activeFor)}
                 onClick={link(item.id)}
               >
@@ -251,7 +250,7 @@ export function AppShell({
                 <a
                   key={item.id}
                   className="nav__drawer-link"
-                  href={pageHref(getNavigationTarget(item.id))}
+                  href={pageHref(item.id)}
                   aria-current={current(item.activeFor)}
                   onClick={link(item.id)}
                 >

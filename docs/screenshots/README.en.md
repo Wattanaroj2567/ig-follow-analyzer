@@ -2,7 +2,7 @@
 
 [ภาษาไทย](README.md) · **English**
 
-152 states · 338 images · November 21, 2026
+156 states · 346 images · November 28, 2026
 
 Every state has separate desktop (**1440 × 960**) and mobile (**390 × 844**) screenshots. Select any link in the tables below to open the full-size PNG. Captures were taken in Chrome using fictitious data in a test profile. Long screens are framed around the section named in each row. The ZIP export guide also includes 34 cropped mobile illustration images.
 
@@ -81,59 +81,63 @@ Every state has separate desktop (**1440 × 960**) and mobile (**390 × 844**) s
 
 ## ZIP upload, progress, and errors
 
-| Page / state                                           | Desktop                                                      | Mobile                                                      |
-| ------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------- |
-| Choose a ZIP                                           | [Open](desktop/upload/choose.png)                            | [Open](mobile/upload/choose.png)                            |
-| Help finding your downloaded ZIP                       | [Open](desktop/upload/find-zip.png)                          | [Open](mobile/upload/find-zip.png)                          |
-| Preparing and reading the file · **Simulated**         | [Open](desktop/upload/preparing.png)                         | [Open](mobile/upload/preparing.png)                         |
-| Analysis cancelled · **Simulated**                     | [Open](desktop/upload/error-cancelled.png)                   | [Open](mobile/upload/error-cancelled.png)                   |
-| Invalid `.zip` file extension                          | [Open](desktop/upload/error-invalid-extension.png)           | [Open](mobile/upload/error-invalid-extension.png)           |
-| Multiple files selected                                | [Open](desktop/upload/error-multiple-files.png)              | [Open](mobile/upload/error-multiple-files.png)              |
-| Archive exceeds size limit · **Simulated**             | [Open](desktop/upload/error-archive-too-large.png)           | [Open](mobile/upload/error-archive-too-large.png)           |
-| Worker startup failure · **Simulated**                 | [Open](desktop/upload/error-worker-error.png)                | [Open](mobile/upload/error-worker-error.png)                |
-| Failed to read file from device · **Simulated**        | [Open](desktop/upload/error-read-failed.png)                 | [Open](mobile/upload/error-read-failed.png)                 |
-| Generic Worker error · **Simulated**                   | [Open](desktop/upload/error-unknown-error.png)               | [Open](mobile/upload/error-unknown-error.png)               |
-| Malformed followers JSON                               | [Open](desktop/upload/error-invalid-followers-json.png)      | [Open](mobile/upload/error-invalid-followers-json.png)      |
-| Malformed following JSON                               | [Open](desktop/upload/error-invalid-following-json.png)      | [Open](mobile/upload/error-invalid-following-json.png)      |
-| Incomplete followers HTML                              | [Open](desktop/upload/error-invalid-followers-html.png)      | [Open](mobile/upload/error-invalid-followers-html.png)      |
-| Incomplete following HTML                              | [Open](desktop/upload/error-invalid-following-html.png)      | [Open](mobile/upload/error-invalid-following-html.png)      |
-| Missing numbered follower/following list parts         | [Open](desktop/upload/error-incomplete-archive-list.png)     | [Open](mobile/upload/error-incomplete-archive-list.png)     |
-| Unexpected followers JSON schema                       | [Open](desktop/upload/error-unexpected-followers-schema.png) | [Open](mobile/upload/error-unexpected-followers-schema.png) |
-| Unexpected following JSON schema                       | [Open](desktop/upload/error-unexpected-following-schema.png) | [Open](mobile/upload/error-unexpected-following-schema.png) |
-| Empty file                                             | [Open](desktop/upload/error-empty-file.png)                  | [Open](mobile/upload/error-empty-file.png)                  |
-| File is not a ZIP archive                              | [Open](desktop/upload/error-not-a-zip.png)                   | [Open](mobile/upload/error-not-a-zip.png)                   |
-| Too many entries in ZIP · **Simulated**                | [Open](desktop/upload/error-too-many-entries.png)            | [Open](mobile/upload/error-too-many-entries.png)            |
-| Unsafe archive path rejected by Worker · **Simulated** | [Open](desktop/upload/error-unsafe-path.png)                 | [Open](mobile/upload/error-unsafe-path.png)                 |
-| Uncompressed data exceeds limit · **Simulated**        | [Open](desktop/upload/error-decompressed-too-large.png)      | [Open](mobile/upload/error-decompressed-too-large.png)      |
-| Corrupt ZIP archive                                    | [Open](desktop/upload/error-corrupt-zip.png)                 | [Open](mobile/upload/error-corrupt-zip.png)                 |
-| Missing both followers and following lists             | [Open](desktop/upload/error-missing-both-sections.png)       | [Open](mobile/upload/error-missing-both-sections.png)       |
-| Missing followers list                                 | [Open](desktop/upload/error-missing-followers.png)           | [Open](mobile/upload/error-missing-followers.png)           |
-| Missing following list                                 | [Open](desktop/upload/error-missing-following.png)           | [Open](mobile/upload/error-missing-following.png)           |
-| Extracting ZIP in Web Worker · **Simulated**           | [Open](desktop/upload/worker-progress.png)                   | [Open](mobile/upload/worker-progress.png)                   |
+| Page / state                                                | Desktop                                                      | Mobile                                                      |
+| ----------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------- |
+| Choose a ZIP                                                | [Open](desktop/upload/choose.png)                            | [Open](mobile/upload/choose.png)                            |
+| Choose analysis mode (compare with history vs. single file) | [Open](desktop/upload/mode-selector.png)                     | [Open](mobile/upload/mode-selector.png)                     |
+| Help finding your downloaded ZIP                            | [Open](desktop/upload/find-zip.png)                          | [Open](mobile/upload/find-zip.png)                          |
+| Preparing and reading the file · **Simulated**              | [Open](desktop/upload/preparing.png)                         | [Open](mobile/upload/preparing.png)                         |
+| Analysis cancelled · **Simulated**                          | [Open](desktop/upload/error-cancelled.png)                   | [Open](mobile/upload/error-cancelled.png)                   |
+| Invalid `.zip` file extension                               | [Open](desktop/upload/error-invalid-extension.png)           | [Open](mobile/upload/error-invalid-extension.png)           |
+| Multiple files selected                                     | [Open](desktop/upload/error-multiple-files.png)              | [Open](mobile/upload/error-multiple-files.png)              |
+| Archive exceeds size limit · **Simulated**                  | [Open](desktop/upload/error-archive-too-large.png)           | [Open](mobile/upload/error-archive-too-large.png)           |
+| Worker startup failure · **Simulated**                      | [Open](desktop/upload/error-worker-error.png)                | [Open](mobile/upload/error-worker-error.png)                |
+| Failed to read file from device · **Simulated**             | [Open](desktop/upload/error-read-failed.png)                 | [Open](mobile/upload/error-read-failed.png)                 |
+| Generic Worker error · **Simulated**                        | [Open](desktop/upload/error-unknown-error.png)               | [Open](mobile/upload/error-unknown-error.png)               |
+| Malformed followers JSON                                    | [Open](desktop/upload/error-invalid-followers-json.png)      | [Open](mobile/upload/error-invalid-followers-json.png)      |
+| Malformed following JSON                                    | [Open](desktop/upload/error-invalid-following-json.png)      | [Open](mobile/upload/error-invalid-following-json.png)      |
+| Incomplete followers HTML                                   | [Open](desktop/upload/error-invalid-followers-html.png)      | [Open](mobile/upload/error-invalid-followers-html.png)      |
+| Incomplete following HTML                                   | [Open](desktop/upload/error-invalid-following-html.png)      | [Open](mobile/upload/error-invalid-following-html.png)      |
+| Missing numbered follower/following list parts              | [Open](desktop/upload/error-incomplete-archive-list.png)     | [Open](mobile/upload/error-incomplete-archive-list.png)     |
+| Unexpected followers JSON schema                            | [Open](desktop/upload/error-unexpected-followers-schema.png) | [Open](mobile/upload/error-unexpected-followers-schema.png) |
+| Unexpected following JSON schema                            | [Open](desktop/upload/error-unexpected-following-schema.png) | [Open](mobile/upload/error-unexpected-following-schema.png) |
+| Empty file                                                  | [Open](desktop/upload/error-empty-file.png)                  | [Open](mobile/upload/error-empty-file.png)                  |
+| File is not a ZIP archive                                   | [Open](desktop/upload/error-not-a-zip.png)                   | [Open](mobile/upload/error-not-a-zip.png)                   |
+| Too many entries in ZIP · **Simulated**                     | [Open](desktop/upload/error-too-many-entries.png)            | [Open](mobile/upload/error-too-many-entries.png)            |
+| Unsafe archive path rejected by Worker · **Simulated**      | [Open](desktop/upload/error-unsafe-path.png)                 | [Open](mobile/upload/error-unsafe-path.png)                 |
+| Uncompressed data exceeds limit · **Simulated**             | [Open](desktop/upload/error-decompressed-too-large.png)      | [Open](mobile/upload/error-decompressed-too-large.png)      |
+| Corrupt ZIP archive                                         | [Open](desktop/upload/error-corrupt-zip.png)                 | [Open](mobile/upload/error-corrupt-zip.png)                 |
+| Missing both followers and following lists                  | [Open](desktop/upload/error-missing-both-sections.png)       | [Open](mobile/upload/error-missing-both-sections.png)       |
+| Missing followers list                                      | [Open](desktop/upload/error-missing-followers.png)           | [Open](mobile/upload/error-missing-followers.png)           |
+| Missing following list                                      | [Open](desktop/upload/error-missing-following.png)           | [Open](mobile/upload/error-missing-following.png)           |
+| Extracting ZIP in Web Worker · **Simulated**                | [Open](desktop/upload/worker-progress.png)                   | [Open](mobile/upload/worker-progress.png)                   |
 
 ## Analysis results, comparisons, and account table
 
-| Page / state                                                          | Desktop                                              | Mobile                                              |
-| --------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
-| Opening results with no active analysis falls back to ZIP upload      | [Open](desktop/results/no-active-analysis.png)       | [Open](mobile/results/no-active-analysis.png)       |
-| Sample results screen                                                 | [Open](desktop/results/sample.png)                   | [Open](mobile/results/sample.png)                   |
-| 5-category account overview                                           | [Open](desktop/results/overview.png)                 | [Open](mobile/results/overview.png)                 |
-| How percentages are calculated                                        | [Open](desktop/results/percentage-details.png)       | [Open](mobile/results/percentage-details.png)       |
-| Table · Followers                                                     | [Open](desktop/results/table-followers.png)          | [Open](mobile/results/table-followers.png)          |
-| Table · Following                                                     | [Open](desktop/results/table-following.png)          | [Open](mobile/results/table-following.png)          |
-| Table · Not following you back                                        | [Open](desktop/results/table-not-following-back.png) | [Open](mobile/results/table-not-following-back.png) |
-| Table · You don’t follow back                                         | [Open](desktop/results/table-not-followed-back.png)  | [Open](mobile/results/table-not-followed-back.png)  |
-| Table · Mutual follows                                                | [Open](desktop/results/table-mutual.png)             | [Open](mobile/results/table-mutual.png)             |
-| Empty search result                                                   | [Open](desktop/results/search-empty.png)             | [Open](mobile/results/search-empty.png)             |
-| Choosing an earlier export to compare                                 | [Open](desktop/results/comparison-picker.png)        | [Open](mobile/results/comparison-picker.png)        |
-| New and missing follower counts                                       | [Open](desktop/results/comparison-totals.png)        | [Open](mobile/results/comparison-totals.png)        |
-| Missing followers list and timeline                                   | [Open](desktop/results/missing-timeline.png)         | [Open](mobile/results/missing-timeline.png)         |
-| New followers list                                                    | [Open](desktop/results/new-followers.png)            | [Open](mobile/results/new-followers.png)            |
-| First ZIP analysis with no comparison baseline                        | [Open](desktop/results/without-baseline.png)         | [Open](mobile/results/without-baseline.png)         |
-| Real comparison between two test ZIPs                                 | [Open](desktop/results/actual-comparison.png)        | [Open](mobile/results/actual-comparison.png)        |
-| Warning for a 30%+ follower count drop                                | [Open](desktop/results/follower-drop.png)            | [Open](mobile/results/follower-drop.png)            |
-| Warning for large follower turnover even when the total stays similar | [Open](desktop/results/follower-turnover.png)        | [Open](mobile/results/follower-turnover.png)        |
-| Reopened history result after list consent is revoked in another tab  | [Open](desktop/results/history-revoked.png)          | [Open](mobile/results/history-revoked.png)          |
+| Page / state                                                          | Desktop                                                        | Mobile                                                        |
+| --------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| Opening results with no active analysis falls back to ZIP upload      | [Open](desktop/results/no-active-analysis.png)                 | [Open](mobile/results/no-active-analysis.png)                 |
+| Sample results screen                                                 | [Open](desktop/results/sample.png)                             | [Open](mobile/results/sample.png)                             |
+| 5-category account overview                                           | [Open](desktop/results/overview.png)                           | [Open](mobile/results/overview.png)                           |
+| How percentages are calculated                                        | [Open](desktop/results/percentage-details.png)                 | [Open](mobile/results/percentage-details.png)                 |
+| Table · Followers                                                     | [Open](desktop/results/table-followers.png)                    | [Open](mobile/results/table-followers.png)                    |
+| Table · Following                                                     | [Open](desktop/results/table-following.png)                    | [Open](mobile/results/table-following.png)                    |
+| Table · Not following you back                                        | [Open](desktop/results/table-not-following-back.png)           | [Open](mobile/results/table-not-following-back.png)           |
+| Table · You don’t follow back                                         | [Open](desktop/results/table-not-followed-back.png)            | [Open](mobile/results/table-not-followed-back.png)            |
+| Table · Mutual follows                                                | [Open](desktop/results/table-mutual.png)                       | [Open](mobile/results/table-mutual.png)                       |
+| Empty search result                                                   | [Open](desktop/results/search-empty.png)                       | [Open](mobile/results/search-empty.png)                       |
+| Choosing an earlier export to compare                                 | [Open](desktop/results/comparison-picker.png)                  | [Open](mobile/results/comparison-picker.png)                  |
+| New and missing follower counts                                       | [Open](desktop/results/comparison-totals.png)                  | [Open](mobile/results/comparison-totals.png)                  |
+| Inspecting the comparison ZIP’s account overview in place             | [Open](desktop/results/comparison-inspect-previous.png)        | [Open](mobile/results/comparison-inspect-previous.png)        |
+| Missing followers list and timeline                                   | [Open](desktop/results/missing-timeline.png)                   | [Open](mobile/results/missing-timeline.png)                   |
+| New followers list                                                    | [Open](desktop/results/new-followers.png)                      | [Open](mobile/results/new-followers.png)                      |
+| First ZIP analysis with no comparison baseline                        | [Open](desktop/results/without-baseline.png)                   | [Open](mobile/results/without-baseline.png)                   |
+| Real comparison between two test ZIPs                                 | [Open](desktop/results/actual-comparison.png)                  | [Open](mobile/results/actual-comparison.png)                  |
+| Real comparison · Inspecting the comparison ZIP’s account overview    | [Open](desktop/results/actual-comparison-inspect-previous.png) | [Open](mobile/results/actual-comparison-inspect-previous.png) |
+| Standalone single-file result while local history is enabled          | [Open](desktop/results/standalone-single-file.png)             | [Open](mobile/results/standalone-single-file.png)             |
+| Warning for a 30%+ follower count drop                                | [Open](desktop/results/follower-drop.png)                      | [Open](mobile/results/follower-drop.png)                      |
+| Warning for large follower turnover even when the total stays similar | [Open](desktop/results/follower-turnover.png)                  | [Open](mobile/results/follower-turnover.png)                  |
+| Reopened history result after list consent is revoked in another tab  | [Open](desktop/results/history-revoked.png)                    | [Open](mobile/results/history-revoked.png)                    |
 
 ## Local history and storage consent
 

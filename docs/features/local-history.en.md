@@ -16,7 +16,9 @@ The results page shows **New followers** and **Missing from the list** cards. Se
 
 The comparison shows each ZIP’s export date and filename, and shows analysis times if the dates match. The app automatically compares the latest export with the preceding export for the same account that has saved lists. If several earlier exports are available, choose **Change previous export** to update the counts and timelines, or **Reset to previous export** to restore the automatic pairing. Exports from the same day are ordered by analysis time.
 
-The comparison labels the **ZIP you’re viewing** and the **Comparison ZIP** above the new and missing follower counts.
+The comparison labels the **ZIP you’re viewing** and the **Comparison ZIP** above the new and missing follower counts, and clicking either card switches the **Account overview** counts and 5 relationship lists in place without losing the comparison diff.
+
+Even when local history is enabled, users can return to **Analyze ZIP** or choose **Analyze single ZIP** from the results page to run a standalone single-file analysis without comparing or saving to history (with an optional 1-click button on the results page to save it later).
 
 If the open ZIP has at least 30% fewer followers and the drop is at least 10 accounts, the results show a warning above the comparison totals. The drop may reflect an incomplete list or a real change. Request a new ZIP with **All time** as the date range before drawing conclusions about unfollows.
 

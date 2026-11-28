@@ -787,6 +787,53 @@
   }
 }
 
+.comparison-file-card {
+  background-color: var(--color-paper-3);
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+:root[data-theme='light'] .comparison-file-card {
+  background-color: color-mix(in oklab, white 92%, var(--color-paper-3));
+}
+
+.comparison-file-card[data-active='true'],
+:root[data-theme='light'] .comparison-file-card[data-active='true'] {
+  background-color: var(--color-cool-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-cool) 35%, transparent);
+}
+
+@media (hover: hover) {
+  .comparison-file-card[data-active='false']:not(:has(.comparison-picker-control:hover)):hover {
+    background-color: color-mix(in oklab, var(--color-rule) 42%, var(--color-paper-3));
+  }
+
+  :root[data-theme='light']
+    .comparison-file-card[data-active='false']:not(:has(.comparison-picker-control:hover)):hover {
+    background-color: color-mix(in oklab, var(--color-paper-3) 55%, var(--color-rule));
+  }
+}
+
+.comparison-switch-btn {
+  color: var(--color-muted);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.comparison-switch-btn[aria-pressed='true'] {
+  background-color: var(--color-cool-soft);
+  color: var(--color-cool);
+}
+
+@media (hover: hover) {
+  .comparison-switch-btn:hover:not([aria-pressed='true']) {
+    background-color: var(--nav-hover-fill);
+    color: var(--color-ink);
+  }
+}
+
 /* ---------------------------------------------------------------- Glass surfaces */
 
 .app-frame {

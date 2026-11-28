@@ -20,7 +20,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PageId } from '../components/AppShell';
-import { ComparisonFiles, type ComparisonFilesState } from '../components/ComparisonFiles';
+import {
+  ComparisonFiles,
+  type ComparisonFilesState,
+  type InspectedComparisonSide,
+} from '../components/ComparisonFiles';
 import { FollowerTimeline } from '../components/FollowerTimeline';
 import { NormalButton } from '../components/NormalButton';
 import { RelationshipOverview } from '../components/RelationshipOverview';
@@ -30,6 +34,7 @@ import { formatAnalysisTime, formatDate, formatSnapshotDate } from '../lib/dates
 import { buildSafeProfileHref } from '../lib/igParser';
 import { useLanguage } from '../lib/language';
 import { exportDateRangeHref } from '../lib/routes';
+import type { UploadMode } from './UploadScreen';
 import type { AccountEntry, AnalysisResult, HistoryDiff } from '../types/analyzer';
 
 interface ResultsScreenProps {
@@ -39,6 +44,9 @@ interface ResultsScreenProps {
   comparisonStatus: 'off' | 'waiting' | 'ready' | 'unknown-owner';
   onSelectComparison: (id: string | null) => void;
   onNavigate: (id: PageId) => void;
+  isStandalone?: boolean;
+  onStartUpload?: (mode: UploadMode) => void;
+  onSaveStandaloneToHistory?: () => void;
   initialCategory?: RelationshipKey;
 }
 
@@ -54,14 +62,21 @@ export function ResultsScreen({
   comparisonStatus,
   onSelectComparison,
   onNavigate,
+  isStandalone = false,
+  onStartUpload,
+  onSaveStandaloneToHistory,
   initialCategory,
 }: ResultsScreenProps) {
   const { t, locale } = useLanguage();
   const fileName = result.sourceFileName;
   const zipExtension = fileName.match(/\.zip$/i)?.[0] ?? '';
-  const showComparisonPrompt = !diff && !result.isDemoData;
+  const showComparisonPrompt = !diff && !result.isDemoData && !isStandalone;
   const canUploadToCompare = !result.isDemoData && (comparisonStatus === 'ready' || Boolean(diff));
+  const showSingleFileUploadButton =
+    !result.isDemoData && !isStandalone && (Boolean(diff) || comparisonStatus === 'ready');
   const compareUploadLabel = t('อัปโหลด ZIP เพื่อเทียบ', 'Upload a ZIP to compare');
+  const openUpload = (mode: UploadMode) =>
+    onStartUpload ? onStartUpload(mode) : onNavigate('upload');
   const comparisonPrompt = {
     off: {
       description: t(
@@ -98,6 +113,16 @@ export function ResultsScreen({
   } as const;
   const prompt = comparisonPrompt[comparisonStatus];
   const [activeTab, setActiveTab] = useState<SegmentKey | null>(initialCategory ?? null);
+  const [inspectedSide, setInspectedSide] = useState<InspectedComparisonSide>('current');
+  const effectiveInspectedSide: InspectedComparisonSide = comparison ? inspectedSide : 'current';
+  const inspectedResult =
+    effectiveInspectedSide === 'previous' && comparison ? comparison.previous.analysis : result;
+  const handleInspectSide = (side: InspectedComparisonSide) => {
+    setInspectedSide(side);
+    if (activeTab !== 'recentUnfollowers' && activeTab !== 'newFollowers') {
+      setPageIndex(0);
+    }
+  };
   const overviewHeadingRef = useRef<HTMLHeadingElement>(null);
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,9 +172,10 @@ export function ResultsScreen({
     window.requestAnimationFrame(() => focusSortOption(index));
   };
 
-  const { counts } = result;
+  const { counts: currentCounts } = result;
+  const inspectedCounts = inspectedResult.counts;
   const comparisonRisk =
-    diff && !result.isDemoData ? getFollowerComparisonRisk(counts.followers, diff) : null;
+    diff && !result.isDemoData ? getFollowerComparisonRisk(currentCounts.followers, diff) : null;
   const followerDropPercent =
     comparisonRisk?.kind === 'drop'
       ? comparisonRisk.fraction.toLocaleString(locale, {
@@ -192,9 +218,16 @@ export function ResultsScreen({
     }
     const followingOlderThanFollowers = minF - minFg > 180 * 86400;
     return (
-      spanDays <= 370 && (followingOlderThanFollowers || counts.followers < counts.following * 0.55)
+      spanDays <= 370 &&
+      (followingOlderThanFollowers || currentCounts.followers < currentCounts.following * 0.55)
     );
-  }, [result.isDemoData, result.followers, result.following, counts.followers, counts.following]);
+  }, [
+    result.isDemoData,
+    result.followers,
+    result.following,
+    currentCounts.followers,
+    currentCounts.following,
+  ]);
 
   const recentUnfollowerEntries: AccountEntry[] = useMemo(
     () =>
@@ -241,33 +274,33 @@ export function ResultsScreen({
     {
       key: 'notFollowingBack',
       label: t('ไม่ติดตามคุณกลับ', 'Not following you back'),
-      count: counts.notFollowingBack,
-      entries: result.notFollowingBack,
+      count: inspectedCounts.notFollowingBack,
+      entries: inspectedResult.notFollowingBack,
     },
     {
       key: 'notFollowedBack',
       label: t('คุณไม่ได้ติดตามกลับ', 'You don’t follow back'),
-      count: counts.notFollowedBack,
-      entries: result.notFollowedBack,
+      count: inspectedCounts.notFollowedBack,
+      entries: inspectedResult.notFollowedBack,
     },
     ...(diff ? comparisonTabs.map((tab) => ({ ...tab, count: tab.entries.length })) : []),
     {
       key: 'mutual',
       label: t('ติดตามกันทั้งสองฝ่าย', 'Mutual follows'),
-      count: counts.mutual,
-      entries: result.mutual,
+      count: inspectedCounts.mutual,
+      entries: inspectedResult.mutual,
     },
     {
       key: 'followers',
       label: t('ผู้ติดตามทั้งหมด', 'All followers'),
-      count: counts.followers,
-      entries: result.followers,
+      count: inspectedCounts.followers,
+      entries: inspectedResult.followers,
     },
     {
       key: 'following',
       label: t('กำลังติดตามทั้งหมด', 'All following'),
-      count: counts.following,
-      entries: result.following,
+      count: inspectedCounts.following,
+      entries: inspectedResult.following,
     },
   ];
 
@@ -323,12 +356,12 @@ export function ResultsScreen({
     : t('เขาเริ่มติดตามคุณ', 'They followed you');
 
   const formatLabel =
-    result.detectedFiles.format === 'json'
+    inspectedResult.detectedFiles.format === 'json'
       ? 'JSON'
-      : result.detectedFiles.format === 'html'
+      : inspectedResult.detectedFiles.format === 'html'
         ? 'HTML'
         : 'JSON + HTML';
-  const hasHtmlLimitation = result.detectedFiles.format !== 'json';
+  const hasHtmlLimitation = inspectedResult.detectedFiles.format !== 'json';
 
   return (
     <div className="product-wrap pt-3 pb-9 lg:pt-4 lg:pb-14">
@@ -420,14 +453,35 @@ export function ResultsScreen({
         </dl>
 
         <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap lg:shrink-0">
-          {(!showComparisonPrompt || comparisonStatus === 'off') && (
+          {isStandalone ? (
             <NormalButton
-              variant={canUploadToCompare ? 'cool' : 'secondary'}
-              onClick={() => onNavigate('upload')}
+              variant="secondary"
+              onClick={() => openUpload('single')}
               className="w-full sm:w-auto"
             >
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              {canUploadToCompare ? compareUploadLabel : t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
+              <Upload className="size-4" aria-hidden="true" />
+              {t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
+            </NormalButton>
+          ) : (
+            (!showComparisonPrompt || comparisonStatus === 'off') && (
+              <NormalButton
+                variant={canUploadToCompare ? 'cool' : 'secondary'}
+                onClick={() => openUpload(canUploadToCompare ? 'compare' : 'single')}
+                className="w-full sm:w-auto"
+              >
+                <Upload className="size-4" aria-hidden="true" />
+                {canUploadToCompare ? compareUploadLabel : t('อัปโหลดไฟล์ใหม่', 'Analyze another ZIP')}
+              </NormalButton>
+            )
+          )}
+          {showSingleFileUploadButton && (
+            <NormalButton
+              variant="secondary"
+              onClick={() => openUpload('single')}
+              className="w-full sm:w-auto"
+            >
+              <FileArchive className="size-4" aria-hidden="true" />
+              {t('วิเคราะห์ไฟล์เดี่ยว (ไม่เทียบ)', 'Analyze single ZIP')}
             </NormalButton>
           )}
           <NormalButton
@@ -435,11 +489,11 @@ export function ResultsScreen({
             onClick={() => onNavigate('pdf')}
             className="w-full sm:w-auto"
           >
-            <FileText className="h-4 w-4" aria-hidden="true" />
+            <FileText className="size-4" aria-hidden="true" />
             {result.isDemoData
               ? t('สร้างรายงาน PDF ตัวอย่าง', 'Create a sample PDF report')
               : t('สร้างรายงาน PDF', 'Create PDF report')}
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            <ArrowRight className="size-4" aria-hidden="true" />
           </NormalButton>
         </div>
       </div>
@@ -455,11 +509,41 @@ export function ResultsScreen({
           </div>
           <NormalButton
             variant={canUploadToCompare ? 'cool' : 'secondary'}
-            onClick={() => onNavigate(prompt.page)}
+            onClick={() =>
+              prompt.page === 'upload' ? openUpload('compare') : onNavigate(prompt.page)
+            }
             className="w-full text-xs sm:w-auto sm:shrink-0"
           >
             {prompt.action}
           </NormalButton>
+        </section>
+      )}
+
+      {isStandalone && !result.isDemoData && (
+        <section
+          aria-label={t('สถานะการวิเคราะห์ไฟล์เดี่ยว', 'Single-file analysis status')}
+          className="mt-4 flex flex-col items-start justify-between gap-4 rounded-[10px] border border-rule bg-paper-3 p-5 sm:flex-row sm:items-center"
+        >
+          <div className="flex items-start gap-3 text-sm text-ink-2">
+            <FileArchive className="mt-0.5 size-5 shrink-0 text-cool" aria-hidden="true" />
+            <span>
+              {t(
+                'กำลังดูผลแบบไฟล์เดี่ยว (ไม่ได้เทียบและไม่ได้บันทึกลงประวัติบนเครื่อง)',
+                'Viewing in single-file mode (not compared and not saved to local history).',
+              )}
+            </span>
+          </div>
+          {onSaveStandaloneToHistory && (
+            <NormalButton
+              variant="cool"
+              onClick={onSaveStandaloneToHistory}
+              className="w-full text-xs sm:w-auto sm:shrink-0"
+            >
+              {comparisonStatus === 'off'
+                ? t('บันทึกลงประวัติ', 'Save to history')
+                : t('บันทึกและเทียบกับประวัติ', 'Save & compare with history')}
+            </NormalButton>
+          )}
         </section>
       )}
 
@@ -503,8 +587,10 @@ export function ResultsScreen({
             <ComparisonFiles
               current={result}
               comparison={comparison}
+              inspectedSide={effectiveInspectedSide}
+              onInspectSide={handleInspectSide}
               onSelect={(id) => {
-                if (isComparisonTab) setPageIndex(0);
+                if (isComparisonTab || effectiveInspectedSide === 'previous') setPageIndex(0);
                 onSelectComparison(id);
               }}
             />
@@ -620,16 +706,45 @@ export function ResultsScreen({
         className="mt-7 rounded-[10px] border border-rule bg-paper-2 p-5 sm:p-7"
         aria-labelledby="overview-heading"
       >
-        <h2
-          id="overview-heading"
-          ref={overviewHeadingRef}
-          tabIndex={-1}
-          className="mb-4 scroll-mt-4 text-xl text-ink"
-        >
-          {t('ภาพรวมบัญชี', 'Account overview')}
-        </h2>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2
+            id="overview-heading"
+            ref={overviewHeadingRef}
+            tabIndex={-1}
+            className="scroll-mt-4 text-xl text-ink"
+          >
+            {t('ภาพรวมบัญชี', 'Account overview')}
+          </h2>
+          {comparison && (
+            <div
+              role="group"
+              aria-label={t(
+                'สลับดูภาพรวมบัญชีของไฟล์ในชุดเทียบ',
+                'Switch which compared ZIP is shown in Account overview',
+              )}
+              className="inline-flex flex-wrap gap-1 rounded-lg border border-rule bg-paper-3 p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={effectiveInspectedSide === 'current'}
+                onClick={() => handleInspectSide('current')}
+                className="comparison-switch-btn min-h-9 cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium"
+              >
+                {t(`ไฟล์ที่กำลังดู (${currentDate})`, `Current ZIP (${currentDate})`)}
+              </button>
+              <button
+                type="button"
+                aria-pressed={effectiveInspectedSide === 'previous'}
+                onClick={() => handleInspectSide('previous')}
+                className="comparison-switch-btn min-h-9 cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium"
+              >
+                {t(`ไฟล์ที่ใช้เทียบ (${previousDate})`, `Comparison ZIP (${previousDate})`)}
+              </button>
+            </div>
+          )}
+        </div>
         <RelationshipOverview
-          counts={counts}
+          counts={inspectedCounts}
           selected={
             activeTab === 'recentUnfollowers' || activeTab === 'newFollowers' ? null : activeTab
           }
@@ -738,6 +853,14 @@ export function ResultsScreen({
                       {currentTab.count.toLocaleString(locale)}
                       {t(' บัญชี', ' accounts')}
                     </span>
+                    {!isComparisonTab && effectiveInspectedSide === 'previous' && comparison && (
+                      <span className="rounded-md border border-cool/35 bg-cool-soft px-2 py-0.5 text-xs font-medium text-cool">
+                        {t(
+                          `ข้อมูลจากไฟล์ที่ใช้เทียบ (${previousDate})`,
+                          `From comparison ZIP (${previousDate})`,
+                        )}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1.5 text-sm text-muted">
                     {isComparisonTab

@@ -4,10 +4,21 @@ Notable changes to IG Follow Analyzer are documented here.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-28
+
+### Added
+
+- Add standalone single-file upload mode (`Analyze single file (no comparison)`) when local history is enabled so users can analyze one ZIP on its own from Results or Upload without comparing or saving to history, with an optional button on the results page to save and compare later.
+- Allow clicking either the current ZIP or the comparison ZIP card inside the comparison panel (or using the Account overview switcher) to inspect either export's overview counts, chart, and relationship lists in place while keeping the comparison diff visible.
+
+### Changed
+
+- Refresh affected desktop and mobile documentation screenshots and add captures for upload mode selection, standalone single-file results, and in-place comparison overview switching (`docs/screenshots/`).
+- Let the top-bar and mobile-drawer **Analyze ZIP** link always open the Upload screen even while an active analysis is loaded, keeping **Latest results** as the direct shortcut back to the current results.
+
 ### Fixed
 
 - Show a loading status for homepage reviews and reuse recently loaded reviews on reload while checking for updates.
-
 - Restore homepage reviews by reading Google Forms answers by item ID in the Apps Script receiver.
 
 ## [1.0.0] - 2026-11-22
